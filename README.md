@@ -1,12 +1,12 @@
 
-# Chordon
+# Chordial
 
-**Currently a work in progress!!!**
+## **Currently a work in progress!!!**
 
 An attempt at making a distributed system
 
-- [ ] **Part 0**
-  - [ ] Repo and build setup
+- [x] **Part 0**
+  - [x] Repo and build setup
 - [ ] **Part 1**
   - [ ] Establish persistence layer, should support atomic write operations
   - [ ] Server setup, should accept client and internal requests
