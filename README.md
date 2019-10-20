@@ -10,6 +10,7 @@ An attempt at making a distributed system
 - [ ] **Part 1**
   - [ ] Establish persistence layer, should support atomic write operations
   - [ ] Server setup, should accept client and internal requests
+  - [ ] Logging that should work in Akka actor contexts and non-actor contexts
   - [ ] Basic test setup, local cluster setup
 - [ ] **Part 2**
   - [ ] Membership and discovery
