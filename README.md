@@ -8,7 +8,7 @@ An attempt at making a distributed system
 - [x] **Part 0**
   - [x] Repo and build setup
 - [ ] **Part 1**
-  - [ ] Establish persistence layer, should support atomic write operations
+  - [ ] Establish persistence layer, should support locally atomic/concurrent write operations
   - [ ] Server setup, should accept client and internal requests
   - [ ] Logging that should work in Akka actor contexts and non-actor contexts
   - [ ] Basic test setup, local cluster setup
@@ -19,7 +19,7 @@ An attempt at making a distributed system
 - [ ] **Part 3**
   - [ ] Replication scheme, quorum handling
   - [ ] Anti-entropy process (anti-entropy or read repair or ideally both)
-  - [ ] Concurrent write handling, vector versioning
+  - [ ] Cluster-wide concurrent write handling, vector versioning
   - [ ] Consistency/node failure testing
 - [ ] **Part 4**
   - [ ] Some sort of consistency guarantee?
