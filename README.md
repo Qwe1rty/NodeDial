@@ -8,13 +8,19 @@ An attempt at making a distributed system
 - [x] **Part 0**
   - [x] Repo and build setup
 - [ ] **Part 1**
-  - [ ] Establish persistence layer, should support locally atomic/concurrent write operations
-  - [ ] Server setup, should accept client and internal requests
+  - [ ] External service setup via gRPC
+  - [ ] Establish persistence layer, should support locally atomic/isolated operations
+    - [ ] Multi-key isolation
+    - [ ] Multi-key atomicity
+    - [ ] Non-blocking async disk I/O   
   - [ ] Logging that should work in Akka actor contexts and non-actor contexts
   - [ ] Basic test setup, local cluster setup
 - [ ] **Part 2**
   - [ ] Membership and discovery
-  - [ ] Partitioning schema, consistent hashing (probably chord algo)
+    - [ ] Internal actor remote communication
+    - [ ] Gossip-based discovery
+    - [ ] Finger table initialization
+  - [ ] Partitioning schema, consistent hashing (following chord algo)
   - [ ] Better testing, should be able to do some failure case handling
 - [ ] **Part 3**
   - [ ] Replication scheme, quorum handling
@@ -22,7 +28,7 @@ An attempt at making a distributed system
   - [ ] Cluster-wide concurrent write handling, vector versioning
   - [ ] Consistency/node failure testing
 - [ ] **Part 4**
-  - [ ] Some sort of consistency guarantee?
+  - [ ] Distributed transactions?
   - [ ] _TODO_
 
 ## Project Setup
