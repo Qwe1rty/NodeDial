@@ -4,26 +4,36 @@ option java_multiple_files = true;
 option java_package = "server.service";
 option java_outer_classname = "ChordialRequestMessages";
 
+import "scalapb/scalapb.proto";
+
 package chordial.server;
 
 
 message GetRequest {
+    option (scalapb.message).extends = "server.service.RequestTrait";
     string key = 1;
 }
 
 message GetResponse {
+    option (scalapb.message).extends = "server.service.ResponseTrait";
     bytes value = 1;
 }
 
 message PostRequest {
+    option (scalapb.message).extends = "server.service.RequestTrait";
     string key = 1;
     bytes value = 2;
 }
 
-message PostResponse {}
+message PostResponse {
+    option (scalapb.message).extends = "server.service.ResponseTrait";
+}
 
 message DeleteRequest {
+    option (scalapb.message).extends = "server.service.RequestTrait";
     string key = 1;
 }
 
-message DeleteResponse {}
+message DeleteResponse {
+    option (scalapb.message).extends = "server.service.ResponseTrait";
+}

@@ -5,13 +5,18 @@
 
 An attempt at making a distributed system
 
+
+---
+## Project Plan
+
 - [x] **Part 0**
   - [x] Repo and build setup
 - [ ] **Part 1**
-  - [ ] External service setup via gRPC
+  - [x] External service setup via gRPC
   - [ ] Establish persistence layer, should support locally atomic/isolated operations
-    - [ ] Multi-key isolation
-    - [ ] Multi-key atomicity
+    - [ ] Key isolation
+    - [ ] Key atomicity
+    - [ ] Log recovery
     - [ ] Non-blocking async disk I/O   
   - [ ] Logging that should work in Akka actor contexts and non-actor contexts
   - [ ] Basic test setup, local cluster setup
@@ -28,9 +33,10 @@ An attempt at making a distributed system
   - [ ] Cluster-wide concurrent write handling, vector versioning
   - [ ] Consistency/node failure testing
 - [ ] **Part 4**
-  - [ ] Distributed transactions?
+  - [ ] Distributed transactions (2PC)
   - [ ] _TODO_
 
+---
 ## Project Setup
 
 Install Scala/SBT: <https://www.techrepublic.com/article/how-to-install-sbt-on-ubuntu-for-scala-and-java-projects/>

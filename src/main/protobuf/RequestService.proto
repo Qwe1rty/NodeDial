@@ -4,10 +4,10 @@ option java_multiple_files = true;
 option java_package = "server.service";
 option java_outer_classname = "ChordialRequestService";
 
-package chordial.server;
-
 import "google/api/annotations.proto";
 import "RequestMessages.proto";
+
+package chordial.server;
 
 
 service RequestService {
