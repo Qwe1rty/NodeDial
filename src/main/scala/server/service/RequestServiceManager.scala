@@ -10,7 +10,7 @@ import akka.protobuf.GeneratedMessage
 import akka.stream.Materializer
 import akka.util.Timeout
 
-import scala.concurrent.Future
+import scala.concurrent.{Future, Promise}
 import scala.concurrent.duration.Duration
 
 object RequestServiceManager {
@@ -18,8 +18,10 @@ object RequestServiceManager {
   final implicit val DEFAULT_TIMEOUT: Timeout = Timeout(Duration(5, TimeUnit.MILLISECONDS))
 }
 
-class RequestServiceManager(persistenceActor: ActorRef)(implicit mat: Materializer, timeout: Timeout) extends RequestService {
+class RequestServiceManager
+  (requestServiceActor: ActorRef, requestProcessorActor: ActorRef)(implicit mat: Materializer, timeout: Timeout) extends RequestService {
 
+  final private implicit val processorActor: ActorRef = requestProcessorActor
   final private val hashInstance = MessageDigest.getInstance("SHA-256")
 
   private def hashRequestKey(request: scalapb.GeneratedMessage): Unit = {
@@ -31,11 +33,16 @@ class RequestServiceManager(persistenceActor: ActorRef)(implicit mat: Materializ
   }
 
   override def get(in: GetRequest): Future[GetResponse] = {
+//    val responsePromise = Promise[GetResponse]
+//    requestServiceActor.
+//    responsePromise.future
+
     Future.successful(null)
 //    (persistenceActor ? GetRequest).mapTo[GetResponse]
   }
 
   override def post(in: PostRequest): Future[PostResponse] = {
+    in.value
     Future.successful(null)
 //    (persistenceActor ? PostRequest).mapTo[PostResponse]
   }
