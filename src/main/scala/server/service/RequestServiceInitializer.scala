@@ -8,15 +8,15 @@ import akka.util.Timeout
 
 import scala.concurrent.{ExecutionContext, Future}
 
-object RequestServiceFactory {
+object RequestServiceInitializer {
 
-  def apply(requestProcessorActor: ActorRef)(implicit actorSystem: ActorSystem): RequestServiceFactory = {
+  def apply(requestProcessorActor: ActorRef)(implicit actorSystem: ActorSystem): RequestServiceInitializer = {
 
-    new RequestServiceFactory(requestProcessorActor)
+    new RequestServiceInitializer(requestProcessorActor)
   }
 }
 
-class RequestServiceFactory(requestProcessorActor: ActorRef)(implicit actorSystem: ActorSystem) {
+class RequestServiceInitializer(requestProcessorActor: ActorRef)(implicit actorSystem: ActorSystem) {
 
   def run(): Future[Http.ServerBinding] = {
 

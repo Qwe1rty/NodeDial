@@ -1,7 +1,7 @@
 import akka.actor.{ActorSystem, Props}
 import com.typesafe.config.ConfigFactory
 import server.persistence.PersistenceActor
-import server.service.RequestServiceFactory
+import server.service.RequestServiceInitializer
 
 object Chordial extends App {
 
@@ -12,5 +12,5 @@ object Chordial extends App {
   implicit val actorSystem: ActorSystem = ActorSystem("Chordial", config)
   val persistenceActor = actorSystem.actorOf(Props[PersistenceActor])
 
-  RequestServiceFactory(persistenceActor).run()
+  RequestServiceInitializer(persistenceActor).run()
 }
