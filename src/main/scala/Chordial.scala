@@ -1,6 +1,6 @@
 import akka.actor.{ActorSystem, Props}
 import com.typesafe.config.ConfigFactory
-import server.persistence.PersistenceActor
+import persistence.PersistenceActor
 import server.service.RequestServiceInitializer
 
 object Chordial extends App {

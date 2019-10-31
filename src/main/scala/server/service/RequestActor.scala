@@ -2,6 +2,7 @@ package server.service
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import akka.stream.IOResult
+import server.datatypes.{OperationPackage, ResponseTrait}
 
 import scala.concurrent.Promise
 import scala.reflect.ClassTag

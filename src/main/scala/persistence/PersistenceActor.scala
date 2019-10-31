@@ -1,4 +1,4 @@
-package server.persistence
+package persistence
 
 import akka.actor.{Actor, ActorLogging, ActorRef}
 

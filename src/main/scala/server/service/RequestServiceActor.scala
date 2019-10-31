@@ -5,6 +5,7 @@ import java.security.MessageDigest
 import akka.actor.{Actor, ActorRef}
 import akka.stream.IOResult
 import com.google.protobuf.ByteString
+import server.datatypes.{OperationPackage, RequestTrait}
 
 import scala.concurrent.{Future, Promise}
 
