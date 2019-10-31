@@ -5,6 +5,4 @@ package server.service
 // See the "Custom base traits for messages" section of https://scalapb.github.io/customizations.html
 // for more info
 
-trait ResponseTrait {
-  def value: Option[String]
-}
+trait ResponseTrait

@@ -1,35 +1,59 @@
 package server.service
 
-import akka.actor.{Actor, ActorRef, Props}
+import java.security.MessageDigest
+
+import akka.actor.{Actor, ActorRef}
 import akka.stream.IOResult
 import com.google.protobuf.ByteString
 
-import scala.concurrent.Promise
+import scala.concurrent.{Future, Promise}
 
-class RequestServiceActor(requestProcessorActor: ActorRef) extends Actor {
+class RequestServiceActor(implicit requestProcessorActor: ActorRef) extends Actor {
 
-  implicit val processorActor: ActorRef = requestProcessorActor
+  final private val hashInstance = MessageDigest.getInstance("SHA-256")
+
+  private def hashFunction(key: String): String = {
+    hashInstance.digest(key.getBytes("UTF-8")).map("02x".format(_)).mkString
+  }
 
   override def receive: Receive = {
 
-    case GetRequest(key) => {
-      val promise = Promise[GetResponse]()
-      context.actorOf(
-        RequestActor.props[GetResponse](
-          promise,
-          (ioResult: IOResult) => GetResponse(ByteString.EMPTY)
-        ),
-        "getRequestActor")
+    case requestTrait: RequestTrait => {
+
+      if (requestTrait.key.isEmpty) Future.failed(new IllegalArgumentException("Key value cannot be empty or undefined"))
+      val operationRequest = OperationPackage(hashFunction(requestTrait.key), requestTrait)
+
+      requestTrait match {
+        case _: GetRequest => {
+          val promise = Promise[GetResponse]()
+          context.actorOf(
+            RequestActor.props[GetResponse](
+              promise,
+              (ioResult: IOResult) => GetResponse(ByteString.EMPTY), // TODO replace this
+              operationRequest
+            ),
+            "getRequestActor")
+        }
+
+        case _: PostRequest => {
+          val promise = Promise[PostResponse]()
+          context.actorOf(
+            RequestActor.props[PostResponse](promise, (_: IOResult) => PostResponse(), operationRequest),
+            "postRequestActor")
+          promise.future
+        }
+
+        case _: DeleteRequest => {
+          val promise = Promise[DeleteResponse]()
+          context.actorOf(
+            RequestActor.props[DeleteResponse](promise, (_: IOResult) => DeleteResponse(), operationRequest),
+            "deleteRequestActor")
+          promise.future
+        }
+      }
+
     }
 
-    case PostRequest(key, value) => {
-
-    }
-
-    case DeleteRequest(key) => {
-
-    }
-
-    case _ => true // TODO: add error logging/handling
+    case _ => ??? // TODO: add error logging/handling
   }
 }

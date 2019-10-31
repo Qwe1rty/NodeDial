@@ -13,8 +13,6 @@ class PersistenceActor extends Actor with ActorLogging {
   private val keyTable = Map[String, ActorRef]()
 
   override def receive: Receive = {
-
-
-
+    ???
   }
 }
