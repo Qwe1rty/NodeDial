@@ -1,0 +1,11 @@
+TODO LIST:
+
+GENERAL:
+- All kinds of logging
+- Some form of environment variable/configuration handling
+
+PERSISTENCE:
+- Change PersistenceActor map to some form of cache
+  - Ensure that the file stream is closed upon eviction
+- Partitioning the key range to the different threads
+- Try to isolate thread state between the persistence & key actors

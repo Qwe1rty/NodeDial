@@ -13,6 +13,7 @@ class RequestServiceActor(implicit requestProcessorActor: ActorRef) extends Acto
 
   final private val hashInstance = MessageDigest.getInstance("SHA-256")
 
+
   private def hashFunction(key: String): String = {
     hashInstance.digest(key.getBytes("UTF-8")).map("02x".format(_)).mkString
   }
@@ -30,7 +31,7 @@ class RequestServiceActor(implicit requestProcessorActor: ActorRef) extends Acto
           context.actorOf(
             RequestActor.props[GetResponse](
               promise,
-              (ioResult: IOResult) => GetResponse(ByteString.EMPTY), // TODO replace this
+              (_: IOResult) => GetResponse(ByteString.EMPTY), // TODO replace this
               operationRequest
             ),
             "getRequestActor")

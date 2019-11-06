@@ -15,17 +15,21 @@ An attempt at making a distributed system
   - [x] External service setup via gRPC
   - [ ] Establish persistence layer, should support locally atomic/isolated operations
     - [ ] Key isolation
+      - [ ] Serial execution for single keys 
+      - [ ] Thread partitioning
     - [ ] Key atomicity
-    - [ ] Log recovery
-    - [ ] Non-blocking async disk I/O   
+      - [ ] Log recovery via write-ahead strategy
+      - [ ] Rollback to previously commited value
+    - [ ] Non-blocking async disk I/O
   - [ ] Logging that should work in Akka actor contexts and non-actor contexts
-  - [ ] Basic test setup, local cluster setup
+  - [ ] Basic test setup and containerization
 - [ ] **Part 2**
   - [ ] Membership and discovery
     - [ ] Internal actor remote communication
     - [ ] Gossip-based discovery
     - [ ] Finger table initialization
-  - [ ] Partitioning schema, consistent hashing (following chord algo)
+    - [ ] Local kubernetes cluster setup
+  - [ ] Partitioning via consistent hashing (following chord algo)
   - [ ] Better testing, should be able to do some failure case handling
 - [ ] **Part 3**
   - [ ] Replication scheme, quorum handling
