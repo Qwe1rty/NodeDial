@@ -8,6 +8,7 @@ import akka.util.Timeout
 
 import scala.concurrent.{ExecutionContext, Future}
 
+
 object RequestServiceInitializer {
 
   def apply(requestProcessorActor: ActorRef)(implicit actorSystem: ActorSystem): RequestServiceInitializer = {
@@ -15,6 +16,7 @@ object RequestServiceInitializer {
     new RequestServiceInitializer(requestProcessorActor)
   }
 }
+
 
 class RequestServiceInitializer(requestProcessorActor: ActorRef)(implicit actorSystem: ActorSystem) {
 

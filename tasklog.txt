@@ -9,3 +9,7 @@ PERSISTENCE:
   - Ensure that the file stream is closed upon eviction
 - Partitioning the key range to the different threads
 - Try to isolate thread state between the persistence & key actors
+  - Create actor that controls thread acces
+  - Create thread partitioning actor
+- Allow for concurrent read access to the same key OR some type of manual caching
+- Eliminate IORequest's dependence on the PersistenceActor companion object

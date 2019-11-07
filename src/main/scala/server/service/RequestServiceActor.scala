@@ -9,6 +9,7 @@ import server.datatypes.{OperationPackage, RequestTrait}
 
 import scala.concurrent.{Future, Promise}
 
+
 class RequestServiceActor(implicit requestProcessorActor: ActorRef) extends Actor {
 
   final private val hashInstance = MessageDigest.getInstance("SHA-256")
@@ -54,6 +55,7 @@ class RequestServiceActor(implicit requestProcessorActor: ActorRef) extends Acto
         }
       }
 
+      // TODO: shutdown actor
     }
 
     case _ => ??? // TODO: add error logging/handling

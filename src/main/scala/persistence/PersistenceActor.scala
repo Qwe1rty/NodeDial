@@ -11,14 +11,16 @@ import server.datatypes.OperationPackage
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext
 
+
 object PersistenceActor {
 
   final val DIRECTORY_NAME: Path = Paths.get("chordial/")
   final val DIRECTORY_FILE: File = DIRECTORY_NAME.toFile
 
-  final val PARTITION_SEED: Char = 0xAA // Hex representation of binary: 10101010
-  final val PARTITION_FUNCTION: String => Int = _.foldLeft(PARTITION_SEED)(_ ^ _ toChar) toInt
+  final private val PARTITION_SEED: Char = 0xAA // Hex representation of binary 10101010
+  final private val PARTITION_FUNCTION: String => Int = _.foldLeft(PARTITION_SEED)(_ ^ _ toChar) toInt
 }
+
 
 class PersistenceActor extends Actor with ActorLogging {
 
@@ -48,12 +50,11 @@ class PersistenceActor extends Actor with ActorLogging {
   override def receive: Receive = {
 
     case operation: OperationPackage => {
-
       if (!(keyMapping isDefinedAt operation.requestHash)) {
         val thread = threads(PersistenceActor.PARTITION_FUNCTION(operation.requestHash))
-        keyMapping += operation.requestHash -> context.actorOf(KeyStateActor.props(thread))
+        val actorProps = KeyStateActor.props(operation.requestHash, thread)
+        keyMapping += operation.requestHash -> context.actorOf(actorProps)
       }
-
       keyMapping(operation.requestHash) ! operation.requestBody
     }
 

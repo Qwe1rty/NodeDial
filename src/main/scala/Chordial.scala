@@ -3,6 +3,7 @@ import com.typesafe.config.ConfigFactory
 import persistence.PersistenceActor
 import server.service.RequestServiceInitializer
 
+
 object Chordial extends App {
 
   val config = ConfigFactory

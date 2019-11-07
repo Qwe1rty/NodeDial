@@ -7,6 +7,7 @@ import server.datatypes.{OperationPackage, ResponseTrait}
 import scala.concurrent.Promise
 import scala.reflect.ClassTag
 
+
 object RequestActor {
 
   def props[A <: ResponseTrait]
@@ -14,6 +15,7 @@ object RequestActor {
       (implicit requestProcessorActor: ActorRef, ct: ClassTag[A]): Props =
     Props(new RequestActor[A](requestPromise, ioProcessCallback, operationRequest))
 }
+
 
 class RequestActor[+A <: ResponseTrait]
     (requestPromise: Promise[A], ioProcessCallback: IOResult => A, operationRequest: OperationPackage)

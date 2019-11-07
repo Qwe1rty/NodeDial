@@ -1,3 +1,6 @@
 package server.datatypes
 
-case class OperationPackage(requestHash: String, requestBody: RequestTrait)
+import akka.actor.ActorRef
+
+
+class OperationPackage(val requestActor: ActorRef, val requestHash: String, val requestBody: RequestTrait)
