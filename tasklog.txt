@@ -13,3 +13,4 @@ PERSISTENCE:
   - Create thread partitioning actor
 - Allow for concurrent read access to the same key OR some type of manual caching
 - Eliminate IORequest's dependence on the PersistenceActor companion object
+- Be able to group the IOTasks together into a single chain of operations

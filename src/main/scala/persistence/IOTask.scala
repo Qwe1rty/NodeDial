@@ -4,7 +4,8 @@ import java.nio.file.{Path, Paths}
 
 import akka.actor.ActorRef
 import akka.stream.{ActorMaterializer, IOResult}
-import akka.stream.scaladsl.{FileIO, Sink}
+import akka.stream.scaladsl.{FileIO, Sink, Source}
+import akka.util.ByteString
 
 import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success}
@@ -16,7 +17,7 @@ sealed trait IORequest {
   final val VALUE_EXTENSION = Paths.get(".val")
 
   def schedule
-      (stateActor: ActorRef, requestActor: ActorRef)
+      (stateActor: ActorRef)
       (implicit materializer: ActorMaterializer, executionContext: ExecutionContext): Unit
 }
 
@@ -24,29 +25,44 @@ sealed trait IORequest {
 case class ReadRequestTask(path: Path) extends IORequest {
 
   override def schedule
-      (stateActor: ActorRef, requestActor: ActorRef)
+      (stateActor: ActorRef)
       (implicit materializer: ActorMaterializer, executionContext: ExecutionContext): Unit = {
 
     FileIO.fromPath(path.resolve(VALUE_EXTENSION)).to(Sink.ignore).run onComplete {
-      case Success(ioResult: IOResult) => {
-        stateActor ! ReadCommittedSignal
-        requestActor ! ioResult
-      }
-      case Failure(exception: Exception) => {
-        // TODO log error
-      }
+      stateActor ! ReadCommittedSignal(_)
     }
   }
 }
 
-case class WriteAheadTask(key: String, value: ByteString) extends IORequest {
-  override def run(): Unit = ???
+case class WriteAheadTask(path: Path, value: ByteString) extends IORequest {
+
+  override def schedule
+      (stateActor: ActorRef)
+      (implicit materializer: ActorMaterializer, executionContext: ExecutionContext): Unit = {
+
+    Source.single(value).runWith(FileIO.toPath(path.resolve(WRITE_AHEAD_EXTENSION))) onComplete {
+      stateActor ! WriteAheadCommittedSignal(_)
+    }
+  }
 }
 
-case class WriteTransferTask() extends IORequest {
-  override def run(): Unit = ???
+case class WriteTransferTask(path: Path) extends IORequest {
+
+  override def schedule
+      (stateActor: ActorRef)
+      (implicit materializer: ActorMaterializer, executionContext: ExecutionContext): Unit = {
+
+    FileIO.fromPath(path.resolve(WRITE_AHEAD_EXTENSION))
+    ???
+  }
 }
 
-case class TombstoneRequestTask(key: String) extends IORequest {
-  override def run(): Unit = ???
+case class TombstoneRequestTask(path: Path) extends IORequest {
+
+  override def schedule
+      (stateActor: ActorRef)
+      (implicit materializer: ActorMaterializer, executionContext: ExecutionContext): Unit = {
+
+    ??? // TODO figure best way to tombstone
+  }
 }

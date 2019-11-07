@@ -6,6 +6,7 @@ import server.datatypes.{OperationPackage, ResponseTrait}
 
 import scala.concurrent.Promise
 import scala.reflect.ClassTag
+import scala.util.Try
 
 
 object RequestActor {
@@ -28,7 +29,7 @@ class RequestActor[+A <: ResponseTrait]
   requestProcessorActor ! operationRequest
 
   override def receive: Receive = {
-    case ioResult: IOResult => () // TODO
+    case ioResult: Try[IOResult] => () // TODO
     case _ => throw new Exception(":(") // TODO
   }
 }

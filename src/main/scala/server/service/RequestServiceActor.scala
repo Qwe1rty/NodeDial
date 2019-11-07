@@ -24,7 +24,7 @@ class RequestServiceActor(implicit requestProcessorActor: ActorRef) extends Acto
     case requestTrait: RequestTrait => {
 
       if (requestTrait.key.isEmpty) Future.failed(new IllegalArgumentException("Key value cannot be empty or undefined"))
-      val operationRequest = OperationPackage(hashFunction(requestTrait.key), requestTrait)
+      val operationRequest = new OperationPackage(self, hashFunction(requestTrait.key), requestTrait)
 
       requestTrait match {
         case _: GetRequest => {
