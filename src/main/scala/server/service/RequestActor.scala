@@ -28,6 +28,7 @@ class RequestActor[+A <: ResponseTrait]
 
   requestProcessorActor ! operationRequest
 
+
   override def receive: Receive = {
     case ioResult: Try[IOResult] => () // TODO
     case _ => throw new Exception(":(") // TODO

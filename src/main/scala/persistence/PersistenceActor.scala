@@ -2,13 +2,11 @@ package persistence
 
 import java.io.File
 import java.nio.file.{Path, Paths}
-import java.util.concurrent.Executors
 
 import akka.actor.{Actor, ActorLogging, ActorRef}
 import akka.stream.ActorMaterializer
 import server.datatypes.OperationPackage
 
-import scala.collection.mutable
 import scala.concurrent.ExecutionContext
 
 
@@ -26,23 +24,10 @@ class PersistenceActor extends Actor with ActorLogging {
 
   implicit private val materializer: ActorMaterializer = ActorMaterializer()
 
-  private val keyMapping = mutable.Map[String, ActorRef]()
-
   private val coreCount: Int = Runtime.getRuntime.availableProcessors
-  private val threads: Array[ExecutionContext] = Array.fill(coreCount){
+  private val threads: Vector[ExecutionContext] = Vector.fill(coreCount){ SingleThreadExecutor() }
 
-    new ExecutionContext {
-      private val threadExecutor = Executors.newFixedThreadPool(1)
-
-      override def execute(runnable: Runnable): Unit = {
-        threadExecutor.submit(runnable)
-      }
-      override def reportFailure(cause: Throwable): Unit = {
-        // TODO log error
-      }
-      def shutdown(): Unit = threadExecutor.shutdown()
-    }
-  }
+  private var keyMapping = Map[String, ActorRef]()
 
   if (!PersistenceActor.DIRECTORY_FILE.exists()) PersistenceActor.DIRECTORY_FILE.mkdir()
 

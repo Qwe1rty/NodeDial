@@ -16,6 +16,7 @@ sealed trait IORequest {
   final val WRITE_AHEAD_EXTENSION = Paths.get(".wal")
   final val VALUE_EXTENSION = Paths.get(".val")
 
+
   def schedule
       (stateActor: ActorRef)
       (implicit materializer: ActorMaterializer, executionContext: ExecutionContext): Unit
@@ -28,7 +29,9 @@ case class ReadRequestTask(path: Path) extends IORequest {
       (stateActor: ActorRef)
       (implicit materializer: ActorMaterializer, executionContext: ExecutionContext): Unit = {
 
-    FileIO.fromPath(path.resolve(VALUE_EXTENSION)).to(Sink.ignore).run onComplete {
+    FileIO.fromPath(path.resolve(VALUE_EXTENSION))
+      .to(Sink.ignore).run onComplete {
+
       stateActor ! ReadCommittedSignal(_)
     }
   }
@@ -40,7 +43,9 @@ case class WriteAheadTask(path: Path, value: ByteString) extends IORequest {
       (stateActor: ActorRef)
       (implicit materializer: ActorMaterializer, executionContext: ExecutionContext): Unit = {
 
-    Source.single(value).runWith(FileIO.toPath(path.resolve(WRITE_AHEAD_EXTENSION))) onComplete {
+    Source.single(value)
+      .runWith(FileIO.toPath(path.resolve(WRITE_AHEAD_EXTENSION))) onComplete {
+
       stateActor ! WriteAheadCommittedSignal(_)
     }
   }
@@ -53,7 +58,10 @@ case class WriteTransferTask(path: Path) extends IORequest {
       (implicit materializer: ActorMaterializer, executionContext: ExecutionContext): Unit = {
 
     FileIO.fromPath(path.resolve(WRITE_AHEAD_EXTENSION))
-    ???
+      .to(FileIO.toPath(path.resolve(VALUE_EXTENSION))).run onComplete {
+
+      stateActor ! WriteTransferCommittedSignal(_)
+    }
   }
 }
 
