@@ -1,32 +1,28 @@
-package persistence
+package persistence.io
 
 import java.nio.file.{Path, Paths}
 
 import akka.actor.ActorRef
-import akka.stream.{ActorMaterializer, IOResult}
+import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{FileIO, Sink, Source}
 import akka.util.ByteString
 
 import scala.concurrent.ExecutionContext
-import scala.util.{Failure, Success}
 
 
-sealed trait IORequest {
+sealed trait IOTask {
 
   final val WRITE_AHEAD_EXTENSION = Paths.get(".wal")
   final val VALUE_EXTENSION = Paths.get(".val")
 
 
-  def schedule
-      (stateActor: ActorRef)
-      (implicit materializer: ActorMaterializer, executionContext: ExecutionContext): Unit
+  def schedule(implicit materializer: ActorMaterializer, executionContext: ExecutionContext): Unit
 }
 
 
-case class ReadRequestTask(path: Path) extends IORequest {
+case class ReadTaskTask(stateActor: ActorRef, path: Path) extends IOTask {
 
   override def schedule
-      (stateActor: ActorRef)
       (implicit materializer: ActorMaterializer, executionContext: ExecutionContext): Unit = {
 
     FileIO.fromPath(path.resolve(VALUE_EXTENSION))
@@ -37,10 +33,9 @@ case class ReadRequestTask(path: Path) extends IORequest {
   }
 }
 
-case class WriteAheadTask(path: Path, value: ByteString) extends IORequest {
+case class WriteAheadTask(stateActor: ActorRef, path: Path, value: ByteString) extends IOTask {
 
   override def schedule
-      (stateActor: ActorRef)
       (implicit materializer: ActorMaterializer, executionContext: ExecutionContext): Unit = {
 
     Source.single(value)
@@ -51,10 +46,9 @@ case class WriteAheadTask(path: Path, value: ByteString) extends IORequest {
   }
 }
 
-case class WriteTransferTask(path: Path) extends IORequest {
+case class WriteTransferTask(stateActor: ActorRef, path: Path) extends IOTask {
 
   override def schedule
-      (stateActor: ActorRef)
       (implicit materializer: ActorMaterializer, executionContext: ExecutionContext): Unit = {
 
     FileIO.fromPath(path.resolve(WRITE_AHEAD_EXTENSION))
@@ -65,10 +59,9 @@ case class WriteTransferTask(path: Path) extends IORequest {
   }
 }
 
-case class TombstoneRequestTask(path: Path) extends IORequest {
+case class TombstoneTaskTask(stateActor: ActorRef, path: Path) extends IOTask {
 
   override def schedule
-      (stateActor: ActorRef)
       (implicit materializer: ActorMaterializer, executionContext: ExecutionContext): Unit = {
 
     ??? // TODO figure best way to tombstone

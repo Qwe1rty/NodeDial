@@ -1,6 +1,6 @@
 import akka.actor.{ActorSystem, Props}
 import com.typesafe.config.ConfigFactory
-import persistence.PersistenceActor
+import persistence.io.PersistenceActor
 import server.service.RequestServiceInitializer
 
 

@@ -1,4 +1,4 @@
-package persistence
+package persistence.io
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import akka.stream.ActorMaterializer
@@ -44,9 +44,9 @@ class KeyStateActor
     pendingRequest = Some(requestQueue.head requestActor)
     (
       requestQueue.dequeue().requestBody match {
-        case GetRequest(_) => ReadRequestTask(path)
+        case GetRequest(_) => ReadTaskTask(path)
         case PostRequest(_, value) => WriteAheadTask(path, ByteString(value.toByteArray))
-        case DeleteRequest(_) => TombstoneRequestTask(path)
+        case DeleteRequest(_) => TombstoneTaskTask(path)
       }
     ).schedule(self)
   }

@@ -1,4 +1,4 @@
-package persistence
+package persistence.io
 
 import akka.stream.IOResult
 
