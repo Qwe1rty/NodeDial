@@ -3,12 +3,8 @@ package persistence.io
 import java.io.File
 import java.nio.file.{Path, Paths}
 
-import akka.actor.{Actor, ActorLogging, ActorRef}
-import akka.stream.ActorMaterializer
-import persistence.threading.SingleThreadExecutor
+import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import server.datatypes.OperationPackage
-
-import scala.concurrent.ExecutionContext
 
 
 object PersistenceActor {
@@ -16,17 +12,12 @@ object PersistenceActor {
   final val DIRECTORY_NAME: Path = Paths.get("chordial/")
   final val DIRECTORY_FILE: File = DIRECTORY_NAME.toFile
 
-  final private val PARTITION_SEED: Char = 0xAA // Hex representation of binary 10101010
-  final private val PARTITION_FUNCTION: String => Int = _.foldLeft(PARTITION_SEED)(_ ^ _ toChar) toInt
+
+  def props(executorActor: ActorRef): Props = Props(new PersistenceActor(executorActor))
 }
 
 
-class PersistenceActor extends Actor with ActorLogging {
-
-  implicit private val materializer: ActorMaterializer = ActorMaterializer()
-
-  private val coreCount: Int = Runtime.getRuntime.availableProcessors
-  private val threads: Vector[ExecutionContext] = Vector.fill(coreCount){ SingleThreadExecutor() }
+class PersistenceActor(executorActor: ActorRef) extends Actor with ActorLogging {
 
   private var keyMapping = Map[String, ActorRef]()
 
@@ -37,8 +28,7 @@ class PersistenceActor extends Actor with ActorLogging {
 
     case operation: OperationPackage => {
       if (!(keyMapping isDefinedAt operation.requestHash)) {
-        val thread = threads(PersistenceActor.PARTITION_FUNCTION(operation.requestHash))
-        val actorProps = KeyStateActor.props(operation.requestHash, thread)
+        val actorProps = KeyStateActor.props(executorActor, operation.requestHash)
         keyMapping += operation.requestHash -> context.actorOf(actorProps)
       }
       keyMapping(operation.requestHash) ! operation.requestBody

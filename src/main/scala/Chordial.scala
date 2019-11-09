@@ -1,6 +1,7 @@
-import akka.actor.{ActorSystem, Props}
+import akka.actor.ActorSystem
 import com.typesafe.config.ConfigFactory
 import persistence.io.PersistenceActor
+import persistence.threading.ThreadPartitionActor
 import server.service.RequestServiceInitializer
 
 
@@ -11,7 +12,10 @@ object Chordial extends App {
     .withFallback(ConfigFactory.defaultApplication())
 
   implicit val actorSystem: ActorSystem = ActorSystem("Chordial", config)
-  val persistenceActor = actorSystem.actorOf(Props[PersistenceActor])
+
+  // Persistence layer top-level actors
+  val threadPartitionActor = actorSystem.actorOf(ThreadPartitionActor.props)
+  val persistenceActor = actorSystem.actorOf(PersistenceActor.props(threadPartitionActor))
 
   RequestServiceInitializer(persistenceActor).run()
 }

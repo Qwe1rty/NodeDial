@@ -1,31 +1,22 @@
 package persistence.io
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
-import akka.stream.ActorMaterializer
 import akka.util.ByteString
 import server.datatypes.OperationPackage
 import server.service.{DeleteRequest, GetRequest, PostRequest}
 
 import scala.collection.mutable
-import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success}
 
 
 object KeyStateActor {
 
-  def props
-      (hash: String, executor: ExecutionContext)
-      (implicit materializer: ActorMaterializer): Props =
-    Props(new KeyStateActor(hash, executor))
+  def props(executorActor: ActorRef, hash: String): Props =
+    Props(new KeyStateActor(executorActor, hash))
 }
 
 
-class KeyStateActor
-    (hash: String, executor: ExecutionContext)
-    (implicit materializer: ActorMaterializer)
-  extends Actor with ActorLogging {
-
-  implicit final private val ec: ExecutionContext = executor
+class KeyStateActor(executorActor: ActorRef, hash: String) extends Actor with ActorLogging {
 
   private val path = PersistenceActor.DIRECTORY_NAME.resolve(hash)
 
@@ -33,6 +24,10 @@ class KeyStateActor
   private var exclusiveLocked = false // TODO make this a 2PL
   private var pendingRequest: Option[ActorRef] = None
 
+
+  private def schedule(task: IOTask): Unit = {
+    executorActor ! (hash, task)
+  }
 
   private def suspend(): Unit = {
     exclusiveLocked = false
@@ -42,13 +37,11 @@ class KeyStateActor
   private def signal(): Unit = {
     exclusiveLocked = true
     pendingRequest = Some(requestQueue.head requestActor)
-    (
-      requestQueue.dequeue().requestBody match {
-        case GetRequest(_) => ReadTaskTask(path)
-        case PostRequest(_, value) => WriteAheadTask(path, ByteString(value.toByteArray))
-        case DeleteRequest(_) => TombstoneTaskTask(path)
-      }
-    ).schedule(self)
+    schedule(requestQueue.dequeue().requestBody match {
+      case GetRequest(_) => ReadTask(path)
+      case PostRequest(_, value) => WriteAheadTask(path, ByteString(value.toByteArray))
+      case DeleteRequest(_) => TombstoneTask(path)
+    })
   }
 
   private def poll(): Unit = {
@@ -68,16 +61,16 @@ class KeyStateActor
 
       signal match {
 
-        case ReadCommittedSignal(_) |
-             WriteTransferCommittedSignal(_) |
-             TombstoneCommittedSignal(_) => {
+        case ReadCommitSignal(_) |
+             WriteTransferCommitSignal(_) |
+             TombstoneCommitSignal(_) => {
           pendingRequest.get ! signal.result
           poll()
         }
 
-        case WriteAheadCommittedSignal(result) => {
+        case WriteAheadCommitSignal(result) => {
           result match {
-            case Success(_) => WriteTransferTask(path).schedule(self)
+            case Success(_) => schedule(WriteTransferTask(path))
             case Failure(exception: Exception) => { // TODO handle this actually better
               pendingRequest.get ! Failure(exception)
               poll()

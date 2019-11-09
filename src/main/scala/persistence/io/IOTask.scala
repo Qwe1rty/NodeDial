@@ -16,52 +16,52 @@ sealed trait IOTask {
   final val VALUE_EXTENSION = Paths.get(".val")
 
 
-  def schedule(implicit materializer: ActorMaterializer, executionContext: ExecutionContext): Unit
+  def schedule()(implicit materializer: ActorMaterializer, executionContext: ExecutionContext): Unit
 }
 
 
-case class ReadTaskTask(stateActor: ActorRef, path: Path) extends IOTask {
+case class ReadTask(path: Path)(implicit stateActor: ActorRef) extends IOTask {
 
-  override def schedule
+  override def schedule()
       (implicit materializer: ActorMaterializer, executionContext: ExecutionContext): Unit = {
 
     FileIO.fromPath(path.resolve(VALUE_EXTENSION))
       .to(Sink.ignore).run onComplete {
 
-      stateActor ! ReadCommittedSignal(_)
+      stateActor ! ReadCommitSignal(_)
     }
   }
 }
 
-case class WriteAheadTask(stateActor: ActorRef, path: Path, value: ByteString) extends IOTask {
+case class WriteAheadTask(path: Path, value: ByteString)(implicit stateActor: ActorRef) extends IOTask {
 
-  override def schedule
+  override def schedule()
       (implicit materializer: ActorMaterializer, executionContext: ExecutionContext): Unit = {
 
     Source.single(value)
       .runWith(FileIO.toPath(path.resolve(WRITE_AHEAD_EXTENSION))) onComplete {
 
-      stateActor ! WriteAheadCommittedSignal(_)
+      stateActor ! WriteAheadCommitSignal(_)
     }
   }
 }
 
-case class WriteTransferTask(stateActor: ActorRef, path: Path) extends IOTask {
+case class WriteTransferTask(path: Path)(implicit stateActor: ActorRef) extends IOTask {
 
-  override def schedule
+  override def schedule()
       (implicit materializer: ActorMaterializer, executionContext: ExecutionContext): Unit = {
 
     FileIO.fromPath(path.resolve(WRITE_AHEAD_EXTENSION))
       .to(FileIO.toPath(path.resolve(VALUE_EXTENSION))).run onComplete {
 
-      stateActor ! WriteTransferCommittedSignal(_)
+      stateActor ! WriteTransferCommitSignal(_)
     }
   }
 }
 
-case class TombstoneTaskTask(stateActor: ActorRef, path: Path) extends IOTask {
+case class TombstoneTask(path: Path)(implicit stateActor: ActorRef) extends IOTask {
 
-  override def schedule
+  override def schedule()
       (implicit materializer: ActorMaterializer, executionContext: ExecutionContext): Unit = {
 
     ??? // TODO figure best way to tombstone

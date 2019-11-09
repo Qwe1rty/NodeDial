@@ -11,7 +11,7 @@ sealed trait IOSignal {
 }
 
 
-case class ReadCommittedSignal(result: Try[IOResult]) extends IOSignal
-case class WriteAheadCommittedSignal(result: Try[IOResult]) extends IOSignal
-case class WriteTransferCommittedSignal(result: Try[IOResult]) extends IOSignal
-case class TombstoneCommittedSignal(result: Try[IOResult]) extends IOSignal
+case class ReadCommitSignal(result: Try[IOResult]) extends IOSignal
+case class WriteAheadCommitSignal(result: Try[IOResult]) extends IOSignal
+case class WriteTransferCommitSignal(result: Try[IOResult]) extends IOSignal
+case class TombstoneCommitSignal(result: Try[IOResult]) extends IOSignal
