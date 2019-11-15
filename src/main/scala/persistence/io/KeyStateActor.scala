@@ -2,6 +2,7 @@ package persistence.io
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import akka.util.ByteString
+import better.files.File
 import server.datatypes.OperationPackage
 import server.service.{DeleteRequest, GetRequest, PostRequest}
 
@@ -11,6 +12,10 @@ import scala.util.{Failure, Success}
 
 object KeyStateActor {
 
+  final private val WRITE_AHEAD_EXTENSION = ".wal"
+  final private val VALUE_EXTENSION = ".val"
+
+
   def props(executorActor: ActorRef, hash: String): Props =
     Props(new KeyStateActor(executorActor, hash))
 }
@@ -18,16 +23,16 @@ object KeyStateActor {
 
 class KeyStateActor(executorActor: ActorRef, hash: String) extends Actor with ActorLogging {
 
-  private val path = PersistenceActor.DIRECTORY_NAME.resolve(hash)
-
   private val requestQueue = mutable.Queue[OperationPackage]()
   private var exclusiveLocked = false // TODO make this a 2PL
   private var pendingRequest: Option[ActorRef] = None
 
 
-  private def schedule(task: IOTask): Unit = {
+  private def fileOf(extension: String): File =
+    PersistenceActor.DIRECTORY_FILE/(hash + extension)
+
+  private def schedule(task: IOTask): Unit =
     executorActor ! (hash, task)
-  }
 
   private def suspend(): Unit = {
     exclusiveLocked = false
@@ -36,17 +41,19 @@ class KeyStateActor(executorActor: ActorRef, hash: String) extends Actor with Ac
 
   private def signal(): Unit = {
     exclusiveLocked = true
-    pendingRequest = Some(requestQueue.head requestActor)
+    pendingRequest = Some(requestQueue.head.requestActor)
     schedule(requestQueue.dequeue().requestBody match {
-      case GetRequest(_) => ReadTask(path)
-      case PostRequest(_, value) => WriteAheadTask(path, ByteString(value.toByteArray))
-      case DeleteRequest(_) => TombstoneTask(path)
+      case GetRequest(_) =>
+        ReadTask(fileOf(KeyStateActor.VALUE_EXTENSION))
+      case PostRequest(_, value) =>
+        WriteAheadTask(fileOf(KeyStateActor.WRITE_AHEAD_EXTENSION), value.toByteArray)
+      case DeleteRequest(_) =>
+        TombstoneTask(fileOf(KeyStateActor.VALUE_EXTENSION))
     })
   }
 
-  private def poll(): Unit = {
-    if (requestQueue isEmpty) suspend() else signal()
-  }
+  private def poll(): Unit =
+    if (requestQueue.isEmpty) suspend() else signal()
 
   override def receive: Receive = {
 
@@ -55,30 +62,26 @@ class KeyStateActor(executorActor: ActorRef, hash: String) extends Actor with Ac
       if (!exclusiveLocked) signal()
     }
 
-    case signal: IOSignal => {
+    case ReadCompleteSignal(result) => {
+      pendingRequest.get ! result.map(_ => Some(_))
+      poll()
+    }
 
-      // TODO log operation under debug
+    case WriteCompleteSignal(result) => {
+      pendingRequest.get ! result.map(_ => None)
+      poll()
+    }
 
-      signal match {
+    case WriteAheadCommitSignal() => {
+      schedule(WriteTransferTask(
+        fileOf(KeyStateActor.WRITE_AHEAD_EXTENSION),
+        fileOf(KeyStateActor.VALUE_EXTENSION)
+      ))
+    }
 
-        case ReadCommitSignal(_) |
-             WriteTransferCommitSignal(_) |
-             TombstoneCommitSignal(_) => {
-          pendingRequest.get ! signal.result
-          poll()
-        }
-
-        case WriteAheadCommitSignal(result) => {
-          result match {
-            case Success(_) => schedule(WriteTransferTask(path))
-            case Failure(exception: Exception) => { // TODO handle this actually better
-              pendingRequest.get ! Failure(exception)
-              poll()
-            }
-          }
-        }
-
-      }
+    case WriteAheadFailureSignal(e) => {
+      pendingRequest.get ! Failure(e)
+      poll()
     }
 
     case _ => ??? // TODO log error

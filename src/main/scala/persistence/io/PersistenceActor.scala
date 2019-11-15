@@ -1,16 +1,15 @@
 package persistence.io
 
-import java.io.File
 import java.nio.file.{Path, Paths}
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
+import better.files.File
 import server.datatypes.OperationPackage
 
 
 object PersistenceActor {
 
-  final val DIRECTORY_NAME: Path = Paths.get("chordial/")
-  final val DIRECTORY_FILE: File = DIRECTORY_NAME.toFile
+  final val DIRECTORY_FILE: File = File.currentWorkingDirectory/"chordial"
 
 
   def props(executorActor: ActorRef): Props = Props(new PersistenceActor(executorActor))
@@ -21,7 +20,7 @@ class PersistenceActor(executorActor: ActorRef) extends Actor with ActorLogging 
 
   private var keyMapping = Map[String, ActorRef]()
 
-  if (!PersistenceActor.DIRECTORY_FILE.exists()) PersistenceActor.DIRECTORY_FILE.mkdir()
+  PersistenceActor.DIRECTORY_FILE.createDirectoryIfNotExists()
 
 
   override def receive: Receive = {

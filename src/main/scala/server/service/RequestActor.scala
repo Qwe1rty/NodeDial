@@ -12,25 +12,23 @@ import scala.util.Try
 object RequestActor {
 
   def props[A <: ResponseTrait]
-      (requestPromise: Promise[A], ioProcessCallback: IOResult => A, operationRequest: OperationPackage)
-      (implicit requestProcessorActor: ActorRef, ct: ClassTag[A]): Props =
-    Props(new RequestActor[A](requestPromise, ioProcessCallback, operationRequest))
+      (requestPromise: Promise[A], ioProcessCallback: Try[Option[Array[Byte]]] => A)
+      (implicit ct: ClassTag[A]): Props =
+    Props(new RequestActor[A](requestPromise, ioProcessCallback))
 }
 
 
 class RequestActor[+A <: ResponseTrait]
-    (requestPromise: Promise[A], ioProcessCallback: IOResult => A, operationRequest: OperationPackage)
-    (implicit requestProcessorActor: ActorRef, ct: ClassTag[A])
+    (requestPromise: Promise[A], ioProcessCallback: Try[Option[Array[Byte]]] => A)
+    (implicit ct: ClassTag[A])
   extends Actor with ActorLogging {
 
   // NOTE: objects/type classes + actors is a bad idea, so ioProcessCallback is used to fulfill that functionality
   //  https://docs.scala-lang.org/overviews/reflection/thread-safety.html
 
-  requestProcessorActor ! operationRequest
-
 
   override def receive: Receive = {
-    case ioResult: Try[IOResult] => () // TODO
+    case ioResult: Try[Option[Array[Byte]]] => ioProcessCallback(ioResult)
     case _ => throw new Exception(":(") // TODO
   }
 }

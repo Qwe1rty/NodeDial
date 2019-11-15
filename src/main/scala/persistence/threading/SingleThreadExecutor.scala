@@ -16,13 +16,11 @@ class SingleThreadExecutor extends ExecutionContext {
   private val threadExecutor = Executors.newFixedThreadPool(1)
 
 
-  override def execute(runnable: Runnable): Unit = {
+  override def execute(runnable: Runnable): Unit =
     threadExecutor.submit(runnable)
-  }
 
-  override def reportFailure(cause: Throwable): Unit = {
+  override def reportFailure(cause: Throwable): Unit = ???
     // TODO log error
-  }
 
   def shutdown(): Unit = threadExecutor.shutdown()
 }

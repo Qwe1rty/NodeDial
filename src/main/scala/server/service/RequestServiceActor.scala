@@ -15,9 +15,8 @@ class RequestServiceActor(implicit requestProcessorActor: ActorRef) extends Acto
   final private val hashInstance = MessageDigest.getInstance("SHA-256")
 
 
-  private def hashFunction(key: String): String = {
+  private def hashFunction(key: String): String =
     hashInstance.digest(key.getBytes("UTF-8")).map("02x".format(_)).mkString
-  }
 
   override def receive: Receive = {
 
@@ -32,8 +31,7 @@ class RequestServiceActor(implicit requestProcessorActor: ActorRef) extends Acto
           context.actorOf(
             RequestActor.props[GetResponse](
               promise,
-              (_: IOResult) => GetResponse(ByteString.EMPTY), // TODO replace this
-              operationRequest
+              (ioResult: IOResult) => {GetResponse(ByteString.EMPTY)}
             ),
             "getRequestActor")
         }
@@ -41,7 +39,7 @@ class RequestServiceActor(implicit requestProcessorActor: ActorRef) extends Acto
         case _: PostRequest => {
           val promise = Promise[PostResponse]()
           context.actorOf(
-            RequestActor.props[PostResponse](promise, (_: IOResult) => PostResponse(), operationRequest),
+            RequestActor.props[PostResponse](promise, (_: IOResult) => PostResponse()),
             "postRequestActor")
           promise.future
         }
@@ -49,11 +47,13 @@ class RequestServiceActor(implicit requestProcessorActor: ActorRef) extends Acto
         case _: DeleteRequest => {
           val promise = Promise[DeleteResponse]()
           context.actorOf(
-            RequestActor.props[DeleteResponse](promise, (_: IOResult) => DeleteResponse(), operationRequest),
+            RequestActor.props[DeleteResponse](promise, (_: IOResult) => DeleteResponse()),
             "deleteRequestActor")
           promise.future
         }
       }
+
+      requestProcessorActor ! operationRequest
 
       // TODO: shutdown actor
     }
