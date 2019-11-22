@@ -20,7 +20,7 @@ object ThreadPartitionActor {
 class ThreadPartitionActor extends Actor with ActorLogging {
 
   private val coreCount: Int = Runtime.getRuntime.availableProcessors
-  private val threads: Vector[ActorRef] = Vector.fill(coreCount)(SingleThreadActor())
+  private val threads: Vector[ActorRef] = Vector.fill(coreCount * 4)(SingleThreadActor())
 
 
   override def receive: Receive = {
