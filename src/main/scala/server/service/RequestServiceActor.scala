@@ -2,15 +2,39 @@ package server.service
 
 import java.security.MessageDigest
 
-import akka.actor.{Actor, ActorRef}
-import akka.stream.IOResult
+import akka.actor.{Actor, ActorRef, ActorSystem, Props}
 import com.google.protobuf.ByteString
 import server.datatypes.{OperationPackage, RequestTrait}
 
 import scala.concurrent.{Future, Promise}
 
 
-class RequestServiceActor(implicit requestProcessorActor: ActorRef) extends Actor {
+object RequestServiceActor {
+
+  private val getRequestCallback: Option[Array[Byte]] => GetResponse = {
+    case Some(bytes) => new GetResponse(ByteString.copyFrom(bytes))
+    case None => throw new IllegalStateException("Get request should not receive None object")
+  }
+
+  private val postRequestCallback: Option[Array[Byte]] => PostResponse = {
+    case Some(_) => throw new IllegalStateException("Post request should not receive Some object")
+    case None => new PostResponse
+  }
+
+  private val deleteRequestCallback: Option[Array[Byte]] => DeleteResponse = {
+    case Some(_) => throw new IllegalStateException("Delete request should not receive Some object")
+    case None => new DeleteResponse
+  }
+
+  def apply(requestProcessorActor: ActorRef)(implicit actorSystem: ActorSystem): ActorRef =
+    actorSystem.actorOf(props(requestProcessorActor), "requestServiceActor")
+
+  def props(requestProcessorActor: ActorRef): Props =
+    Props(new RequestServiceActor(requestProcessorActor))
+}
+
+
+class RequestServiceActor(requestProcessorActor: ActorRef) extends Actor {
 
   final private val hashInstance = MessageDigest.getInstance("SHA-256")
 
@@ -22,40 +46,26 @@ class RequestServiceActor(implicit requestProcessorActor: ActorRef) extends Acto
 
     case requestTrait: RequestTrait => {
 
-      if (requestTrait.key.isEmpty) Future.failed(new IllegalArgumentException("Key value cannot be empty or undefined"))
-      val operationRequest = new OperationPackage(self, hashFunction(requestTrait.key), requestTrait)
+      if (requestTrait.key.isEmpty)
+        Future.failed(new IllegalArgumentException("Key value cannot be empty or undefined"))
 
-      requestTrait match {
-        case _: GetRequest => {
+      val (requestActor, future): (ActorRef, Future[_]) = requestTrait match {
+
+        case _: GetRequest =>
           val promise = Promise[GetResponse]()
-          context.actorOf(
-            RequestActor.props[GetResponse](
-              promise,
-              (ioResult: IOResult) => {GetResponse(ByteString.EMPTY)}
-            ),
-            "getRequestActor")
-        }
+          (RequestActor(promise, RequestServiceActor.getRequestCallback, "getRequestActor"), promise.future)
 
-        case _: PostRequest => {
+        case _: PostRequest =>
           val promise = Promise[PostResponse]()
-          context.actorOf(
-            RequestActor.props[PostResponse](promise, (_: IOResult) => PostResponse()),
-            "postRequestActor")
-          promise.future
-        }
+          (RequestActor(promise, RequestServiceActor.postRequestCallback, "postRequestActor"), promise.future)
 
-        case _: DeleteRequest => {
+        case _: DeleteRequest =>
           val promise = Promise[DeleteResponse]()
-          context.actorOf(
-            RequestActor.props[DeleteResponse](promise, (_: IOResult) => DeleteResponse()),
-            "deleteRequestActor")
-          promise.future
-        }
+          (RequestActor(promise, RequestServiceActor.deleteRequestCallback, "deleteRequestActor"), promise.future)
       }
 
-      requestProcessorActor ! operationRequest
-
-      // TODO: shutdown actor
+      requestProcessorActor ! new OperationPackage(requestActor, hashFunction(requestTrait.key), requestTrait)
+      future
     }
 
     case _ => ??? // TODO: add error logging/handling
