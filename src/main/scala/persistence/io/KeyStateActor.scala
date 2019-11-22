@@ -1,13 +1,12 @@
 package persistence.io
 
-import akka.actor.{Actor, ActorLogging, ActorRef, Props}
-import akka.util.ByteString
+import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, Props}
 import better.files.File
 import server.datatypes.OperationPackage
 import server.service.{DeleteRequest, GetRequest, PostRequest}
 
 import scala.collection.mutable
-import scala.util.{Failure, Success}
+import scala.util.Failure
 
 
 object KeyStateActor {
@@ -15,6 +14,9 @@ object KeyStateActor {
   final private val WRITE_AHEAD_EXTENSION = ".wal"
   final private val VALUE_EXTENSION = ".val"
 
+
+  def apply(executorActor: ActorRef, hash: String)(implicit actorContext: ActorContext): ActorRef =
+    actorContext.actorOf(props(executorActor, hash), "keyStateActor")
 
   def props(executorActor: ActorRef, hash: String): Props =
     Props(new KeyStateActor(executorActor, hash))

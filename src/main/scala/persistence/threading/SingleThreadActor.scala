@@ -1,12 +1,15 @@
 package persistence.threading
 
-import akka.actor.{Actor, ActorLogging, Props}
+import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, Props}
 import persistence.io.IOTask
 
 import scala.concurrent.ExecutionContext
 
 
 object SingleThreadActor {
+
+  def apply()(implicit parentContext: ActorContext): ActorRef =
+    parentContext.actorOf(props, "singleThreadActor")
 
   def props: Props = Props(new SingleThreadActor)
 }

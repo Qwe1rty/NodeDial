@@ -1,6 +1,6 @@
 package server.service
 
-import akka.actor.{ActorRef, ActorSystem, Props}
+import akka.actor.{ActorRef, ActorSystem}
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.http.scaladsl.{Http, HttpConnectionContext}
 import akka.stream.{ActorMaterializer, Materializer}
@@ -26,10 +26,7 @@ class RequestServiceInitializer(requestProcessorActor: ActorRef)(implicit actorS
     implicit val execContext: ExecutionContext = actorSystem.dispatcher
     implicit val timeout: Timeout = RequestServiceManager.DEFAULT_TIMEOUT
 
-    val requestServiceActor = actorSystem.actorOf(
-      Props(classOf[RequestServiceActor], requestProcessorActor),
-      "requestServiceActor")
-
+    val requestServiceActor = RequestServiceActor(requestProcessorActor)
     val service: HttpRequest => Future[HttpResponse] =
       RequestServiceHandler(new RequestServiceManager(requestServiceActor))
 

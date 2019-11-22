@@ -1,8 +1,6 @@
 package persistence.io
 
-import java.nio.file.{Path, Paths}
-
-import akka.actor.{Actor, ActorLogging, ActorRef, Props}
+import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import better.files.File
 import server.datatypes.OperationPackage
 
@@ -12,7 +10,11 @@ object PersistenceActor {
   final val DIRECTORY_FILE: File = File.currentWorkingDirectory/"chordial"
 
 
-  def props(executorActor: ActorRef): Props = Props(new PersistenceActor(executorActor))
+  def apply(executorActor: ActorRef)(implicit actorSystem: ActorSystem): ActorRef =
+    actorSystem.actorOf(props(executorActor), "persistenceActor")
+
+  def props(executorActor: ActorRef): Props =
+    Props(new PersistenceActor(executorActor))
 }
 
 
@@ -27,8 +29,7 @@ class PersistenceActor(executorActor: ActorRef) extends Actor with ActorLogging 
 
     case operation: OperationPackage => {
       if (!(keyMapping isDefinedAt operation.requestHash)) {
-        val actorProps = KeyStateActor.props(executorActor, operation.requestHash)
-        keyMapping += operation.requestHash -> context.actorOf(actorProps)
+        keyMapping += operation.requestHash -> KeyStateActor(executorActor, operation.requestHash)
       }
       keyMapping(operation.requestHash) ! operation.requestBody
     }

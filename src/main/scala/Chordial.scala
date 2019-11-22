@@ -14,8 +14,8 @@ object Chordial extends App {
   implicit val actorSystem: ActorSystem = ActorSystem("Chordial", config)
 
   // Persistence layer top-level actors
-  val threadPartitionActor = actorSystem.actorOf(ThreadPartitionActor.props)
-  val persistenceActor = actorSystem.actorOf(PersistenceActor.props(threadPartitionActor))
+  val threadPartitionActor = ThreadPartitionActor()
+  val persistenceActor = PersistenceActor(threadPartitionActor)
 
   RequestServiceInitializer(persistenceActor).run()
 }
