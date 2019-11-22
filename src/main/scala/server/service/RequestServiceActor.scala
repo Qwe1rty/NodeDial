@@ -65,7 +65,7 @@ class RequestServiceActor(requestProcessorActor: ActorRef) extends Actor {
       }
 
       requestProcessorActor ! new OperationPackage(requestActor, hashFunction(requestTrait.key), requestTrait)
-      future
+      sender ! future
     }
 
     case _ => ??? // TODO: add error logging/handling

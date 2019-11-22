@@ -65,7 +65,7 @@ class KeyStateActor(executorActor: ActorRef, hash: String) extends Actor with Ac
     }
 
     case ReadCompleteSignal(result) => {
-      pendingRequest.get ! result.map(_ => Some(_))
+      pendingRequest.get ! result.map(Some(_))
       poll()
     }
 
