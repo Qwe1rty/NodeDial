@@ -11,8 +11,8 @@ import scala.util.Failure
 
 object KeyStateActor {
 
-  final private val WRITE_AHEAD_EXTENSION = ".wal"
-  final private val VALUE_EXTENSION = ".val"
+  private val WRITE_AHEAD_EXTENSION = ".wal"
+  private val VALUE_EXTENSION = ".val"
 
 
   def apply(executorActor: ActorRef, hash: String)(implicit actorContext: ActorContext): ActorRef =

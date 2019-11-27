@@ -5,6 +5,7 @@ import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.http.scaladsl.{Http, HttpConnectionContext}
 import akka.stream.{ActorMaterializer, Materializer}
 import akka.util.Timeout
+import org.slf4j.LoggerFactory
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -20,22 +21,30 @@ object RequestServiceInitializer {
 
 class RequestServiceInitializer(requestProcessorActor: ActorRef)(implicit actorSystem: ActorSystem) {
 
-  def run(): Future[Http.ServerBinding] = {
+  final private val log = LoggerFactory.getLogger(RequestServiceActor.getClass)
+
+
+  def run(): Unit = {
 
     implicit val materializer: Materializer = ActorMaterializer()
     implicit val execContext: ExecutionContext = actorSystem.dispatcher
     implicit val timeout: Timeout = RequestServiceManager.DEFAULT_TIMEOUT
 
     val requestServiceActor = RequestServiceActor(requestProcessorActor)
+    log.debug("Initialized request service actor")
+
     val service: HttpRequest => Future[HttpResponse] =
       RequestServiceHandler(new RequestServiceManager(requestServiceActor))
 
-    Http()(actorSystem).bindAndHandleAsync(
-      service,
-      interface = "127.0.0.1",
-      port = 8080,
-      connectionContext = HttpConnectionContext())
+    Http()(actorSystem)
+      .bindAndHandleAsync(
+        service,
+        interface = "127.0.0.1",
+        port = 8080,
+        connectionContext = HttpConnectionContext())
+      .foreach {
+        binding => log.info(s"gRPC request service bound to ${binding.localAddress}")
+      }
 
-    // TODO: log bindings: binding.foreach {...}
   }
 }

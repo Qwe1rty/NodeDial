@@ -2,7 +2,7 @@ package server.service
 
 import java.security.MessageDigest
 
-import akka.actor.{Actor, ActorRef, ActorSystem, Props}
+import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import com.google.protobuf.ByteString
 import server.datatypes.{OperationPackage, RequestTrait}
 
@@ -46,8 +46,9 @@ class RequestServiceActor(requestProcessorActor: ActorRef) extends Actor {
 
     case requestTrait: RequestTrait => {
 
-      if (requestTrait.key.isEmpty)
+      if (requestTrait.key.isEmpty) {
         Future.failed(new IllegalArgumentException("Key value cannot be empty or undefined"))
+      }
 
       val (requestActor, future): (ActorRef, Future[_]) = requestTrait match {
 
