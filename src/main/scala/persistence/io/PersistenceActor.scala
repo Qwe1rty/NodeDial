@@ -7,7 +7,7 @@ import server.datatypes.OperationPackage
 
 object PersistenceActor {
 
-  final val DIRECTORY_FILE: File = File.currentWorkingDirectory/"chordial"
+  final val DIRECTORY_FILE: File = File.currentWorkingDirectory/".chordial"
 
 
   def apply(executorActor: ActorRef)(implicit actorSystem: ActorSystem): ActorRef =

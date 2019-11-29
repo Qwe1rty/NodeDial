@@ -2,7 +2,7 @@ package server.service
 
 import java.security.MessageDigest
 
-import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
+import akka.actor.{Actor, ActorRef, ActorSystem, Props}
 import com.google.protobuf.ByteString
 import server.datatypes.{OperationPackage, RequestTrait}
 
