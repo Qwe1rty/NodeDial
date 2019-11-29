@@ -21,5 +21,6 @@ javaAgents += "org.mortbay.jetty.alpn" % "jetty-alpn-agent" % "2.0.9" % "runtime
 
 assemblyMergeStrategy in assembly := {
   case PathList("META-INF", xs @ _*) => MergeStrategy.discard
+  case n if n.startsWith("application.conf") => MergeStrategy.concat
   case _ => MergeStrategy.first
 }

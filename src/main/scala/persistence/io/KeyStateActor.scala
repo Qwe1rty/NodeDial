@@ -2,6 +2,7 @@ package persistence.io
 
 import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, Props}
 import better.files.File
+import common.ActorDefaults
 import server.datatypes.OperationPackage
 import server.service.{DeleteRequest, GetRequest, PostRequest}
 
@@ -23,7 +24,7 @@ object KeyStateActor {
 }
 
 
-class KeyStateActor(executorActor: ActorRef, hash: String) extends Actor with ActorLogging {
+class KeyStateActor(executorActor: ActorRef, hash: String) extends Actor with ActorLogging with ActorDefaults {
 
   private val requestQueue = mutable.Queue[OperationPackage]()
   private var exclusiveLocked = false // TODO make this a 2PL
@@ -86,7 +87,7 @@ class KeyStateActor(executorActor: ActorRef, hash: String) extends Actor with Ac
       poll()
     }
 
-    case _ => ??? // TODO log error
+    case x => log.error(unknownTypeMessage(x))
 
   }
 }

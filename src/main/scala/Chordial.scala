@@ -8,11 +8,9 @@ import server.service.RequestServiceInitializer
 
 object Chordial extends App {
 
-  val log = LoggerFactory.getLogger(Chordial.getClass)
+  val config = ConfigFactory.load()
 
-  val config = ConfigFactory
-    .parseString("akka.http.server.preview.enable-http2 = on")
-    .withFallback(ConfigFactory.defaultApplication())
+  val log = LoggerFactory.getLogger(Chordial.getClass)
   log.info("Akka gRPC config loaded")
 
   implicit val actorSystem: ActorSystem = ActorSystem("Chordial", config)

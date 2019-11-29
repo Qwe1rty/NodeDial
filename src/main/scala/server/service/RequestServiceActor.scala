@@ -2,8 +2,9 @@ package server.service
 
 import java.security.MessageDigest
 
-import akka.actor.{Actor, ActorRef, ActorSystem, Props}
+import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import com.google.protobuf.ByteString
+import common.ActorDefaults
 import server.datatypes.{OperationPackage, RequestTrait}
 
 import scala.concurrent.{Future, Promise}
@@ -34,7 +35,7 @@ object RequestServiceActor {
 }
 
 
-class RequestServiceActor(requestProcessorActor: ActorRef) extends Actor {
+class RequestServiceActor(requestProcessorActor: ActorRef) extends Actor with ActorLogging with ActorDefaults {
 
   final private val hashInstance = MessageDigest.getInstance("SHA-256")
 
@@ -44,31 +45,38 @@ class RequestServiceActor(requestProcessorActor: ActorRef) extends Actor {
 
   override def receive: Receive = {
 
-    case requestTrait: RequestTrait => {
+    case request: RequestTrait => {
 
-      if (requestTrait.key.isEmpty) {
+      if (request.key.isEmpty) {
+        log.warning("Request key was empty or undefined")
         Future.failed(new IllegalArgumentException("Key value cannot be empty or undefined"))
       }
 
-      val (requestActor, future): (ActorRef, Future[_]) = requestTrait match {
+      val (requestActor, future): (ActorRef, Future[_]) = request match {
 
         case _: GetRequest =>
+          log.info(s"Get request with key \"${request.key}\" received by request service")
           val promise = Promise[GetResponse]()
           (RequestActor(promise, RequestServiceActor.getRequestCallback, "getRequestActor"), promise.future)
 
         case _: PostRequest =>
+          log.info(s"Post request with key \"${request.key}\" received by request service")
           val promise = Promise[PostResponse]()
           (RequestActor(promise, RequestServiceActor.postRequestCallback, "postRequestActor"), promise.future)
 
         case _: DeleteRequest =>
+          log.info(s"Delete request with key \"${request.key}\" received by request service")
           val promise = Promise[DeleteResponse]()
           (RequestActor(promise, RequestServiceActor.deleteRequestCallback, "deleteRequestActor"), promise.future)
       }
+      log.debug(s"Request actor for key \"${request.key}\"")
 
-      requestProcessorActor ! new OperationPackage(requestActor, hashFunction(requestTrait.key), requestTrait)
+      val hash = hashFunction(request.key)
+      requestProcessorActor ! new OperationPackage(requestActor, hash, request)
       sender ! future
+      log.debug(s"Operation package sent with hash ${hash}, for key \"${request.key}\"")
     }
 
-    case _ => ??? // TODO: add error logging/handling
+    case x => log.error(unknownTypeMessage(x))
   }
 }

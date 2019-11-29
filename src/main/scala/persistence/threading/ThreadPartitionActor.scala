@@ -1,6 +1,7 @@
 package persistence.threading
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
+import common.ActorDefaults
 import persistence.io.IOTask
 
 
@@ -17,10 +18,12 @@ object ThreadPartitionActor {
 }
 
 
-class ThreadPartitionActor extends Actor with ActorLogging {
+class ThreadPartitionActor extends Actor with ActorLogging with ActorDefaults {
 
   final private val coreCount: Int = Runtime.getRuntime.availableProcessors
   final private val threads: Vector[ActorRef] = Vector.fill(coreCount * 4)(SingleThreadActor())
+
+  log.info(s"${coreCount} threads initialized for thread partitioner")
 
 
   override def receive: Receive = {
@@ -28,6 +31,6 @@ class ThreadPartitionActor extends Actor with ActorLogging {
     case (hash: String, ioTask: IOTask) =>
       threads(ThreadPartitionActor.PARTITION_FUNCTION(hash) % coreCount) ! ioTask
 
-    case _ => ??? // TODO log error
+    case x => log.error(unknownTypeMessage(x))
   }
 }

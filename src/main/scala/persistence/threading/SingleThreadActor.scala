@@ -1,6 +1,7 @@
 package persistence.threading
 
 import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, Props}
+import common.ActorDefaults
 import persistence.io.IOTask
 
 import scala.concurrent.ExecutionContext
@@ -15,7 +16,7 @@ object SingleThreadActor {
 }
 
 
-class SingleThreadActor() extends Actor with ActorLogging {
+class SingleThreadActor() extends Actor with ActorLogging with ActorDefaults {
 
   implicit final private val ec: ExecutionContext = SingleThreadExecutor()
 
@@ -23,6 +24,6 @@ class SingleThreadActor() extends Actor with ActorLogging {
   override def receive: Receive = {
 
     case ioTask: IOTask => ioTask.execute()
-    case _ => ??? // TODO log error
+    case x => log.error(unknownTypeMessage(x))
   }
 }

@@ -14,13 +14,13 @@ An attempt at making a distributed system
 - [ ] **Part 1**
   - [x] External service setup via gRPC
   - [ ] Establish persistence layer, should support locally atomic/isolated operations
-    - [ ] Key isolation
-      - [ ] Serial execution for single keys 
-      - [ ] Thread partitioning
+    - [x] Key isolation
+      - [x] Serial execution for single keys 
+      - [x] Thread partitioning
     - [ ] Key atomicity
       - [ ] Log recovery via write-ahead strategy
       - [ ] Rollback to previously commited value
-    - [ ] Non-blocking async disk I/O
+    - [x] Non-blocking async disk I/O
   - [ ] Logging that should work in Akka actor contexts and non-actor contexts
   - [ ] Basic test setup and containerization
 - [ ] **Part 2**

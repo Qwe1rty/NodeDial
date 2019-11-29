@@ -4,11 +4,11 @@ GENERAL:
 - All kinds of logging
 - Some form of environment variable/configuration handling
 
+SERVICE:
+- Replace the ActorMaterializer instance with the system wide one
+
 PERSISTENCE:
 - Change PersistenceActor map to some form of cache
   - Ensure that the file stream is closed upon eviction
-- Partitioning the key range to the different threads
 - Allow for concurrent read access to the same key OR some type of manual caching
-- Eliminate IORequest's dependence on the PersistenceActor companion object
-- Be able to group the IOTasks together into a single chain of operations
 - Replace .get calls for the pendingRequest: Option[ActorRef] in KeyStateActor
