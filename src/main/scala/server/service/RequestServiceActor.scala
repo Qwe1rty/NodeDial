@@ -77,6 +77,6 @@ class RequestServiceActor(requestProcessorActor: ActorRef) extends Actor with Ac
       log.debug(s"Operation package sent with hash ${hash}, for key \"${request.key}\"")
     }
 
-    case x => log.error(unknownTypeMessage(x))
+    case x => log.error(receivedUnknown(x))
   }
 }

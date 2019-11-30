@@ -21,7 +21,7 @@ object ThreadPartitionActor {
 class ThreadPartitionActor extends Actor with ActorLogging with ActorDefaults {
 
   final private val coreCount: Int = Runtime.getRuntime.availableProcessors
-  final private val threads: Vector[ActorRef] = Vector.fill(coreCount * 4)(SingleThreadActor())
+  final private val threads: Vector[ActorRef] = Vector.tabulate(coreCount * 4)(SingleThreadActor(_))
 
   log.info(s"${coreCount} threads initialized for thread partitioner")
 
@@ -31,6 +31,6 @@ class ThreadPartitionActor extends Actor with ActorLogging with ActorDefaults {
     case (hash: String, ioTask: IOTask) =>
       threads(ThreadPartitionActor.PARTITION_FUNCTION(hash) % coreCount) ! ioTask
 
-    case x => log.error(unknownTypeMessage(x))
+    case x => log.error(receivedUnknown(x))
   }
 }

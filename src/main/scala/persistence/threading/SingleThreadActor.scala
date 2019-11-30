@@ -9,21 +9,29 @@ import scala.concurrent.ExecutionContext
 
 object SingleThreadActor {
 
-  def apply()(implicit parentContext: ActorContext): ActorRef =
-    parentContext.actorOf(props, "singleThreadActor")
+  def apply(id: Integer)(implicit parentContext: ActorContext): ActorRef =
+    parentContext.actorOf(props(id), "singleThreadActor")
 
-  def props: Props = Props(new SingleThreadActor)
+  def props(id: Integer): Props = Props(new SingleThreadActor(id))
 }
 
 
-class SingleThreadActor() extends Actor with ActorLogging with ActorDefaults {
+class SingleThreadActor(id: Integer) extends Actor with ActorLogging with ActorDefaults {
 
-  implicit final private val ec: ExecutionContext = SingleThreadExecutor()
+  implicit final private val ec: ExecutionContext = SingleThreadExecutor(id)
+
+  final private val tag = s"${id} -> " // TODO patternize this
+
+  log.info(s"Thread actor created with ID: ${id}")
 
 
   override def receive: Receive = {
 
-    case ioTask: IOTask => ioTask.execute()
-    case x => log.error(unknownTypeMessage(x))
+    case ioTask: IOTask => {
+      log.debug(tag + s"IO task received by thread actor")
+      ioTask.execute()
+    }
+
+    case x => log.error(receivedUnknown(x))
   }
 }

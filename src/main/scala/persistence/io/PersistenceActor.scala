@@ -40,7 +40,7 @@ class PersistenceActor(executorActor: ActorRef) extends Actor with ActorLogging 
       keyMapping(operation.requestHash) ! operation.requestBody
     }
 
-    case x => log.error(unknownTypeMessage(x))
+    case x => log.error(receivedUnknown(x))
 
   }
 }

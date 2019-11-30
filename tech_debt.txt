@@ -2,6 +2,7 @@ TODO LIST:
 
 GENERAL:
 - All kinds of logging
+  - Formalize the "tag" pattern when making logs from a duplicate actor
 - Some form of environment variable/configuration handling
 
 SERVICE:
@@ -12,3 +13,4 @@ PERSISTENCE:
   - Ensure that the file stream is closed upon eviction
 - Allow for concurrent read access to the same key OR some type of manual caching
 - Replace .get calls for the pendingRequest: Option[ActorRef] in KeyStateActor
+- Formalize KeyStateActor to an actual state machine

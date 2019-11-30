@@ -6,7 +6,7 @@ import persistence.threading.ThreadPartitionActor
 import server.service.RequestServiceInitializer
 
 
-object Chordial extends App {
+private object Chordial extends App {
 
   val config = ConfigFactory.load()
 
