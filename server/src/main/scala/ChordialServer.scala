@@ -1,16 +1,15 @@
 import akka.actor.ActorSystem
+import api.service.RequestServiceInitializer
 import com.typesafe.config.ConfigFactory
 import org.slf4j.LoggerFactory
 import persistence.io.PersistenceActor
 import persistence.threading.ThreadPartitionActor
-import server.service.RequestServiceInitializer
 
-
-private object Chordial extends App {
+private object ChordialServer extends App {
 
   val config = ConfigFactory.load()
 
-  val log = LoggerFactory.getLogger(Chordial.getClass)
+  val log = LoggerFactory.getLogger(ChordialServer.getClass)
   log.info("Akka gRPC config loaded")
 
   implicit val actorSystem: ActorSystem = ActorSystem("Chordial", config)

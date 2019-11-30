@@ -1,4 +1,4 @@
-package server.service
+package api.service
 
 import java.util.concurrent.TimeUnit
 

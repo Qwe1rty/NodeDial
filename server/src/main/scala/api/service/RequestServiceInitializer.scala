@@ -1,4 +1,4 @@
-package server.service
+package api.service
 
 import akka.actor.{ActorRef, ActorSystem}
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}

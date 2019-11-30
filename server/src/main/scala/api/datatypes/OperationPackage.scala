@@ -1,4 +1,4 @@
-package server.datatypes
+package api.datatypes
 
 import akka.actor.ActorRef
 

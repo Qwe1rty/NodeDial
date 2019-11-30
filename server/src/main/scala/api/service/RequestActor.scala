@@ -1,7 +1,7 @@
-package server.service
+package api.service
 
 import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, Props}
-import server.datatypes.ResponseTrait
+import api.datatypes.ResponseTrait
 
 import scala.concurrent.Promise
 import scala.reflect.ClassTag

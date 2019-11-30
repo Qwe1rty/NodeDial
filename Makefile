@@ -1,4 +1,8 @@
-all: build
+clean:
+	@sbt clean
 
-build:
-	sbt clean assembly
+compile: clean
+	@sbt compile
+
+build: clean
+	@sbt assembly

@@ -1,4 +1,4 @@
-package server.datatypes
+package api.datatypes
 
 
 // This trait is to allow for key/value retrieval from all the protobuf generated request types
