@@ -13,7 +13,7 @@ private object ChordialClient extends App {
 
   def pause(msg: String): Unit = {
     println(s"Press enter to continue - ${msg}")
-    scala.io.StdIn readLine()
+    scala.io.StdIn.readLine()
   }
 
   val config = ConfigFactory.load()
@@ -30,7 +30,7 @@ private object ChordialClient extends App {
   val client = RequestServiceClient(clientSettings)
   log.info("Client instance initialized")
 
-  
+
   pause("Send write request")
 
   log.info("Sending POST request")
