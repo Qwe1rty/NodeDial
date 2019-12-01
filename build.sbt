@@ -21,8 +21,8 @@ lazy val loggingLibraries = Seq(
   "ch.qos.logback" % "logback-classic" % "1.2.3",
 )
 
-lazy val utilLibraries = Seq(
-  "com.github.pathikrit" %% "better-files" % "3.8.0",
+lazy val fileLibraries = Seq(
+  "com.github.pathikrit" %% "better-files" % "3.8.0"
 )
 
 lazy val grpcLibraryGroup = protobufLibraries ++ akkaLibraries
@@ -50,7 +50,7 @@ lazy val server = (project in file("server"))
   .settings(
     name := "ChordialServer",
     assemblySettings,
-    libraryDependencies ++= coreLibraryGroup ++ utilLibraries,
+    libraryDependencies ++= coreLibraryGroup ++ fileLibraries
   )
   .dependsOn(schema)
 
