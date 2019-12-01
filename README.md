@@ -21,8 +21,10 @@ An attempt at making a distributed system
       - [ ] Log recovery via write-ahead strategy
       - [ ] Rollback to previously commited value
     - [x] Non-blocking async disk I/O
-  - [ ] Logging that should work in Akka actor contexts and non-actor contexts
-  - [ ] Basic test setup and containerization
+  - [x] Logging that should work in Akka actor contexts and non-actor contexts
+    - [ ] Async logging backend configured
+  - [ ] Basic testing of core functionality
+  - [ ] Service containerization
 - [ ] **Part 2**
   - [ ] Membership and discovery
     - [ ] Internal actor remote communication
@@ -51,7 +53,11 @@ Run `sbt run` at project root
 
 #### Build Setup Notes
 
-Links regarding Akka-gRPC and SBT setup:
-* Importing Google common protobuf files: <https://github.com/googleapis/common-protos-java>
-* Additional fix regarding above link for SBT build: <https://discuss.lightbend.com/t/use-googles-annotations-proto/3302>
+Links regarding SBT setup:
+* gRPC and ScalaPB
+  * Importing Google common protobuf files: <https://github.com/googleapis/common-protos-java>
+  * Additional fix regarding above link for SBT build: <https://discuss.lightbend.com/t/use-googles-annotations-proto/3302>
+* SBT Multi-project
+  * Example `build.sbt`: <https://github.com/pbassiner/sbt-multi-project-example/blob/master/build.sbt>
+  * SBT assembly + Docker: <https://hackernoon.com/akka-io-sbt-assembly-and-docker-a88b649f63cf>
 * Java downgrading: <https://askubuntu.com/questions/1133216/downgrading-java-11-to-java-8>

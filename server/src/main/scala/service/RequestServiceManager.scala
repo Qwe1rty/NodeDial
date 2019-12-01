@@ -1,4 +1,4 @@
-package api.service
+package service
 
 import java.util.concurrent.TimeUnit
 
@@ -7,6 +7,7 @@ import akka.pattern.ask
 import akka.stream.Materializer
 import akka.util.Timeout
 import org.slf4j.LoggerFactory
+import schema.service._
 
 import scala.concurrent.Future
 import scala.concurrent.duration.Duration

@@ -1,4 +1,4 @@
-package api.service
+package service
 
 import akka.actor.{ActorRef, ActorSystem}
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
@@ -6,6 +6,7 @@ import akka.http.scaladsl.{Http, HttpConnectionContext}
 import akka.stream.{ActorMaterializer, Materializer}
 import akka.util.Timeout
 import org.slf4j.LoggerFactory
+import schema.service.RequestServiceHandler
 
 import scala.concurrent.{ExecutionContext, Future}
 

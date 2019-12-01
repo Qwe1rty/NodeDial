@@ -1,7 +1,7 @@
 syntax = "proto2";
 
 option java_multiple_files = true;
-option java_package = "api.service";
+option java_package = "schema.service";
 option java_outer_classname = "ChordialRequestMessages";
 
 import "scalapb/scalapb.proto";
@@ -10,34 +10,34 @@ package chordial.server;
 
 
 message GetRequest {
-    option (scalapb.message).extends = "api.datatypes.RequestTrait";
+    option (scalapb.message).extends = "schema.RequestTrait";
 
     required string key = 1;
 }
 
 message GetResponse {
-    option (scalapb.message).extends = "api.datatypes.ResponseTrait";
+    option (scalapb.message).extends = "schema.ResponseTrait";
 
     required bytes value = 1;
 }
 
 message PostRequest {
-    option (scalapb.message).extends = "api.datatypes.RequestTrait";
+    option (scalapb.message).extends = "schema.RequestTrait";
 
     required string key = 1;
     required bytes value = 2;
 }
 
 message PostResponse {
-    option (scalapb.message).extends = "api.datatypes.ResponseTrait";
+    option (scalapb.message).extends = "schema.ResponseTrait";
 }
 
 message DeleteRequest {
-    option (scalapb.message).extends = "api.datatypes.RequestTrait";
+    option (scalapb.message).extends = "schema.RequestTrait";
 
     required string key = 1;
 }
 
 message DeleteResponse {
-    option (scalapb.message).extends = "api.datatypes.ResponseTrait";
+    option (scalapb.message).extends = "schema.ResponseTrait";
 }

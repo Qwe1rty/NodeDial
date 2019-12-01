@@ -1,4 +1,4 @@
-package api.datatypes
+package schema
 
 import akka.actor.ActorRef
 

@@ -1,11 +1,12 @@
-package api.service
+package service
 
 import java.security.MessageDigest
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import com.google.protobuf.ByteString
 import common.ActorDefaults
-import api.datatypes.{OperationPackage, RequestTrait}
+import schema.service._
+import schema.{OperationPackage, RequestTrait}
 
 import scala.concurrent.{Future, Promise}
 
