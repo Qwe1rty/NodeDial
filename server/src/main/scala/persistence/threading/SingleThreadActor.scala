@@ -9,14 +9,14 @@ import scala.concurrent.ExecutionContext
 
 object SingleThreadActor {
 
-  def apply(id: Integer)(implicit parentContext: ActorContext): ActorRef =
-    parentContext.actorOf(props(id), "singleThreadActor")
+  def apply(id: Int)(implicit parentContext: ActorContext): ActorRef =
+    parentContext.actorOf(props(id), f"singleThreadActor-$id%03d")
 
-  def props(id: Integer): Props = Props(new SingleThreadActor(id))
+  def props(id: Int): Props = Props(new SingleThreadActor(id))
 }
 
 
-class SingleThreadActor(id: Integer) extends Actor with ActorLogging with ActorDefaults {
+class SingleThreadActor(id: Int) extends Actor with ActorLogging with ActorDefaults {
 
   implicit final private val ec: ExecutionContext = SingleThreadExecutor(id)
 

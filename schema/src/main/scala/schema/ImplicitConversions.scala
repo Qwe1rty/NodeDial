@@ -2,6 +2,8 @@ package schema
 
 import com.google.protobuf.ByteString
 
+import scala.language.implicitConversions
+
 
 object ImplicitConversions {
 

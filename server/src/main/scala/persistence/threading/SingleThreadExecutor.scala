@@ -9,11 +9,11 @@ import scala.concurrent.ExecutionContext
 
 object SingleThreadExecutor {
 
-  def apply(id: Integer): SingleThreadExecutor = new SingleThreadExecutor(id)
+  def apply(id: Int): SingleThreadExecutor = new SingleThreadExecutor(id)
 }
 
 
-class SingleThreadExecutor(id: Integer) extends ExecutionContext {
+class SingleThreadExecutor(id: Int) extends ExecutionContext {
 
   final private val tag = s"${id} -> " // TODO patternize this
 

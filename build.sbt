@@ -38,6 +38,11 @@ lazy val schema = (project in file("schema"))
   )
   .disablePlugins(AssemblyPlugin)
 
+lazy val root = (project in file("."))
+  .aggregate(client, server)
+  .disablePlugins(AssemblyPlugin)
+
+
 lazy val client = (project in file("client"))
   .settings(
     name := "ChordialClient",
@@ -58,5 +63,6 @@ lazy val server = (project in file("server"))
 lazy val assemblySettings = assemblyMergeStrategy in assembly := {
   case PathList("META-INF", xs @ _*) => MergeStrategy.discard
   case n if n.startsWith("application.conf") => MergeStrategy.concat
+  case n if n.startsWith("reference.conf") => MergeStrategy.concat
   case _ => MergeStrategy.first
 }

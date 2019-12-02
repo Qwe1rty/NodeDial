@@ -18,7 +18,7 @@ object KeyStateActor {
 
 
   def apply(executorActor: ActorRef, hash: String)(implicit actorContext: ActorContext): ActorRef =
-    actorContext.actorOf(props(executorActor, hash), "keyStateActor")
+    actorContext.actorOf(props(executorActor, hash), s"keyStateActor-${hash}")
 
   def props(executorActor: ActorRef, hash: String): Props =
     Props(new KeyStateActor(executorActor, hash))

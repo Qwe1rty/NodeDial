@@ -12,14 +12,16 @@ private object ChordialServer extends App {
   val log = LoggerFactory.getLogger(ChordialServer.getClass)
   log.info("Server config loaded")
 
+  log.info("Initializing actor system")
   implicit val actorSystem: ActorSystem = ActorSystem("Chordial", config)
 
   // Persistence layer top-level actors
+  log.info("Initializing top-level persistence actors")
   val threadPartitionActor = ThreadPartitionActor()
   val persistenceActor = PersistenceActor(threadPartitionActor)
   log.info("Persistence layer top-level actors created")
 
-  log.debug("Initializing gRPC service")
+  log.info("Initializing gRPC service")
   RequestServiceInitializer(persistenceActor).run()
   log.info("gRPC service initialized")
 }
