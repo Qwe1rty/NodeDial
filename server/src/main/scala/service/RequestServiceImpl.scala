@@ -13,16 +13,16 @@ import scala.concurrent.Future
 import scala.concurrent.duration.Duration
 
 
-object RequestServiceManager {
+object RequestServiceImpl {
 
   implicit final val DEFAULT_TIMEOUT: Timeout = Timeout(Duration(5, TimeUnit.MILLISECONDS))
 }
 
 
-class RequestServiceManager
+class RequestServiceImpl
   (requestServiceActor: ActorRef)(implicit mat: Materializer, timeout: Timeout) extends RequestService {
 
-  final private val log = LoggerFactory.getLogger(RequestServiceManager.getClass)
+  final private val log = LoggerFactory.getLogger(RequestServiceImpl.getClass)
 
 
   override def get(in: GetRequest): Future[GetResponse] = {

@@ -29,15 +29,15 @@ class RequestServiceInitializer(requestProcessorActor: ActorRef)(implicit actorS
 
     implicit val materializer: Materializer = ActorMaterializer()
     implicit val execContext: ExecutionContext = actorSystem.dispatcher
-    implicit val timeout: Timeout = RequestServiceManager.DEFAULT_TIMEOUT
+    implicit val timeout: Timeout = RequestServiceImpl.DEFAULT_TIMEOUT
 
     val requestServiceActor = RequestServiceActor(requestProcessorActor)
     log.debug("Initialized request service actor")
 
     val service: HttpRequest => Future[HttpResponse] =
-      RequestServiceHandler(new RequestServiceManager(requestServiceActor))
+      RequestServiceHandler(new RequestServiceImpl(requestServiceActor))
 
-    Http()(actorSystem)
+    Http()
       .bindAndHandleAsync(
         service,
         interface = "127.0.0.1",

@@ -7,6 +7,7 @@ GENERAL:
 
 SERVICE:
 - Replace the ActorMaterializer instance with the system wide one
+- Reorganize service layer so its initialization in Chordial.class matches the others
 
 PERSISTENCE:
 - Change PersistenceActor map to some form of cache
