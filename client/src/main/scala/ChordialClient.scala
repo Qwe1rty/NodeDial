@@ -26,8 +26,7 @@ private object ChordialClient extends App {
   implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
   log.info("Implicit Akka structures initialized")
 
-  val clientSettings = GrpcClientSettings.fromConfig(RequestService.name)
-  val client = RequestServiceClient(clientSettings)
+  val client = RequestServiceClient(GrpcClientSettings.fromConfig(RequestService.name))
   log.info("Client instance initialized")
 
 
@@ -42,6 +41,7 @@ private object ChordialClient extends App {
       case Success(msg) => log.info(s"POST request successful: ${msg}")
       case Failure(e) => log.info(s"POST request failed: ${e}")
     }
+  log.info("POST request sent")
 
   pause("Send read request")
 
@@ -56,6 +56,8 @@ private object ChordialClient extends App {
       }
       case Failure(e) => log.info(s"GET request failed: ${e}")
     }
+  log.info("GET request sent")
 
   pause("Closing program")
+  client.close()
 }
