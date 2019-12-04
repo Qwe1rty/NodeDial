@@ -20,7 +20,7 @@ class SingleThreadActor(id: Int) extends Actor with ActorLogging with ActorDefau
 
   implicit final private val ec: ExecutionContext = SingleThreadExecutor(id)
 
-  final private val tag = s"${id} -> " // TODO patternize this
+  final private val tag = s"Thread ID ${id} -> " // TODO patternize this
 
   log.info(s"Thread actor created with ID: ${id}")
 

@@ -37,7 +37,7 @@ class PersistenceActor(executorActor: ActorRef) extends Actor with ActorLogging 
         keyMapping += operation.requestHash -> KeyStateActor(executorActor, operation.requestHash)
         log.debug(s"No existing state actor found for hash ${operation.requestHash} - creating new state actor")
       }
-      keyMapping(operation.requestHash) ! operation.requestBody
+      keyMapping(operation.requestHash) ! operation
     }
 
     case x => log.error(receivedUnknown(x))

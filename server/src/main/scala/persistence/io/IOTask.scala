@@ -28,7 +28,7 @@ case class WriteAheadTask(writeAheadFile: File, value: Array[Byte])(implicit sta
     val result = Try(writeAheadFile.writeByteArray(value))
     stateActor ! (
       result match {
-        case Success(_) => WriteAheadCommitSignal
+        case Success(_) => WriteAheadCommitSignal()
         case Failure(e) => WriteAheadFailureSignal(e)
       }
     )
@@ -39,11 +39,10 @@ case class WriteTransferTask(writeAheadFile: File, valueFile: File)(implicit sta
 
   override def execute()(implicit executionContext: ExecutionContext): Unit = {
 
-    val signal = Try(writeAheadFile.copyTo(valueFile, overwrite = true)) match {
+    stateActor ! WriteCompleteSignal(Try(writeAheadFile.copyTo(valueFile, overwrite = true)) match {
       case Success(_) => Success[Unit]()
       case Failure(e) => Failure(e)
-    }
-    stateActor ! WriteCompleteSignal(signal)
+    })
   }
 }
 

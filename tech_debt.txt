@@ -10,6 +10,7 @@ SERVICE:
 - Reorganize service layer so its initialization in Chordial.class matches the others
 - Reorganize the templating of the different request types, so that RequestServiceActor isn't
   responsible for the different request types and their handling
+- Encapsulate the promise/future tie-in so that the .flatten doesn't need to be there
 
 PERSISTENCE:
 - Change PersistenceActor map to some form of cache

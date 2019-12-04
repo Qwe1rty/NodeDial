@@ -15,7 +15,7 @@ object SingleThreadExecutor {
 
 class SingleThreadExecutor(id: Int) extends ExecutionContext {
 
-  final private val tag = s"${id} -> " // TODO patternize this
+  final private val tag = s"Thread ID ${id} -> " // TODO patternize this
 
   private val log = LoggerFactory.getLogger(SingleThreadExecutor.getClass)
   private val threadExecutor = Executors.newFixedThreadPool(1)
