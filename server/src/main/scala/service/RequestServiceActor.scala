@@ -38,11 +38,13 @@ object RequestServiceActor {
 
 class RequestServiceActor(requestProcessorActor: ActorRef) extends Actor with ActorLogging with ActorDefaults {
 
-  final private val hashInstance = MessageDigest.getInstance("SHA-256")
-
-
-  private def hashFunction(key: String): String =
-    hashInstance.digest(key.getBytes("UTF-8")).map("02x".format(_)).mkString
+  private def hashKey(request: RequestTrait): String = {
+    MessageDigest
+      .getInstance("SHA-256")
+      .digest(request.key.getBytes("UTF-8"))
+      .map("%02x".format(_))
+      .mkString
+  }
 
   override def receive: Receive = {
 
@@ -53,7 +55,7 @@ class RequestServiceActor(requestProcessorActor: ActorRef) extends Actor with Ac
         Future.failed(new IllegalArgumentException("Key value cannot be empty or undefined"))
       }
 
-      val hash = hashFunction(request.key)
+      val hash = hashKey(request)
       val (requestActor, future): (ActorRef, Future[_]) = request match {
 
         case _: GetRequest =>
@@ -77,8 +79,10 @@ class RequestServiceActor(requestProcessorActor: ActorRef) extends Actor with Ac
       log.debug(s"Request actor for key '${request.key}'")
 
       requestProcessorActor ! new OperationPackage(requestActor, hash, request)
-      sender ! future
       log.debug(s"Operation package sent with hash ${hash}, for key '${request.key}'")
+
+      sender ! future
+      log.debug("Future has been returned to gRPC service")
     }
 
     case x => log.error(receivedUnknown(x))

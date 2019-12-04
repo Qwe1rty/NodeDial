@@ -7,7 +7,6 @@ import akka.pattern.ask
 import akka.stream.Materializer
 import akka.util.Timeout
 import org.slf4j.LoggerFactory
-import schema.RequestTrait
 import schema.service._
 
 import scala.concurrent.Future
@@ -28,16 +27,16 @@ class RequestServiceImpl
 
   override def get(in: GetRequest): Future[GetResponse] = {
     log.debug(s"Get request received with key ${in.key}")
-    (requestServiceActor ? (GetRequest.asInstanceOf[RequestTrait])).mapTo[GetResponse]
+    (requestServiceActor ? in).mapTo[Future[GetResponse]].flatten
   }
 
   override def post(in: PostRequest): Future[PostResponse] = {
     log.debug(s"Post request received with key ${in.key}")
-    (requestServiceActor ? (PostRequest.asInstanceOf[RequestTrait])).mapTo[PostResponse]
+    (requestServiceActor ? in).mapTo[Future[PostResponse]].flatten
   }
 
   override def delete(in: DeleteRequest): Future[DeleteResponse] = {
     log.debug(s"Delete request received with key ${in.key}")
-    (requestServiceActor ? (DeleteRequest.asInstanceOf[RequestTrait])).mapTo[DeleteResponse]
+    (requestServiceActor ? in).mapTo[Future[DeleteResponse]].flatten
   }
 }

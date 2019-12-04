@@ -3,11 +3,13 @@ TODO LIST:
 GENERAL:
 - All kinds of logging
   - Formalize the "tag" pattern when making logs from a duplicate actor
-- Some form of environment variable/configuration handling
+- Some form of actual environment variable/configuration/dependency injection
 
 SERVICE:
 - Replace the ActorMaterializer instance with the system wide one
 - Reorganize service layer so its initialization in Chordial.class matches the others
+- Reorganize the templating of the different request types, so that RequestServiceActor isn't
+  responsible for the different request types and their handling
 
 PERSISTENCE:
 - Change PersistenceActor map to some form of cache
