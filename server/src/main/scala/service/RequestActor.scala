@@ -11,28 +11,31 @@ import scala.util.{Failure, Success, Try}
 
 object RequestActor {
 
-  def apply[A <: ResponseTrait]
-      (requestPromise: Promise[A], ioProcessCallback: Option[Array[Byte]] => A, name: String)
-      (implicit ct: ClassTag[A], parentContext: ActorContext): ActorRef = {
-
-    parentContext.actorOf(props(requestPromise, ioProcessCallback), name)
-  }
-
-  def props[A <: ResponseTrait]
-      (requestPromise: Promise[A], ioProcessCallback: Option[Array[Byte]] => A)
+  private def props[A <: ResponseTrait]
+      (requestPromise: Promise[A])
+      (callback: Option[Array[Byte]] => A)
       (implicit ct: ClassTag[A]): Props = {
 
-    Props(new RequestActor[A](requestPromise, ioProcessCallback))
+    Props(new RequestActor[A](requestPromise)(callback))
+  }
+
+  def apply[A <: ResponseTrait]
+      (requestPromise: Promise[A], name: String)
+      (ioProcessCallback: Option[Array[Byte]] => A)
+      (implicit ct: ClassTag[A], parentContext: ActorContext): ActorRef = {
+
+    parentContext.actorOf(props(requestPromise)(ioProcessCallback), name)
   }
 }
 
 
 class RequestActor[+A <: ResponseTrait]
-    (requestPromise: Promise[A], ioProcessCallback: Option[Array[Byte]] => A)
+    (requestPromise: Promise[A])
+    (ioProcessCallback: Option[Array[Byte]] => A)
     (implicit ct: ClassTag[A])
   extends Actor with ActorLogging with ActorDefaults {
 
-  // NOTE: objects/type classes + actors is a bad idea, so ioProcessCallback is used to fulfill that functionality
+  // NOTE: objects/type classes + actor concurrency is a bad idea, so a callback is used instead
   //  https://docs.scala-lang.org/overviews/reflection/thread-safety.html
 
   override def receive: Receive = {

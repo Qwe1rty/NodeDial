@@ -9,10 +9,10 @@ import scala.concurrent.ExecutionContext
 
 object SingleThreadActor {
 
+  private def props(id: Int): Props = Props(new SingleThreadActor(id))
+
   def apply(id: Int)(implicit parentContext: ActorContext): ActorRef =
     parentContext.actorOf(props(id), f"singleThreadActor-${id}%03d")
-
-  def props(id: Int): Props = Props(new SingleThreadActor(id))
 }
 
 

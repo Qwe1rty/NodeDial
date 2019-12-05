@@ -15,7 +15,7 @@ import scala.concurrent.duration.Duration
 
 object RequestServiceImpl {
 
-  implicit final val DEFAULT_TIMEOUT: Timeout = Timeout(Duration(5, TimeUnit.SECONDS))
+  implicit val DEFAULT_TIMEOUT: Timeout = Timeout(Duration(5, TimeUnit.SECONDS))
 }
 
 

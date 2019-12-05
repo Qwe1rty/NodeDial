@@ -13,26 +13,19 @@ import scala.concurrent.{Future, Promise}
 
 object RequestServiceActor {
 
-  private val getRequestCallback: Option[Array[Byte]] => GetResponse = {
-    case Some(bytes) => new GetResponse(ByteString.copyFrom(bytes))
-    case None => throw new IllegalStateException("Get request should not receive None object")
+  private def hashKey(request: RequestTrait): String = {
+    MessageDigest
+      .getInstance("SHA-256")
+      .digest(request.key.getBytes("UTF-8"))
+      .map("%02x".format(_))
+      .mkString
   }
 
-  private val postRequestCallback: Option[Array[Byte]] => PostResponse = {
-    case Some(_) => throw new IllegalStateException("Post request should not receive Some object")
-    case None => new PostResponse
-  }
-
-  private val deleteRequestCallback: Option[Array[Byte]] => DeleteResponse = {
-    case Some(_) => throw new IllegalStateException("Delete request should not receive Some object")
-    case None => new DeleteResponse
-  }
+  private def props(requestProcessorActor: ActorRef): Props =
+    Props(new RequestServiceActor(requestProcessorActor))
 
   def apply(requestProcessorActor: ActorRef)(implicit actorSystem: ActorSystem): ActorRef =
     actorSystem.actorOf(props(requestProcessorActor), "requestServiceActor")
-
-  def props(requestProcessorActor: ActorRef): Props =
-    Props(new RequestServiceActor(requestProcessorActor))
 }
 
 
@@ -43,14 +36,6 @@ class RequestServiceActor(requestProcessorActor: ActorRef) extends Actor with Ac
   log.info(s"Request service actor initialized")
 
 
-  private def hashKey(request: RequestTrait): String = {
-    MessageDigest
-      .getInstance("SHA-256")
-      .digest(request.key.getBytes("UTF-8"))
-      .map("%02x".format(_))
-      .mkString
-  }
-
   override def receive: Receive = {
 
     case request: RequestTrait => {
@@ -60,29 +45,41 @@ class RequestServiceActor(requestProcessorActor: ActorRef) extends Actor with Ac
         Future.failed(new IllegalArgumentException("Key value cannot be empty or undefined"))
       }
 
-      val hash = hashKey(request)
+      val hash = RequestServiceActor.hashKey(request)
       val requestCount = requestCounter.getOrElse(hash, 0)
       val requestActorID = s"${hash}:${requestCount}"
 
-      val (requestActor, future): (ActorRef, Future[_]) = request match {
+      val (future, requestActor): (Future[_], ActorRef) = request match {
 
         case _: GetRequest =>
           log.info(s"Get request with ID '${requestActorID}' received")
           val actorName = s"getRequestActor-${requestActorID}"
           val promise = Promise[GetResponse]()
-          (RequestActor(promise, RequestServiceActor.getRequestCallback, actorName), promise.future)
+
+          (promise.future, RequestActor(promise, actorName) {
+            case Some(bytes) => new GetResponse(ByteString.copyFrom(bytes))
+            case None => throw new IllegalStateException("Get request should not receive None object")
+          })
 
         case _: PostRequest =>
           log.info(s"Post request with key '${requestActorID}' received")
           val actorName = s"postRequestActor-${requestActorID}"
           val promise = Promise[PostResponse]()
-          (RequestActor(promise, RequestServiceActor.postRequestCallback, actorName), promise.future)
+
+          (promise.future, RequestActor(promise, actorName) {
+            case Some(_) => throw new IllegalStateException("Post request should not receive Some object")
+            case None => new PostResponse
+          })
 
         case _: DeleteRequest =>
           log.info(s"Delete request with key '${requestActorID}' received")
           val actorName = s"deleteRequestActor-${requestActorID}"
           val promise = Promise[DeleteResponse]()
-          (RequestActor(promise, RequestServiceActor.deleteRequestCallback, actorName), promise.future)
+
+          (promise.future, RequestActor(promise, actorName) {
+            case Some(_) => throw new IllegalStateException("Delete request should not receive Some object")
+            case None => new DeleteResponse
+          })
       }
 
       requestCounter = requestCounter.updated(hash, requestCount + 1)

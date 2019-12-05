@@ -8,14 +8,14 @@ import service.OperationPackage
 
 object PersistenceActor {
 
-  final val DIRECTORY_FILE: File = File.currentWorkingDirectory/".chordial"
+  val DIRECTORY_FILE: File = File.currentWorkingDirectory/".chordial"
 
+
+  private def props(executorActor: ActorRef): Props =
+    Props(new PersistenceActor(executorActor))
 
   def apply(executorActor: ActorRef)(implicit actorSystem: ActorSystem): ActorRef =
     actorSystem.actorOf(props(executorActor), "persistenceActor")
-
-  def props(executorActor: ActorRef): Props =
-    Props(new PersistenceActor(executorActor))
 }
 
 

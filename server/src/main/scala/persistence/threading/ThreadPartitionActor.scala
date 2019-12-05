@@ -11,10 +11,10 @@ object ThreadPartitionActor {
   private val PARTITION_FUNCTION: String => Int = _.foldLeft(PARTITION_SEED)(_.^(_).toChar).toInt
 
 
+  private def props: Props = Props(new ThreadPartitionActor)
+
   def apply()(implicit actorSystem: ActorSystem): ActorRef =
     actorSystem.actorOf(props, "threadPartitionActor")
-
-  def props: Props = Props(new ThreadPartitionActor)
 }
 
 
