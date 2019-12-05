@@ -2,9 +2,9 @@ package persistence.io
 
 import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, Props}
 import better.files.File
-import common.ActorDefaults
-import schema.OperationPackage
+import common.utils.ActorDefaults
 import schema.service.{DeleteRequest, GetRequest, PostRequest}
+import service.OperationPackage
 
 import scala.collection.mutable
 import scala.language.implicitConversions

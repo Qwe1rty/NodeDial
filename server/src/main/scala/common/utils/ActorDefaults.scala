@@ -1,4 +1,4 @@
-package common
+package common.utils
 
 
 trait ActorDefaults {

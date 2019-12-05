@@ -1,7 +1,7 @@
 package service
 
 import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, Props}
-import common.ActorDefaults
+import common.utils.ActorDefaults
 import schema.ResponseTrait
 
 import scala.concurrent.Promise

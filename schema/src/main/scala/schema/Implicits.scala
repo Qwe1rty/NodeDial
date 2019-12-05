@@ -7,7 +7,7 @@ import com.google.protobuf.ByteString
 import scala.language.implicitConversions
 
 
-object ImplicitConversions {
+object Implicits {
 
   implicit def encodeString(value: String): ByteString =
     ByteString.copyFrom(value.getBytes(StandardCharsets.UTF_8))

@@ -9,9 +9,9 @@ An attempt at making a distributed system
 ---
 ## Project Plan
 
-- [x] **Part 0**
+- [x] **Part 0: Setup**
   - [x] Repo and build setup
-- [ ] **Part 1**
+- [ ] **Part 1: Persistence Layer**
   - [x] External service setup via gRPC
   - [ ] Establish persistence layer, should support locally atomic/isolated operations
     - [x] Key isolation
@@ -23,20 +23,27 @@ An attempt at making a distributed system
   - [x] Multi-subproject setup for common components
   - [x] Basic testing of core functionality
   - [ ] Service containerization
-- [ ] **Part 2**
-  - [ ] Membership and discovery
-    - [ ] Internal actor remote communication
-    - [ ] Gossip-based discovery
-    - [ ] Finger table initialization
-    - [ ] Local kubernetes cluster setup
+- [ ] **Part 2: Cluster Membership**
+  - [ ] Membership list of other nodes' IPs  
+  - [ ] Joining/Failure detection
+    - [ ] Initial direct check
+    - [ ] Followup indirect checks after first missing ACK
+  - [ ] Gossip component
+    - [ ] Push mechanism
+    - [ ] Pull mechanism
+    - [ ] Support/API for arbitrary gRPC services
+  - [ ] Local kubernetes cluster setup and integration
+- [ ] **Part 3: Partitioning Layer**
   - [ ] Partitioning via consistent hashing (following chord algo)
+    - [ ] Finger table initialization
+    - [ ] Dynamic partition dividing/merges on node join/failure
   - [ ] Better testing, should be able to do some failure case handling
-- [ ] **Part 3**
+- [ ] **Part 4: Replication Layer**
   - [ ] Replication scheme, quorum handling
   - [ ] Anti-entropy process (anti-entropy or read repair or ideally both)
   - [ ] Cluster-wide concurrent write handling, vector versioning
   - [ ] Consistency/node failure testing
-- [ ] **Part 4**
+- [ ] **Part 5: Transaction Layer**
   - [ ] Distributed transactions (2PC)
   - [ ] _TODO_
 

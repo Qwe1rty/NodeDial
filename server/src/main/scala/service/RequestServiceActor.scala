@@ -4,10 +4,9 @@ import java.security.MessageDigest
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import com.google.protobuf.ByteString
-import common.ActorDefaults
-import persistence.io.PersistenceActor
+import common.utils.ActorDefaults
 import schema.service._
-import schema.{OperationPackage, RequestTrait}
+import schema.RequestTrait
 
 import scala.concurrent.{Future, Promise}
 

@@ -1,7 +1,7 @@
 package persistence.threading
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
-import common.ActorDefaults
+import common.utils.ActorDefaults
 import persistence.io.IOTask
 
 

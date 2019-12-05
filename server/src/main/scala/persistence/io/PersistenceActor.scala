@@ -2,8 +2,8 @@ package persistence.io
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import better.files.File
-import common.ActorDefaults
-import schema.OperationPackage
+import common.utils.ActorDefaults
+import service.OperationPackage
 
 
 object PersistenceActor {
