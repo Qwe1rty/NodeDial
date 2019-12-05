@@ -1,6 +1,7 @@
 package service
 
 import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, Props}
+import common.ActorDefaults
 import schema.ResponseTrait
 
 import scala.concurrent.Promise
@@ -29,20 +30,24 @@ object RequestActor {
 class RequestActor[+A <: ResponseTrait]
     (requestPromise: Promise[A], ioProcessCallback: Option[Array[Byte]] => A)
     (implicit ct: ClassTag[A])
-  extends Actor with ActorLogging {
+  extends Actor with ActorLogging with ActorDefaults {
 
   // NOTE: objects/type classes + actors is a bad idea, so ioProcessCallback is used to fulfill that functionality
   //  https://docs.scala-lang.org/overviews/reflection/thread-safety.html
 
   override def receive: Receive = {
 
-    case ioResult: Try[Option[Array[Byte]]] =>
+    case ioResult: Try[Option[Array[Byte]]] => {
       ioResult match {
         case Success(result) => requestPromise.complete(Try(ioProcessCallback(result)))
         case Failure(e) => requestPromise.failure(e)
       }
-      // TODO destroy actor
+      context.stop(self)
+    }
 
-    case _ => throw new Exception(":(") // TODO
+    case x => {
+      log.error(receivedUnknown(x))
+      context.stop(self)
+    }
   }
 }

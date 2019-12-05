@@ -20,6 +20,7 @@ An attempt at making a distributed system
     - [ ] Key atomicity/durability via write-ahead strategy
     - [x] ~~Non-blocking async disk I/O~~ Thread-pool backed I/O
   - [x] Logging that should work in Akka actor contexts and non-actor contexts
+  - [x] Multi-subproject setup for common components
   - [x] Basic testing of core functionality
   - [ ] Service containerization
 - [ ] **Part 2**
