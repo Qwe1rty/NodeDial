@@ -5,6 +5,7 @@ import java.security.MessageDigest
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import com.google.protobuf.ByteString
 import common.ActorDefaults
+import persistence.io.PersistenceActor
 import schema.service._
 import schema.{OperationPackage, RequestTrait}
 
@@ -38,6 +39,11 @@ object RequestServiceActor {
 
 class RequestServiceActor(requestProcessorActor: ActorRef) extends Actor with ActorLogging with ActorDefaults {
 
+  final private var requestCounter = Map[String, Int]()
+
+  log.info(s"Request service actor initialized")
+
+
   private def hashKey(request: RequestTrait): String = {
     MessageDigest
       .getInstance("SHA-256")
@@ -56,27 +62,32 @@ class RequestServiceActor(requestProcessorActor: ActorRef) extends Actor with Ac
       }
 
       val hash = hashKey(request)
+      val requestCount = requestCounter.getOrElse(hash, 0)
+      val requestActorID = s"${hash}:${requestCount}"
+
       val (requestActor, future): (ActorRef, Future[_]) = request match {
 
         case _: GetRequest =>
-          log.info(s"Get request with key '${request.key}' received by request service")
-          val actorName = s"getRequestActor-${hash}"
+          log.info(s"Get request with ID '${requestActorID}' received")
+          val actorName = s"getRequestActor-${requestActorID}"
           val promise = Promise[GetResponse]()
           (RequestActor(promise, RequestServiceActor.getRequestCallback, actorName), promise.future)
 
         case _: PostRequest =>
-          log.info(s"Post request with key '${request.key}' received by request service")
-          val actorName = s"postRequestActor-${hash}"
+          log.info(s"Post request with key '${requestActorID}' received")
+          val actorName = s"postRequestActor-${requestActorID}"
           val promise = Promise[PostResponse]()
           (RequestActor(promise, RequestServiceActor.postRequestCallback, actorName), promise.future)
 
         case _: DeleteRequest =>
-          log.info(s"Delete request with key '${request.key}' received by request service")
-          val actorName = s"deleteRequestActor-${hash}"
+          log.info(s"Delete request with key '${requestActorID}' received")
+          val actorName = s"deleteRequestActor-${requestActorID}"
           val promise = Promise[DeleteResponse]()
           (RequestActor(promise, RequestServiceActor.deleteRequestCallback, actorName), promise.future)
       }
-      log.debug(s"Request actor for key '${request.key}'")
+
+      requestCounter = requestCounter.updated(hash, requestCount + 1)
+      log.debug(s"Request actor key '${request.key}' count incremented from ${requestCount} to ${requestCount + 1}")
 
       requestProcessorActor ! new OperationPackage(requestActor, hash, request)
       log.debug(s"Operation package sent with hash ${hash}, for key '${request.key}'")

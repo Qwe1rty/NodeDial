@@ -17,13 +17,10 @@ An attempt at making a distributed system
     - [x] Key isolation
       - [x] Serial execution for single keys 
       - [x] Thread partitioning
-    - [ ] Key atomicity
-      - [ ] Log recovery via write-ahead strategy
-      - [ ] Rollback to previously commited value
-    - [x] Non-blocking async disk I/O
+    - [ ] Key atomicity/durability via write-ahead strategy
+    - [x] ~~Non-blocking async disk I/O~~ Thread-pool backed I/O
   - [x] Logging that should work in Akka actor contexts and non-actor contexts
-    - [ ] Async logging backend configured
-  - [ ] Basic testing of core functionality
+  - [x] Basic testing of core functionality
   - [ ] Service containerization
 - [ ] **Part 2**
   - [ ] Membership and discovery
