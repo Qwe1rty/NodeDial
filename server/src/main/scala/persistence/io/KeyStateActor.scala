@@ -54,12 +54,15 @@ class KeyStateActor(executorActor: ActorRef, hash: String) extends Actor with Ac
     pendingRequest = Some(requestQueue.head.requestActor)
 
     schedule(requestQueue.dequeue().requestBody match {
+
       case GetRequest(_) =>
         log.info(tag + "Signalling read task")
         ReadTask(KeyStateActor.VALUE_EXTENSION)
+
       case PostRequest(_, value) =>
         log.info(tag + "Signalling write ahead task")
         WriteAheadTask(KeyStateActor.WRITE_AHEAD_EXTENSION, value.toByteArray)
+
       case DeleteRequest(_) =>
         log.info(tag + "Signalling tombstone task")
         TombstoneTask(KeyStateActor.VALUE_EXTENSION)
@@ -95,8 +98,8 @@ class KeyStateActor(executorActor: ActorRef, hash: String) extends Actor with Ac
     case WriteAheadCommitSignal() => {
       log.debug(tag + "Write ahead commit signal received")
       schedule(WriteTransferTask(
-        fileOf(KeyStateActor.WRITE_AHEAD_EXTENSION),
-        fileOf(KeyStateActor.VALUE_EXTENSION)
+        KeyStateActor.WRITE_AHEAD_EXTENSION,
+        KeyStateActor.VALUE_EXTENSION
       ))
     }
 

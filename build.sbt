@@ -5,28 +5,44 @@ ThisBuild / version := "0.0.0"
 ThisBuild / scalaVersion := "2.12.0"
 
 
-lazy val protobufLibraries = Seq(
-  "com.google.api.grpc" % "proto-google-common-protos" % "1.16.0" % "protobuf",
-  "com.google.api.grpc" % "grpc-google-common-protos" % "1.16.0" % "protobuf",
-  "com.thesamet.scalapb" %% "scalapb-runtime" % scalapb.compiler.Version.scalapbVersion % "protobuf"
+lazy val dependencies =
+  new {
+    val protoCommonV = "1.16.0"
+    val grpcCommonV = "1.16.0"
+    val scalaProtoV = scalapb.compiler.Version.scalapbVersion
+
+    val akkaActorV = "2.6.0"
+    val akkaStreamV = "2.6.0"
+    val akkaSLF4jV = "2.6.0"
+
+    val logbackV = "1.2.3"
+    val betterFilesV = "3.8.0"
+
+
+    val protoCommon =  "com.google.api.grpc"  % "proto-google-common-protos" % protoCommonV % "protobuf"
+    val grpcCommon  = "com.google.api.grpc"   % "grpc-google-common-protos"  % grpcCommonV  % "protobuf"
+    val scalaProto  = "com.thesamet.scalapb" %% "scalapb-runtime"            % scalaProtoV  % "protobuf"
+
+    val akkaActor   = "com.typesafe.akka"    %% "akka-actor"                 % akkaActorV
+    val akkaStream  = "com.typesafe.akka"    %% "akka-stream"                % akkaStreamV
+    val akkaSLF4j   = "com.typesafe.akka"    %% "akka-slf4j"                 % akkaSLF4jV
+
+    val logback     = "ch.qos.logback"        % "logback-classic"            % logbackV
+    val betterFiles = "com.github.pathikrit" %% "better-files"               % betterFilesV
+  }
+
+lazy val grpcLibraryGroup = Seq(
+  dependencies.protoCommon,
+  dependencies.grpcCommon,
+  dependencies.scalaProto
 )
 
-lazy val akkaLibraries = Seq(
-  "com.typesafe.akka" %% "akka-actor" % "2.6.0",
-  "com.typesafe.akka" %% "akka-stream" % "2.6.0"
+lazy val coreLibraryGroup = Seq(
+  dependencies.akkaSLF4j,
+  dependencies.logback
 )
 
-lazy val loggingLibraries = Seq(
-  "com.typesafe.akka" %% "akka-slf4j" % "2.6.0",
-  "ch.qos.logback" % "logback-classic" % "1.2.3"
-)
-
-lazy val fileLibraries = Seq(
-  "com.github.pathikrit" %% "better-files" % "3.8.0"
-)
-
-lazy val grpcLibraryGroup = protobufLibraries ++ akkaLibraries
-lazy val coreLibraryGroup = grpcLibraryGroup ++ loggingLibraries
+lazy val jettyAgent = "org.mortbay.jetty.alpn" % "jetty-alpn-agent" % "2.0.9" % "runtime;test"
 
 
 lazy val schema = (project in file("schema"))
@@ -34,7 +50,7 @@ lazy val schema = (project in file("schema"))
   .settings(
     name := "ChordialSchema",
     libraryDependencies ++= grpcLibraryGroup,
-    javaAgents += "org.mortbay.jetty.alpn" % "jetty-alpn-agent" % "2.0.9" % "runtime;test"
+    javaAgents += jettyAgent
   )
   .disablePlugins(AssemblyPlugin)
 
@@ -49,7 +65,7 @@ lazy val client = (project in file("client"))
     name := "ChordialClient",
     assemblySettings,
     libraryDependencies ++= coreLibraryGroup,
-    javaAgents += "org.mortbay.jetty.alpn" % "jetty-alpn-agent" % "2.0.9" % "runtime;test"
+    javaAgents += jettyAgent
   )
   .dependsOn(schema)
 
@@ -58,8 +74,10 @@ lazy val server = (project in file("server"))
   .settings(
     name := "ChordialServer",
     assemblySettings,
-    libraryDependencies ++= coreLibraryGroup ++ fileLibraries,
-    javaAgents += "org.mortbay.jetty.alpn" % "jetty-alpn-agent" % "2.0.9" % "runtime;test"
+    libraryDependencies ++= coreLibraryGroup ++ Seq(
+      dependencies.betterFiles
+    ),
+    javaAgents += jettyAgent
   )
   .dependsOn(schema)
 
