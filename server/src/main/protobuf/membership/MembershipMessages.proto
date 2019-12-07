@@ -1,0 +1,37 @@
+syntax = "proto2";
+
+option java_multiple_files = true;
+option java_package = "common.modules.membership";
+option java_outer_classname = "ChordialMembershipMessages";
+
+package chordial.membership;
+
+
+message JoinEvent {
+
+    message HashList {
+        repeated string hashes = 1;
+    }
+
+    required string nodeID = 1;
+    required fixed32 ipAddress = 2;
+    required HashList hashes = 3;
+}
+
+message FailureEvent {
+
+    required fixed32 ipAddress = 1;
+}
+
+message LeaveEvent {
+
+    required fixed32 ipAddress = 1;
+}
+
+
+message SyncRequest {}
+
+message SyncResponse {
+
+
+}

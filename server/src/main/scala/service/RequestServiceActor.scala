@@ -4,6 +4,7 @@ import java.security.MessageDigest
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import com.google.protobuf.ByteString
+import com.roundeights.hasher.Implicits._
 import common.utils.ActorDefaults
 import schema.service._
 import schema.RequestTrait
@@ -13,13 +14,6 @@ import scala.concurrent.{Future, Promise}
 
 object RequestServiceActor {
 
-  private def hashKey(request: RequestTrait): String = {
-    MessageDigest
-      .getInstance("SHA-256")
-      .digest(request.key.getBytes("UTF-8"))
-      .map("%02x".format(_))
-      .mkString
-  }
 
   private def props(requestProcessorActor: ActorRef): Props =
     Props(new RequestServiceActor(requestProcessorActor))
@@ -45,7 +39,7 @@ class RequestServiceActor(requestProcessorActor: ActorRef) extends Actor with Ac
         Future.failed(new IllegalArgumentException("Key value cannot be empty or undefined"))
       }
 
-      val hash = RequestServiceActor.hashKey(request)
+      val hash: String = request.key.sha256
       val requestCount = requestCounter.getOrElse(hash, 0)
       val requestActorID = s"${hash}:${requestCount}"
 

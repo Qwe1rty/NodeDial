@@ -1,0 +1,18 @@
+syntax = "proto2";
+
+option java_multiple_files = true;
+option java_package = "common.modules.membership";
+option java_outer_classname = "ChordialMembershipService";
+
+import "membership/MembershipMessages.proto";
+import "shared/Acknowledgement.proto";
+
+package chordial.membership;
+
+
+service MembershipService {
+
+    rpc Join(JoinEvent)       returns (shared.Acknowledgement) {}
+    rpc Failure(FailureEvent) returns (shared.Acknowledgement) {}
+    rpc Leave(LeaveEvent)     returns (shared.Acknowledgement) {}
+}
