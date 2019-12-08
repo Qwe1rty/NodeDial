@@ -1,13 +1,11 @@
 package service
 
-import java.security.MessageDigest
-
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import com.google.protobuf.ByteString
 import com.roundeights.hasher.Implicits._
 import common.utils.ActorDefaults
-import schema.service._
 import schema.RequestTrait
+import schema.service._
 
 import scala.concurrent.{Future, Promise}
 

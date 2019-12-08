@@ -2,9 +2,9 @@ syntax = "proto2";
 
 option java_multiple_files = true;
 option java_package = "common.modules";
-option java_outer_classname = "ChordialMembershipMessages";
+option java_outer_classname = "ChordialSharedMessages";
 
 package chordial.shared;
 
 
-message Acknowledgement {}
+// TODO: add stuff here as needed

@@ -7,31 +7,104 @@ option java_outer_classname = "ChordialMembershipMessages";
 package chordial.membership;
 
 
-message JoinEvent {
+/*
+ * Tracks the state of each node. The valid transitions are:
+ *   ALIVE -> SUSPECT, on Event.Suspect
+ *   SUSPECT -> ALIVE, on Event.Refute
+ *   SUSPECT -> DEAD,  on Event.Failure
+ *   DEAD -> ALIVE,    on Event.Refute
+ *
+ * NOTE: Event.Join adds the entry to the table with state ALIVE, and
+ *       Event.Leave completely removes the entry from the membership table
+ */
+enum NodeState {
+    ALIVE = 0;
+    SUSPECT = 1;
+    DEAD = 2;
+}
 
-    message HashList {
-        repeated string hashes = 1;
-    }
-
+/*
+ * NodeInfo contains the full package of information known about a node.
+ *
+ * Note that as long as the DB is restarted in the same directory, the node will
+ * have the same node ID, whereas the IP can change during the crash-recovery
+ * process
+ */
+message NodeInfo {
     required string nodeID = 1;
     required fixed32 ipAddress = 2;
-    required HashList hashes = 3;
-}
-
-message FailureEvent {
-
-    required fixed32 ipAddress = 1;
-}
-
-message LeaveEvent {
-
-    required fixed32 ipAddress = 1;
+    required uint32 version = 3;
+    required NodeState state = 4;
 }
 
 
-message SyncRequest {}
+/*
+ * The "Event" message types are used as push signals to notify other nodes
+ * when any cluster event happens, such as a node trying to join the
+ * cluster, or the failure detector reporting a failure, etc.
+ */
+message Event {
 
-message SyncResponse {
+    message Join {
+        message PartitionHashes {
+            repeated string hashes = 1;
+        }
+
+        // NOTE: version is implicitly 0
+        required fixed32 ipAddress = 1;
+        required PartitionHashes partitionHashes = 2;
+    }
+
+    message Suspect {
+        required uint32 version = 1;
+    }
+
+    message Failure {
+        required uint32 version = 1;
+    }
+
+    message Refute {
+        required uint32 version = 1;
+    }
+
+    message Leave {}
+
+    required string nodeID = 1;
+    oneof event {
+        Join join = 2;
+        Suspect suspect = 3;
+        Failure failure = 4;
+        Refute refute = 5;
+        Leave leave = 6;
+    }
+}
+
+message Acknowledgement {
+
+    optional NodeInfo nodeInfo = 1;
+}
 
 
+/*
+ * The "Consume" request/responses are used by nodes to check with other nodes
+ * whether its info is outdated
+ */
+message ConsumeRequest {
+
+    message Recovery {
+        required string nodeID = 1;
+        required fixed32 ipAddress = 2;
+    }
+
+    message Update {}
+
+    oneof consumeType {
+        Recovery recovery = 1;
+        Update update = 2;
+    }
+}
+
+message ConsumeResponse {
+
+    repeated NodeInfo nodeInfo = 1;
 }

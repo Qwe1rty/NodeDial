@@ -3,7 +3,7 @@ TODO LIST:
 GENERAL:
 - Formalize the "tag" pattern when making logs from a duplicate actor
 - Configure the logging backend to be async?
-- Some form of actual environment variable/configuration/dependency injection
+- Some form of proper environment variable/configuration/dependency injection
 - Document everything both in the code and on Github
 
 SERVICE:
