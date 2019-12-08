@@ -4,6 +4,8 @@ option java_multiple_files = true;
 option java_package = "common.modules.membership";
 option java_outer_classname = "ChordialMembershipMessages";
 
+import "partitioning/PartitioningMessages.proto";
+
 package chordial.membership;
 
 
@@ -46,13 +48,9 @@ message NodeInfo {
 message Event {
 
     message Join {
-        message PartitionHashes {
-            repeated string hashes = 1;
-        }
-
         // NOTE: version is implicitly 0
         required fixed32 ipAddress = 1;
-        required PartitionHashes partitionHashes = 2;
+        required partitioning.PartitionHashes partitionHashes = 2;
     }
 
     message Suspect {
@@ -86,25 +84,21 @@ message Acknowledgement {
 
 
 /*
- * The "Consume" request/responses are used by nodes to check with other nodes
- * whether its info is outdated
+ * The "Recovery/Update" request and responses are used by nodes to check with
+ * other nodes whether its info is outdated
  */
-message ConsumeRequest {
-
-    message Recovery {
-        required string nodeID = 1;
-        required fixed32 ipAddress = 2;
-    }
-
-    message Update {}
-
-    oneof consumeType {
-        Recovery recovery = 1;
-        Update update = 2;
-    }
+message FullSyncRequest {
+    required string nodeID = 1;
+    required fixed32 ipAddress = 2; // May be back up with different IP
 }
 
-message ConsumeResponse {
+message UpdateRequest {}
 
-    repeated NodeInfo nodeInfo = 1;
+message SyncInfo {
+    required NodeInfo nodeInfo = 1;
+    optional partitioning.PartitionHashes partitionHashes = 2;
+}
+
+message SyncResponse {
+    repeated SyncInfo syncInfo = 1;
 }

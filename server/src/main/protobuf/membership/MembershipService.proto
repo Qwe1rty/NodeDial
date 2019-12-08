@@ -12,8 +12,9 @@ package chordial.membership;
 service MembershipService {
 
     // Push-based synchronization RPC
-    rpc Publish(Event) returns (Acknowledgement) {}
+    rpc Publish (Event) returns (Acknowledgement) {}
 
-    // Pull-based synchronization RPC
-    rpc Consume(ConsumeRequest) returns (ConsumeResponse) {}
+    // Pull-based synchronization RPCs
+    rpc FullSync (FullSyncRequest) returns (SyncResponse) {}
+    rpc UpdateSync (UpdateRequest) returns (SyncResponse) {}
 }

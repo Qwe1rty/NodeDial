@@ -47,7 +47,7 @@ lazy val coreLibraryGroup = Seq(
 lazy val jettyAgent = "org.mortbay.jetty.alpn" % "jetty-alpn-agent" % "2.0.9" % "runtime;test"
 
 
-lazy val schema = (project in file("schema"))
+lazy val api = (project in file("api"))
   .enablePlugins(AkkaGrpcPlugin, JavaAgent /*ALPN agent*/)
   .settings(
     name := "ChordialSchema",
@@ -69,7 +69,7 @@ lazy val client = (project in file("client"))
     libraryDependencies ++= coreLibraryGroup,
     javaAgents += jettyAgent
   )
-  .dependsOn(schema)
+  .dependsOn(api)
 
 lazy val server = (project in file("server"))
   .enablePlugins(AkkaGrpcPlugin, JavaAgent /*ALPN agent*/)
@@ -82,7 +82,7 @@ lazy val server = (project in file("server"))
     ),
     javaAgents += jettyAgent
   )
-  .dependsOn(schema)
+  .dependsOn(api)
 
 
 lazy val assemblySettings = assemblyMergeStrategy in assembly := {

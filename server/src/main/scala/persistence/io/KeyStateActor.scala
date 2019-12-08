@@ -35,7 +35,7 @@ class KeyStateActor(executorActor: ActorRef, hash: String) extends Actor with Ac
 
 
   implicit private def fileOf(extension: String): File =
-    PersistenceActor.DIRECTORY_FILE/(hash + extension)
+    PersistenceActor.PERSISTENCE_DIRECTORY/(hash + extension)
 
 
   private def schedule(task: IOTask): Unit = {

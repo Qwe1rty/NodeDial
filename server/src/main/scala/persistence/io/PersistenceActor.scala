@@ -2,13 +2,14 @@ package persistence.io
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import better.files.File
+import common.ChordialConstants
 import common.utils.ActorDefaults
 import service.OperationPackage
 
 
 object PersistenceActor {
 
-  val DIRECTORY_FILE: File = File.currentWorkingDirectory/".chordial"
+  val PERSISTENCE_DIRECTORY: File = ChordialConstants.BASE_DIRECTORY/"data"
 
 
   private def props(executorActor: ActorRef): Props =
@@ -23,8 +24,8 @@ class PersistenceActor(executorActor: ActorRef) extends Actor with ActorLogging 
 
   private var keyMapping = Map[String, ActorRef]()
 
-  PersistenceActor.DIRECTORY_FILE.createDirectoryIfNotExists()
-  log.info(s"Directory ${PersistenceActor.DIRECTORY_FILE.toString()} opened")
+  PersistenceActor.PERSISTENCE_DIRECTORY.createDirectoryIfNotExists()
+  log.info(s"Directory ${PersistenceActor.PERSISTENCE_DIRECTORY.toString()} opened")
 
 
   override def receive: Receive = {
