@@ -9,9 +9,15 @@ import scala.language.implicitConversions
 
 object Implicits {
 
-  implicit def encodeString(value: String): ByteString =
-    ByteString.copyFrom(value.getBytes(StandardCharsets.UTF_8))
+  implicit def string2ByteArray(value: String): Array[Byte] =
+    value.getBytes(StandardCharsets.UTF_8)
 
-  implicit def decodeString(bytes: ByteString): String =
+  implicit def byteArray2String(bytes: Array[Byte]): String =
+    new String(bytes, StandardCharsets.UTF_8)
+
+  implicit def string2ByteString(value: String): ByteString =
+    ByteString.copyFrom(value)
+
+  implicit def byteString2String(bytes: ByteString): String =
     bytes.toStringUtf8
 }

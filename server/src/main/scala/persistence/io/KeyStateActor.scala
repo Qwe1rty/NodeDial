@@ -27,6 +27,8 @@ object KeyStateActor {
 
 class KeyStateActor(executorActor: ActorRef, hash: String) extends Actor with ActorLogging with ActorDefaults {
 
+  import KeyStateActor._
+
   final private val tag = s"${hash} -> " // TODO patternize this
 
   private val requestQueue = mutable.Queue[OperationPackage]() // TODO make this immutable
@@ -57,15 +59,15 @@ class KeyStateActor(executorActor: ActorRef, hash: String) extends Actor with Ac
 
       case GetRequest(_) =>
         log.info(tag + "Signalling read task")
-        ReadTask(KeyStateActor.VALUE_EXTENSION)
+        ReadTask(VALUE_EXTENSION)
 
       case PostRequest(_, value) =>
         log.info(tag + "Signalling write ahead task")
-        WriteAheadTask(KeyStateActor.WRITE_AHEAD_EXTENSION, value.toByteArray)
+        WriteAheadTask(WRITE_AHEAD_EXTENSION, value.toByteArray)
 
       case DeleteRequest(_) =>
         log.info(tag + "Signalling tombstone task")
-        TombstoneTask(KeyStateActor.VALUE_EXTENSION)
+        TombstoneTask(VALUE_EXTENSION)
     })
   }
 
@@ -98,8 +100,8 @@ class KeyStateActor(executorActor: ActorRef, hash: String) extends Actor with Ac
     case WriteAheadCommitSignal() => {
       log.debug(tag + "Write ahead commit signal received")
       schedule(WriteTransferTask(
-        KeyStateActor.WRITE_AHEAD_EXTENSION,
-        KeyStateActor.VALUE_EXTENSION
+        WRITE_AHEAD_EXTENSION,
+        VALUE_EXTENSION
       ))
     }
 

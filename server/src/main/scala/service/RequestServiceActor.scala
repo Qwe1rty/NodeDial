@@ -12,7 +12,6 @@ import scala.concurrent.{Future, Promise}
 
 object RequestServiceActor {
 
-
   private def props(requestProcessorActor: ActorRef): Props =
     Props(new RequestServiceActor(requestProcessorActor))
 

@@ -77,8 +77,7 @@ message Event {
     }
 }
 
-message Acknowledgement {
-
+message EventReply {
     optional NodeInfo nodeInfo = 1;
 }
 

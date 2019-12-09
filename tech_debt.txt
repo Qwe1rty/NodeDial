@@ -5,6 +5,7 @@ GENERAL:
 - Configure the logging backend to be async?
 - Some form of proper environment variable/configuration/dependency injection
 - Document everything both in the code and on Github
+- Convert usages of the "String" type for hashes into "Digest"
 
 SERVICE:
 - Replace the ActorMaterializer instance with the system wide one
