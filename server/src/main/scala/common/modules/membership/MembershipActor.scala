@@ -49,5 +49,10 @@ class MembershipActor extends Actor with ActorLogging {
   //// wait on signal from partition actor to gossip join event
 
 
-  override def receive: Receive = ???
+  override def receive: Receive = {
+
+    case MembershipAPI.GetRandomNode =>
+      // TOOD get random
+
+  }
 }

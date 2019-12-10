@@ -1,7 +1,5 @@
 package service
 
-import java.util.concurrent.TimeUnit
-
 import akka.actor.ActorRef
 import akka.pattern.ask
 import akka.stream.Materializer
@@ -10,13 +8,9 @@ import org.slf4j.LoggerFactory
 import schema.service._
 
 import scala.concurrent.Future
-import scala.concurrent.duration.Duration
 
 
-object RequestServiceImpl {
-
-  implicit val DEFAULT_TIMEOUT: Timeout = Timeout(Duration(5, TimeUnit.SECONDS))
-}
+object RequestServiceImpl
 
 
 class RequestServiceImpl

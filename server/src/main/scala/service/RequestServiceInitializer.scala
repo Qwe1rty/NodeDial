@@ -27,9 +27,10 @@ class RequestServiceInitializer(requestProcessorActor: ActorRef)(implicit actorS
 
   def run(): Unit = {
 
+    import common.ChordialDefaults.EXTERNAL_REQUEST_TIMEOUT
+
     implicit val materializer: Materializer = ActorMaterializer()
     implicit val execContext: ExecutionContext = actorSystem.dispatcher
-    implicit val timeout: Timeout = RequestServiceImpl.DEFAULT_TIMEOUT
 
     val requestServiceActor = RequestServiceActor(requestProcessorActor)
     log.debug("Initialized request service actor")

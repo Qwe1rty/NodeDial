@@ -12,5 +12,5 @@ message Confirmation {}
 
 service FailureCheckService {
 
-    rpc FailureCheck (Check) returns (Confirmation)
+    rpc FailureCheck (Check) returns (Confirmation) {}
 }
