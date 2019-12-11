@@ -19,11 +19,11 @@ object FailureDetectorActor {
   private val FOLLOWUP_TEAM_SIZE: Int = 3 // TODO move this somewhere better
 
 
-  private def props(membershipActor: ActorRef)(implicit actorSystem: ActorSystem): Props =
-    Props(new FailureDetectorActor(membershipActor))
-
   def apply(membershipActor: ActorRef)(implicit actorContext: ActorContext, actorSystem: ActorSystem): ActorRef =
-    actorContext.actorOf(props(membershipActor), "failureDetectorActor")
+    actorContext.actorOf(
+      Props(new FailureDetectorActor(membershipActor)),
+      "failureDetectorActor"
+    )
 }
 
 

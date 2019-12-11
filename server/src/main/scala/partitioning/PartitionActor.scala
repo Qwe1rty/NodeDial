@@ -5,11 +5,11 @@ import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, Props}
 
 object PartitionActor {
 
-  private def props(persistenceActor: ActorRef): Props =
-    Props(new PartitionActor(persistenceActor))
-
   def apply(persistenceActor: ActorRef)(implicit actorContext: ActorContext): ActorRef =
-    actorContext.actorOf(props(persistenceActor), "partitionActor")
+    actorContext.actorOf(
+      Props(new PartitionActor(persistenceActor)),
+      "partitionActor"
+    )
 }
 
 

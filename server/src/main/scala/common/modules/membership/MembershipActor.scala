@@ -16,11 +16,11 @@ object MembershipActor {
   private val MEMBERSHIP_FILE      = MEMBERSHIP_DIR/(MEMBERSHIP_FILENAME + MEMBERSHIP_EXTENSION)
 
 
-  private def props(addressRetriever: AddressRetriever): Props =
-    Props(new MembershipActor(addressRetriever))
-
   def apply(addressRetriever: AddressRetriever)(implicit actorContext: ActorContext): ActorRef =
-    actorContext.actorOf(props(addressRetriever), "membershipActor")
+    actorContext.actorOf(
+      Props(new MembershipActor(addressRetriever)),
+      "membershipActor"
+    )
 }
 
 

@@ -12,11 +12,11 @@ import scala.concurrent.{Future, Promise}
 
 object RequestServiceActor {
 
-  private def props(requestProcessorActor: ActorRef): Props =
-    Props(new RequestServiceActor(requestProcessorActor))
-
   def apply(requestProcessorActor: ActorRef)(implicit actorSystem: ActorSystem): ActorRef =
-    actorSystem.actorOf(props(requestProcessorActor), "requestServiceActor")
+    actorSystem.actorOf(
+      Props(new RequestServiceActor(requestProcessorActor)),
+      "requestServiceActor"
+    )
 }
 
 

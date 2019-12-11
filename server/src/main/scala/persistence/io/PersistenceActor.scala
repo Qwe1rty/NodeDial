@@ -12,11 +12,11 @@ object PersistenceActor {
   val PERSISTENCE_DIRECTORY: File = ChordialConstants.BASE_DIRECTORY/"data"
 
 
-  private def props(executorActor: ActorRef): Props =
-    Props(new PersistenceActor(executorActor))
-
   def apply(executorActor: ActorRef)(implicit actorSystem: ActorSystem): ActorRef =
-    actorSystem.actorOf(props(executorActor), "persistenceActor")
+    actorSystem.actorOf(
+      Props(new PersistenceActor(executorActor)),
+      "persistenceActor"
+    )
 }
 
 

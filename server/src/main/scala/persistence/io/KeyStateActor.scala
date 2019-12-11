@@ -17,11 +17,11 @@ object KeyStateActor {
   private val VALUE_EXTENSION = ".val"
 
 
-  private def props(executorActor: ActorRef, hash: String): Props =
-    Props(new KeyStateActor(executorActor, hash))
-
   def apply(executorActor: ActorRef, hash: String)(implicit actorContext: ActorContext): ActorRef =
-    actorContext.actorOf(props(executorActor, hash), s"keyStateActor-${hash}")
+    actorContext.actorOf(
+      Props(new KeyStateActor(executorActor, hash)),
+      s"keyStateActor-${hash}"
+    )
 }
 
 

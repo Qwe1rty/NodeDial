@@ -11,27 +11,19 @@ import scala.util.{Failure, Success, Try}
 
 object RequestActor {
 
-  private def props[A <: ResponseTrait]
-      (requestPromise: Promise[A])
-      (callback: Option[Array[Byte]] => A)
-      (implicit ct: ClassTag[A]): Props = {
-
-    Props(new RequestActor[A](requestPromise)(callback))
-  }
-
   def apply[A <: ResponseTrait]
       (requestPromise: Promise[A], name: String)
-      (ioProcessCallback: Option[Array[Byte]] => A)
+      (callback: Option[Array[Byte]] => A)
       (implicit ct: ClassTag[A], parentContext: ActorContext): ActorRef = {
 
-    parentContext.actorOf(props(requestPromise)(ioProcessCallback), name)
+    parentContext.actorOf(Props(new RequestActor[A](requestPromise)(callback)), name)
   }
 }
 
 
 class RequestActor[+A <: ResponseTrait]
     (requestPromise: Promise[A])
-    (ioProcessCallback: Option[Array[Byte]] => A)
+    (callback: Option[Array[Byte]] => A)
     (implicit ct: ClassTag[A])
   extends Actor
   with ActorLogging
@@ -44,7 +36,7 @@ class RequestActor[+A <: ResponseTrait]
 
     case ioResult: Try[Option[Array[Byte]]] => {
       ioResult match {
-        case Success(result) => requestPromise.complete(Try(ioProcessCallback(result)))
+        case Success(result) => requestPromise.complete(Try(callback(result)))
         case Failure(e) => requestPromise.failure(e)
       }
       context.stop(self)
