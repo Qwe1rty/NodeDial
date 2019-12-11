@@ -18,7 +18,9 @@ object ThreadPartitionActor {
 }
 
 
-class ThreadPartitionActor extends Actor with ActorLogging with ActorDefaults {
+class ThreadPartitionActor extends Actor
+                           with ActorLogging
+                           with ActorDefaults {
 
   final private val threadCount: Int = Runtime.getRuntime.availableProcessors * 4
   final private val threads: Vector[ActorRef] = Vector.tabulate(threadCount)(SingleThreadActor(_))

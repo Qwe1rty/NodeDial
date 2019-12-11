@@ -1,6 +1,5 @@
 package common.utils
 
-
 trait ActorDefaults {
 
   def receivedUnknown(x: Any): String =

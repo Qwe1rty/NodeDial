@@ -20,7 +20,9 @@ object PersistenceActor {
 }
 
 
-class PersistenceActor(executorActor: ActorRef) extends Actor with ActorLogging with ActorDefaults {
+class PersistenceActor(executorActor: ActorRef) extends Actor
+                                                with ActorLogging
+                                                with ActorDefaults {
 
   private var keyMapping = Map[String, ActorRef]()
 

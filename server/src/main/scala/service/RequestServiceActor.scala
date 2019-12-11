@@ -20,8 +20,9 @@ object RequestServiceActor {
 }
 
 
-class RequestServiceActor(requestProcessorActor: ActorRef) extends Actor with ActorLogging with ActorDefaults {
-
+class RequestServiceActor(requestProcessorActor: ActorRef) extends Actor
+                                                           with ActorLogging
+                                                           with ActorDefaults {
   final private var requestCounter = Map[String, Int]()
 
   log.info(s"Request service actor initialized")

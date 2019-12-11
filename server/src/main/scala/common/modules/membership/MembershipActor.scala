@@ -1,9 +1,11 @@
 package common.modules.membership
 
 import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, Props}
+import com.risksense.ipaddr.IpAddress
 import com.roundeights.hasher.Implicits._
 import common.ChordialConstants
-import schema.Implicits._
+import common.modules.addresser.AddressRetriever
+import schema.ImplicitConversions._
 
 
 object MembershipActor {
@@ -14,18 +16,19 @@ object MembershipActor {
   private val MEMBERSHIP_FILE      = MEMBERSHIP_DIR/(MEMBERSHIP_FILENAME + MEMBERSHIP_EXTENSION)
 
 
-  private def props: Props = Props(new MembershipActor)
+  private def props(addressRetriever: AddressRetriever): Props =
+    Props(new MembershipActor(addressRetriever))
 
-  def apply()(implicit actorContext: ActorContext): ActorRef =
-    actorContext.actorOf(props, "membershipActor")
+  def apply(addressRetriever: AddressRetriever)(implicit actorContext: ActorContext): ActorRef =
+    actorContext.actorOf(props(addressRetriever), "membershipActor")
 }
 
 
-class MembershipActor extends Actor with ActorLogging {
-
+class MembershipActor(addressRetriever: AddressRetriever) extends Actor
+                                                          with ActorLogging {
   import MembershipActor._
 
-  private var nodeTable = Map[String, Int]()
+  private var nodeTable = Map[String, IpAddress]()
   private var subscribers = Set[ActorRef]()
 
   // Allow exception to propagate on nodeID file operations, to kill program and exit with
@@ -51,8 +54,8 @@ class MembershipActor extends Actor with ActorLogging {
 
   override def receive: Receive = {
 
-    case MembershipAPI.GetRandomNode =>
-      // TOOD get random
+    case MembershipAPI.GetRandomNodes(nodeState, number) =>
+      // TODO get random
 
   }
 }

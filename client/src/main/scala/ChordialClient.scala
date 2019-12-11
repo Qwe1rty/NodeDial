@@ -3,7 +3,7 @@ import akka.grpc.GrpcClientSettings
 import akka.stream.ActorMaterializer
 import com.typesafe.config.ConfigFactory
 import org.slf4j.LoggerFactory
-import schema.Implicits._
+import schema.ImplicitConversions._
 import schema.service.{GetRequest, PostRequest, RequestService, RequestServiceClient}
 
 import scala.concurrent.ExecutionContextExecutor
@@ -42,6 +42,7 @@ private object ChordialClient extends App {
       case Failure(e) => log.info(s"POST request failed: ${e}")
     }
   log.info("POST request sent")
+
 
   pause("Send read request")
 

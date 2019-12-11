@@ -33,7 +33,9 @@ class RequestActor[+A <: ResponseTrait]
     (requestPromise: Promise[A])
     (ioProcessCallback: Option[Array[Byte]] => A)
     (implicit ct: ClassTag[A])
-  extends Actor with ActorLogging with ActorDefaults {
+  extends Actor
+  with ActorLogging
+  with ActorDefaults {
 
   // NOTE: objects/type classes + actor concurrency is a bad idea, so a callback is used instead
   //  https://docs.scala-lang.org/overviews/reflection/thread-safety.html

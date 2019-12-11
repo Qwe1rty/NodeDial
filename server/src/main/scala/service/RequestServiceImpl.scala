@@ -2,7 +2,6 @@ package service
 
 import akka.actor.ActorRef
 import akka.pattern.ask
-import akka.stream.Materializer
 import akka.util.Timeout
 import org.slf4j.LoggerFactory
 import schema.service._
@@ -14,7 +13,7 @@ object RequestServiceImpl
 
 
 class RequestServiceImpl
-  (requestServiceActor: ActorRef)(implicit mat: Materializer, timeout: Timeout) extends RequestService {
+  (requestServiceActor: ActorRef)(implicit timeout: Timeout) extends RequestService {
 
   final private val log = LoggerFactory.getLogger(RequestServiceImpl.getClass)
 

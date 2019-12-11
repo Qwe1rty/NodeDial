@@ -25,8 +25,9 @@ object KeyStateActor {
 }
 
 
-class KeyStateActor(executorActor: ActorRef, hash: String) extends Actor with ActorLogging with ActorDefaults {
-
+class KeyStateActor(executorActor: ActorRef, hash: String) extends Actor
+                                                           with ActorLogging
+                                                           with ActorDefaults {
   import KeyStateActor._
 
   final private val tag = s"${hash} -> " // TODO patternize this

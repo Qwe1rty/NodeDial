@@ -1,9 +1,10 @@
 package common.modules.gossip
 
 import akka.actor.{Actor, ActorLogging, ActorRef}
-import common.utils.ActorTimers.Tick
 import common.utils.{ActorDefaults, ActorTimers}
+import common.utils.ActorTimers.Tick
 
+import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
 
@@ -13,11 +14,15 @@ object GossipActor {
 }
 
 
-class GossipActor(membershipActor: ActorRef) extends Actor with ActorLogging
-                                                           with ActorDefaults
-                                                           with ActorTimers {
+class GossipActor
+    (membershipActor: ActorRef)
+    (implicit ec: ExecutionContext)
+  extends Actor
+  with ActorLogging
+  with ActorDefaults
+  with ActorTimers {
+
   import GossipActor.Response
-  import common.ChordialDefaults.INTERNAL_REQUEST_TIMEOUT
 
   start(100.millisecond)
 

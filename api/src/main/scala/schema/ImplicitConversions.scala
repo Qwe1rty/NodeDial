@@ -7,7 +7,7 @@ import com.google.protobuf.ByteString
 import scala.language.implicitConversions
 
 
-object Implicits {
+object ImplicitConversions {
 
   implicit def string2ByteArray(value: String): Array[Byte] =
     value.getBytes(StandardCharsets.UTF_8)

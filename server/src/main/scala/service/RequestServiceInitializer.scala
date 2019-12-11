@@ -4,7 +4,7 @@ import akka.actor.{ActorRef, ActorSystem}
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.http.scaladsl.{Http, HttpConnectionContext}
 import akka.stream.{ActorMaterializer, Materializer}
-import akka.util.Timeout
+import common.ChordialDefaults
 import org.slf4j.LoggerFactory
 import schema.service.RequestServiceHandler
 
@@ -30,7 +30,7 @@ class RequestServiceInitializer(requestProcessorActor: ActorRef)(implicit actorS
     import common.ChordialDefaults.EXTERNAL_REQUEST_TIMEOUT
 
     implicit val materializer: Materializer = ActorMaterializer()
-    implicit val execContext: ExecutionContext = actorSystem.dispatcher
+    implicit val executionContext: ExecutionContext = actorSystem.dispatcher
 
     val requestServiceActor = RequestServiceActor(requestProcessorActor)
     log.debug("Initialized request service actor")
@@ -42,7 +42,7 @@ class RequestServiceInitializer(requestProcessorActor: ActorRef)(implicit actorS
       .bindAndHandleAsync(
         service,
         interface = "127.0.0.1",
-        port = 8080,
+        port = ChordialDefaults.EXTERNAL_REQUEST_PORT,
         connectionContext = HttpConnectionContext())
       .foreach {
         binding => log.info(s"gRPC request service bound to ${binding.localAddress}")

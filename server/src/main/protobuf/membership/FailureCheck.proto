@@ -10,7 +10,13 @@ package chordial.membership;
 message Check {}
 message Confirmation {}
 
-service FailureCheckService {
+service FailureDetectorService {
 
+    // RPC for initial failure check, and will be declared SUSPECT if
+    // confirmation cannot be returned
     rpc FailureCheck (Check) returns (Confirmation) {}
+
+    // RPC for followup checks, and will be declared DEAD if none of the
+    // followup checks are able to be confirmed
+    rpc FollowupCheck (Check) returns (Confirmation) {}
 }
