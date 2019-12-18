@@ -1,4 +1,4 @@
-package common.modules.membership
+package common.modules.failureDetection
 
 import scala.concurrent.duration.{Duration, _}
 

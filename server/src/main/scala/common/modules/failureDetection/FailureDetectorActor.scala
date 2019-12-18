@@ -1,4 +1,4 @@
-package common.modules.membership
+package common.modules.failureDetection
 
 import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, ActorSystem, Props}
 import akka.grpc.GrpcClientSettings
@@ -6,9 +6,10 @@ import akka.pattern.ask
 import akka.stream.ActorMaterializer
 import com.risksense.ipaddr.IpAddress
 import common.ChordialDefaults.ACTOR_REQUEST_TIMEOUT
-import common.modules.membership.FailureDetectorConstants._
-import common.modules.membership.FailureDetectorSignal._
+import common.modules.failureDetection.FailureDetectorConstants._
+import common.modules.failureDetection.FailureDetectorSignal._
 import common.modules.membership.MembershipAPI._
+import common.modules.membership._
 import common.utils.ActorTimers.Tick
 import common.utils.{ActorDefaults, ActorTimers}
 import schema.ImplicitDataConversions._
