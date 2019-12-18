@@ -38,7 +38,8 @@ lazy val dependencies =
 lazy val grpcLibraryGroup = Seq(
   dependencies.protoCommon,
   dependencies.grpcCommon,
-  dependencies.scalaProto
+  dependencies.scalaProto,
+  dependencies.ipAddresses
 )
 
 lazy val coreLibraryGroup = Seq(
@@ -80,8 +81,7 @@ lazy val server = (project in file("server"))
     assemblySettings,
     libraryDependencies ++= coreLibraryGroup ++ Seq(
       dependencies.betterFiles,
-      dependencies.hasher,
-      dependencies.ipAddresses
+      dependencies.hasher
     ),
     javaAgents += jettyAgent
   )

@@ -5,27 +5,21 @@ import akka.grpc.GrpcClientSettings
 import akka.pattern.ask
 import akka.stream.ActorMaterializer
 import com.risksense.ipaddr.IpAddress
+import common.ChordialDefaults.ACTOR_REQUEST_TIMEOUT
+import common.modules.membership.FailureDetectorConstants._
+import common.modules.membership.FailureDetectorSignal._
+import common.modules.membership.MembershipAPI._
 import common.utils.ActorTimers.Tick
 import common.utils.{ActorDefaults, ActorTimers}
+import schema.ImplicitDataConversions._
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import scala.language.implicitConversions
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Success}
 
 
 object FailureDetectorActor {
-
-  private case class DirectResponse(target: Membership, directResult: Try[Confirmation])
-
-  private case class FollowupRequest(target: Membership)
-  private case class FollowupResponse(target: Membership, followupResult: Try[Confirmation])
-
-  private val CONNECTIONS_DEADLINE: Duration = 20.second
-
-  private val DIRECT_CONNECTIONS_LIMIT: Int = 5
-  private val FOLLOWUP_TEAM_SIZE: Int = 3 // TODO move this somewhere better
-
 
   def apply(membershipActor: ActorRef)(implicit actorContext: ActorContext, actorSystem: ActorSystem): ActorRef =
     actorContext.actorOf(
@@ -51,10 +45,6 @@ class FailureDetectorActor
   private var pendingDirectChecks: Set[Membership] = Set[Membership]()
   private var pendingFollowupChecks: Map[Membership, Int] = Map[Membership, Int]()
 
-  import FailureDetectorActor._
-  import MembershipAPI._
-  import common.ChordialDefaults.INTERNAL_REQUEST_TIMEOUT
-
   start(1500.millisecond)
 
 
@@ -64,7 +54,7 @@ class FailureDetectorActor
         ipAddress.toString,
         common.ChordialDefaults.FAILURE_DETECTOR_PORT
       )
-      .withDeadline(CONNECTIONS_DEADLINE)
+      .withDeadline(SUSPICION_DEADLINE)
 
   override def receive: Receive = {
 
@@ -98,7 +88,6 @@ class FailureDetectorActor
         pendingDirectChecks = pendingDirectChecks - target
 
       case Failure(_) =>
-        membershipActor ! DeclareEvent(NodeState.SUSPECT, target)
         self ! FollowupRequest(target)
     }
 
@@ -114,10 +103,10 @@ class FailureDetectorActor
           requestResult.par.foreach { member =>
 
             val grpcClient = FailureDetectorServiceClient(member.ipAddress)
-            // TODO update pendingFollowupChecks
+            pendingFollowupChecks = pendingFollowupChecks + (member -> requestResult.size)
 
             log.debug(s"Calling ${member} for indirect check on ${target}")
-            grpcClient.followupCheck(FollowupMessage(target.ipAddress.key._1.toInt)).onComplete {
+            grpcClient.followupCheck(FollowupMessage(target.ipAddress)).onComplete {
               self ! FollowupResponse(member, _)
             }
           }
@@ -126,10 +115,25 @@ class FailureDetectorActor
       }
     }
 
-    case FollowupResponse(suspect, followupResult) => followupResult match {
-      case Success(_) => ???
-      case Failure(_) => ???
+    case FollowupResponse(target, followupResult) => followupResult match {
+
+      case Success(_) =>
+        pendingFollowupChecks = pendingFollowupChecks - target
+
+      case Failure(_) =>
+        pendingFollowupChecks = pendingFollowupChecks.updated(target, pendingFollowupChecks(target) - 1)
+
+        if (pendingFollowupChecks(target) <= 0) {
+          pendingFollowupChecks = pendingFollowupChecks - target
+          membershipActor ! DeclareEvent(NodeState.SUSPECT, target)
+
+          // TODO declare DEAD after some period of time
+        }
     }
+
+    case DeclareDeath(target) => ???
+
+    case AbsolveDeath(target) => ???
 
     case x => log.error(receivedUnknown(x))
   }

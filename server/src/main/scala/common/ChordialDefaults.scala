@@ -11,6 +11,7 @@ object ChordialDefaults {
 
   implicit val EXTERNAL_REQUEST_TIMEOUT: Timeout = Timeout(Duration(10, TimeUnit.SECONDS))
   implicit val INTERNAL_REQUEST_TIMEOUT: Timeout = Timeout(Duration(20, TimeUnit.SECONDS))
+  implicit val ACTOR_REQUEST_TIMEOUT: Timeout = Timeout(Duration(2500, TimeUnit.MILLISECONDS))
 
   val EXTERNAL_REQUEST_PORT: Int = 8080
   val MEMBERSHIP_GOSSIP_PORT: Int = 22200
