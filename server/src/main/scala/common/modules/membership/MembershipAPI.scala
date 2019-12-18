@@ -1,13 +1,19 @@
 package common.modules.membership
 
+import akka.actor.ActorRef
 import com.risksense.ipaddr.IpAddress
 
 
 // A named tuple that contains the node ID and IP address
-case class MembershipPair private(nodeID: String, ipAddress: IpAddress)
+case class Membership private(nodeID: String, ipAddress: IpAddress) {
+
+  override def toString: String = s"[${nodeID}, ${ipAddress}]"
+}
 
 
 object MembershipAPI {
+
+  case class GetClusterSize()
 
   /**
    * Requests a random node of the specified node state. Returns an `Option[MembershipPair]`
@@ -30,5 +36,24 @@ object MembershipAPI {
   case class GetRandomNodes(number: Int, nodeState: NodeState = NodeState.ALIVE)
 
 
-  case class ReportEvent(nodeState: NodeState, membershipPair: MembershipPair)
+  /**
+   * Signals the membership actor to broadcast the declaration across to the other nodes
+   *
+   * @param nodeState state of the node
+   * @param membershipPair node identifier
+   */
+  case class DeclareEvent(nodeState: NodeState, membershipPair: Membership)
+
+  /**
+   * Signals the membership actor to update its internal information with the reported event,
+   * as well as publish the event to any subscribers
+   *
+   * @param nodeState state of the node
+   * @param membershipPair node identifier
+   */
+  case class ReportEvent(nodeState: NodeState, membershipPair: Membership)
+
+
+  case class Subscribe()(implicit actorRef: ActorRef)
+  case class Unsubscribe()(implicit actorRef: ActorRef)
 }

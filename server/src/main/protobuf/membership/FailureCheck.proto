@@ -7,16 +7,22 @@ option java_outer_classname = "ChordialFailureCheck";
 package chordial.membership;
 
 
-message Check {}
+message DirectMessage {}
+
+message FollowupMessage {
+    required fixed32 ipAddress = 1;
+}
+
 message Confirmation {}
+
 
 service FailureDetectorService {
 
     // RPC for initial failure check, and will be declared SUSPECT if
     // confirmation cannot be returned
-    rpc FailureCheck (Check) returns (Confirmation) {}
+    rpc DirectCheck (DirectMessage) returns (Confirmation) {}
 
     // RPC for followup checks, and will be declared DEAD if none of the
     // followup checks are able to be confirmed
-    rpc FollowupCheck (Check) returns (Confirmation) {}
+    rpc FollowupCheck (FollowupMessage) returns (Confirmation) {}
 }

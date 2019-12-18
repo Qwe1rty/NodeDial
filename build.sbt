@@ -10,6 +10,7 @@ lazy val dependencies =
     val protoCommonV = "1.16.0"
     val grpcCommonV = "1.16.0"
     val scalaProtoV = scalapb.compiler.Version.scalapbVersion
+    val ipAddressesV = "1.0.2"
 
     val akkaActorV = "2.6.0"
     val akkaStreamV = "2.6.0"
@@ -18,12 +19,12 @@ lazy val dependencies =
     val logbackV = "1.2.3"
     val betterFilesV = "3.8.0"
     val hasherV = "1.2.2"
-    val ipAddressesV = "1.0.2"
 
 
     val protoCommon =  "com.google.api.grpc"  % "proto-google-common-protos" % protoCommonV % "protobuf"
     val grpcCommon  = "com.google.api.grpc"   % "grpc-google-common-protos"  % grpcCommonV  % "protobuf"
     val scalaProto  = "com.thesamet.scalapb" %% "scalapb-runtime"            % scalaProtoV  % "protobuf"
+    val ipAddresses = "com.risksense"         % "ipaddr_2.12"                % ipAddressesV
 
     val akkaActor   = "com.typesafe.akka"    %% "akka-actor"                 % akkaActorV
     val akkaStream  = "com.typesafe.akka"    %% "akka-stream"                % akkaStreamV
@@ -32,7 +33,6 @@ lazy val dependencies =
     val logback     = "ch.qos.logback"        % "logback-classic"            % logbackV
     val betterFiles = "com.github.pathikrit" %% "better-files"               % betterFilesV
     val hasher      = "com.outr"             %% "hasher"                     % hasherV
-    val ipAddresses = "com.risksense"         % "ipaddr_2.12"                % ipAddressesV
   }
 
 lazy val grpcLibraryGroup = Seq(

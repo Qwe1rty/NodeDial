@@ -3,7 +3,7 @@ import akka.grpc.GrpcClientSettings
 import akka.stream.ActorMaterializer
 import com.typesafe.config.ConfigFactory
 import org.slf4j.LoggerFactory
-import schema.ImplicitConversions._
+import schema.ImplicitGrpcConversions._
 import schema.service.{GetRequest, PostRequest, RequestService, RequestServiceClient}
 
 import scala.concurrent.ExecutionContextExecutor

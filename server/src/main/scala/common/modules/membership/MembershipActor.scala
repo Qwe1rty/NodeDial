@@ -5,7 +5,7 @@ import com.risksense.ipaddr.IpAddress
 import com.roundeights.hasher.Implicits._
 import common.ChordialConstants
 import common.modules.addresser.AddressRetriever
-import schema.ImplicitConversions._
+import schema.ImplicitGrpcConversions._
 
 
 object MembershipActor {
