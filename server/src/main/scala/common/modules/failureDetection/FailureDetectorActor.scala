@@ -1,10 +1,8 @@
 package common.modules.failureDetection
 
 import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, ActorSystem, Props}
-import akka.grpc.GrpcClientSettings
 import akka.pattern.ask
 import akka.stream.ActorMaterializer
-import com.risksense.ipaddr.IpAddress
 import common.ChordialDefaults.ACTOR_REQUEST_TIMEOUT
 import common.modules.failureDetection.FailureDetectorConstants._
 import common.modules.failureDetection.FailureDetectorSignal._
@@ -49,92 +47,95 @@ class FailureDetectorActor
   start(1500.millisecond)
 
 
-  implicit def grpcSettingsFactory(ipAddress: IpAddress): GrpcClientSettings =
-    GrpcClientSettings
-      .connectToServiceAt(
-        ipAddress.toString,
-        common.ChordialDefaults.FAILURE_DETECTOR_PORT
-      )
-      .withDeadline(SUSPICION_DEADLINE)
-
+  // TODO possible version number tracing (from the membership actor) during failure detection cycle
   override def receive: Receive = {
 
     case Tick => if (scheduledDirectChecks < DIRECT_CONNECTIONS_LIMIT) {
-
-      scheduledDirectChecks = scheduledDirectChecks + 1
+      scheduledDirectChecks += 1
 
       (membershipActor ? GetRandomNode())
         .mapTo[Option[Membership]]
-        .onComplete {
+        .onComplete(self ! DirectRequest(_))
+    }
 
-        case Success(requestResult) => requestResult.foreach { target =>
+    case DirectRequest(potentialTarget) => potentialTarget match {
 
-          val grpcClient = FailureDetectorServiceClient(target.ipAddress)
-          pendingDirectChecks = pendingDirectChecks + target
+      case Success(requestResult) => requestResult.foreach { target =>
+        val grpcClient = FailureDetectorServiceClient(createGrpcSettings(target.ipAddress, SUSPICION_DEADLINE))
+        pendingDirectChecks += target
 
-          log.debug(s"Attempting to check failure for node ${target}")
-          grpcClient.directCheck(DirectMessage()).onComplete {
-            self ! DirectResponse(target, _)
-          }
+        log.debug(s"Attempting to check failure for node ${target}")
+        grpcClient.directCheck(DirectMessage()).onComplete {
+          self ! DirectResponse(target, _)
         }
+      }
 
-        case Failure(e) => log.error(s"Error encountered on membership random node request: ${e}")
+      case Failure(e) => {
+        log.error(s"Error encountered on membership random node request: ${e}")
+        scheduledDirectChecks -= 1
       }
     }
 
     case DirectResponse(target, directResult) => directResult match {
 
       case Success(_) =>
-        scheduledDirectChecks = scheduledDirectChecks - 1
-        pendingDirectChecks = pendingDirectChecks - target
+        scheduledDirectChecks -= 1
+        pendingDirectChecks -= target
 
       case Failure(_) =>
-        self ! FollowupRequest(target)
+        self ! FollowupTrigger(target)
     }
 
-    case FollowupRequest(target) => {
+
+    case FollowupTrigger(target) => {
 
       (membershipActor ? GetRandomNodes(FOLLOWUP_TEAM_SIZE))
         .mapTo[Seq[Membership]]
-        .onComplete {
+        .onComplete(self ! FollowupRequest(target, _))
+    }
 
-        case Success(requestResult) =>
+    case FollowupRequest(target, followupTeam) => followupTeam match {
 
-          log.debug(s"Attempting to followup on suspected dead node ${target}")
-          requestResult.par.foreach { member =>
+      case Success(requestResult) =>
+        log.debug(s"Attempting to followup on suspected dead node ${target}")
+        requestResult.foreach { member =>
 
-            val grpcClient = FailureDetectorServiceClient(member.ipAddress)
-            pendingFollowupChecks = pendingFollowupChecks + (member -> requestResult.size)
+          val grpcClient = FailureDetectorServiceClient(createGrpcSettings(member.ipAddress, DEATH_DEADLINE))
+          pendingFollowupChecks = pendingFollowupChecks + (member -> requestResult.size)
 
-            log.debug(s"Calling ${member} for indirect check on ${target}")
-            grpcClient.followupCheck(FollowupMessage(target.ipAddress)).onComplete {
-              self ! FollowupResponse(member, _)
-            }
+          log.debug(s"Calling ${member} for indirect check on ${target}")
+          grpcClient.followupCheck(FollowupMessage(target.ipAddress)).onComplete {
+            self ! FollowupResponse(member, _)
           }
+        }
 
-        case Failure(e) => log.error(s"Error encountered on ${FOLLOWUP_TEAM_SIZE} random node request: ${e}")
-      }
+      case Failure(e) => log.error(s"Error encountered on ${FOLLOWUP_TEAM_SIZE} random node request: ${e}")
     }
 
     case FollowupResponse(target, followupResult) => followupResult match {
 
       case Success(_) =>
-        pendingFollowupChecks = pendingFollowupChecks - target
+        pendingFollowupChecks -= target
+        log.debug(s"Followup on target ${target} successful, removing suspicion status")
 
       case Failure(_) =>
-        pendingFollowupChecks = pendingFollowupChecks.updated(target, pendingFollowupChecks(target) - 1)
+        pendingFollowupChecks += target -> (pendingFollowupChecks(target) - 1)
+        log.debug(s"Followup failure on target ${target}, ")
 
         if (pendingFollowupChecks(target) <= 0) {
-          pendingFollowupChecks = pendingFollowupChecks - target
+          pendingFollowupChecks -= target
           membershipActor ! DeclareEvent(NodeState.SUSPECT, target)
+          log.info(s"Target ${target} seen as suspect, verifying with membership service")
 
-          // TODO declare DEAD after some period of time
+          actorSystem.scheduler.scheduleOnce(DEATH_DEADLINE)(self ! DeclareDeath(target))
         }
     }
 
-    case DeclareDeath(target) => ???
 
-    case AbsolveDeath(target) => ???
+    case DeclareDeath(target) => {
+      membershipActor ! DeclareEvent(NodeState.DEAD, target)
+      log.info(s"Death timer run out for ${target}, verifying with membership service for possible declaration")
+    }
 
     case x => log.error(receivedUnknown(x))
   }

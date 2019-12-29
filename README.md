@@ -22,21 +22,25 @@ An attempt at making a distributed system
   - [x] Logging that should work in Akka actor contexts and non-actor contexts
   - [x] Multi-subproject setup for common components
   - [x] Basic testing of core functionality
-  - [ ] Service containerization
 - [ ] **Milestone 2: Cluster Membership**
-  - [ ] Membership list of other nodes' IPs  
-  - [ ] Joining/Failure detection
-    - [ ] Initial direct check
-    - [ ] Followup indirect checks after first missing ACK
-  - [ ] Gossip component
-    - [ ] Push mechanism
-    - [ ] Pull mechanism
-    - [ ] Support/API for arbitrary gRPC services
+  - [ ] Membership list of other nodes' IPs
+    - [ ] Node state tracking and broadcasting, following the SWIM protocol
+      - [ ] Cluster joining
+      - [ ] Suspicion/death refutation
+      - [ ] Cluster leaving
+    - [ ] Gossip component
+      - [ ] Push mechanism for join/leave broadcasting
+      - [ ] Pull mechanism for anti-entropy
+    - [x] Failure detection
+      - [x] Initial direct check
+      - [x] Followup indirect checks after first missing ACK
   - [ ] Local kubernetes cluster setup and integration
+    - [ ] Service containerization
 - [ ] **Milestone 3: Partitioning Layer**
-  - [ ] Partitioning via consistent hashing (following chord algo)
-    - [ ] Finger table initialization
-    - [ ] Dynamic partition dividing/merges on node join/failure
+  - [ ] Partitioning via virtual nodes
+    - [ ] Partition ring structure
+    - [ ] Dynamic repartition dividing/merges on node join/failure
+    - [ ] Data shuffling on node membership changes
   - [ ] Better testing, should be able to do some failure case handling
 - [ ] **Milestone 4: Replication Layer**
   - [ ] Replication scheme, quorum handling
@@ -44,7 +48,7 @@ An attempt at making a distributed system
   - [ ] Cluster-wide concurrent write handling, vector versioning
   - [ ] Consistency/node failure testing
 - [ ] **Milestone 5: Transaction Layer**
-  - [ ] Distributed transactions (2PC)
+  - [ ] Distributed transactions (2PC?)
   - [ ] _TODO_
 
 ---
