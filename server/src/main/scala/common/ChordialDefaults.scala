@@ -14,8 +14,7 @@ object ChordialDefaults {
   implicit val ACTOR_REQUEST_TIMEOUT: Timeout = Timeout(Duration(2500, TimeUnit.MILLISECONDS))
 
   val EXTERNAL_REQUEST_PORT: Int = 8080
-  val MEMBERSHIP_GOSSIP_PORT: Int = 22200
-  val FAILURE_DETECTOR_PORT: Int = 22201
+  val MEMBERSHIP_PORT: Int = 22200
 
 
   // Used to determine how large a buffer of any container of nodes is

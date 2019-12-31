@@ -21,7 +21,7 @@ private object ChordialClient extends App {
   val log = LoggerFactory.getLogger(ChordialClient.getClass)
   log.info("Client config loaded")
 
-  implicit val actorSystem: ActorSystem = ActorSystem("HelloWorldClient", config)
+  implicit val actorSystem: ActorSystem = ActorSystem("ChordialClient", config)
   implicit val materializer: ActorMaterializer = ActorMaterializer()
   implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
   log.info("Implicit Akka structures initialized")

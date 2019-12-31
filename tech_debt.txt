@@ -20,3 +20,6 @@ PERSISTENCE:
 - Allow for concurrent read access to the same key OR some type of manual caching
 - Replace .get calls for the pendingRequest: Option[ActorRef] in KeyStateActor
 - Formalize KeyStateActor to an actual state machine
+
+MEMBERSHIP:
+- Move the "Tick" publish semaphore to the ActorTimers trait

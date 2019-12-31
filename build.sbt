@@ -1,7 +1,7 @@
 import com.lightbend.sbt.javaagent.JavaAgent.JavaAgentKeys.javaAgents
 import sbt.project
 
-ThisBuild / version := "1.0.0"
+ThisBuild / version := "1.1.0"
 ThisBuild / scalaVersion := "2.12.0"
 
 
@@ -50,40 +50,51 @@ lazy val coreLibraryGroup = Seq(
 lazy val jettyAgent = "org.mortbay.jetty.alpn" % "jetty-alpn-agent" % "2.0.9" % "runtime;test"
 
 
-lazy val api = (project in file("api"))
-  .enablePlugins(AkkaGrpcPlugin, JavaAgent /*ALPN agent*/)
-  .settings(
-    name := "ChordialSchema",
-    libraryDependencies ++= grpcLibraryGroup,
-    javaAgents += jettyAgent
-  )
-  .disablePlugins(AssemblyPlugin)
-
 lazy val root = (project in file("."))
   .aggregate(client, server)
   .disablePlugins(AssemblyPlugin)
 
+lazy val api = (project in file("api"))
+  .enablePlugins(
+    AkkaGrpcPlugin,
+    JavaAgent /*ALPN agent*/
+  )
+  .settings(
+    name := "ChordialSchema",
+    javaAgents += jettyAgent,
+    libraryDependencies ++= grpcLibraryGroup
+  )
+  .disablePlugins(AssemblyPlugin)
+
 
 lazy val client = (project in file("client"))
-  .enablePlugins(AkkaGrpcPlugin, JavaAgent /*ALPN agent*/)
+  .enablePlugins(
+    AkkaGrpcPlugin,
+    JavaAppPackaging,
+    JavaAgent /*ALPN agent*/
+  )
   .settings(
     name := "ChordialClient",
     assemblySettings,
-    libraryDependencies ++= coreLibraryGroup,
-    javaAgents += jettyAgent
+    javaAgents += jettyAgent,
+    libraryDependencies ++= coreLibraryGroup
   )
   .dependsOn(api)
 
 lazy val server = (project in file("server"))
-  .enablePlugins(AkkaGrpcPlugin, JavaAgent /*ALPN agent*/)
+  .enablePlugins(
+    AkkaGrpcPlugin,
+    JavaAppPackaging,
+    JavaAgent /*ALPN agent*/
+  )
   .settings(
     name := "ChordialServer",
     assemblySettings,
+    javaAgents += jettyAgent,
     libraryDependencies ++= coreLibraryGroup ++ Seq(
       dependencies.betterFiles,
       dependencies.hasher
-    ),
-    javaAgents += jettyAgent
+    )
   )
   .dependsOn(api)
 

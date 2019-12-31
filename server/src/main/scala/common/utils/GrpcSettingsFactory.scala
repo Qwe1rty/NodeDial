@@ -11,5 +11,5 @@ trait GrpcSettingsFactory {
 
   def createGrpcSettings
       (ipAddress: IpAddress, timeout: FiniteDuration)
-      (implicit actorSystem: ActorSystem): GrpcClientSettings = ???
+      (implicit actorSystem: ActorSystem): GrpcClientSettings
 }

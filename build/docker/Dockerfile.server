@@ -1,0 +1,9 @@
+FROM openjdk:8-jre-alpine
+
+ARG JAR_FILE
+
+RUN mkdir -p /var/lib/chordial
+WORKDIR /var/lib/chordial
+
+COPY $JAR_FILE build/docker/run.sh ./
+ENTRYPOINT ["./run.sh"]

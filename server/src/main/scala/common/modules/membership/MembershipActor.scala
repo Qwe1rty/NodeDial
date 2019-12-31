@@ -54,8 +54,10 @@ class MembershipActor(addressRetriever: AddressRetriever) extends Actor
 
   override def receive: Receive = {
 
-    case MembershipAPI.GetRandomNodes(nodeState, number) =>
-      // TODO get random
+    case MembershipAPI.GetRandomNode(nodeState) =>
+      sender ! None // TODO
 
+    case MembershipAPI.GetRandomNodes(nodeState, number) =>
+      sender ! Nil // TODO
   }
 }
