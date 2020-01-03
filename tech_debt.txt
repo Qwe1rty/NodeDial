@@ -23,3 +23,7 @@ PERSISTENCE:
 
 MEMBERSHIP:
 - Move the "Tick" publish semaphore to the ActorTimers trait
+- Possibly allow for different seed node and self IP addresser methods
+
+BUILD SETUP:
+- Keep the ports configured in a central place (currently in code, makefile, & docker build)

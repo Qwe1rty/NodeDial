@@ -1,6 +1,6 @@
 package common.modules.failureDetection
 
-import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, ActorSystem, Props}
+import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import akka.pattern.ask
 import akka.stream.ActorMaterializer
 import common.ChordialDefaults.ACTOR_REQUEST_TIMEOUT
@@ -20,8 +20,8 @@ import scala.util.{Failure, Success}
 
 object FailureDetectorActor {
 
-  def apply(membershipActor: ActorRef)(implicit actorContext: ActorContext, actorSystem: ActorSystem): ActorRef =
-    actorContext.actorOf(
+  def apply(membershipActor: ActorRef)(implicit actorSystem: ActorSystem): ActorRef =
+    actorSystem.actorOf(
       Props(new FailureDetectorActor(membershipActor)),
       "failureDetectorActor"
     )

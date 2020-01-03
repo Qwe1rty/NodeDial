@@ -10,7 +10,7 @@ package chordial.membership;
 message DirectMessage {}
 
 message FollowupMessage {
-    required fixed32 ipAddress = 1;
+    required fixed32 ip_address = 1;
 }
 
 message Confirmation {}

@@ -1,10 +1,11 @@
 package common.modules.membership
 
-import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, Props}
+import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import com.risksense.ipaddr.IpAddress
 import com.roundeights.hasher.Implicits._
 import common.ChordialConstants
 import common.modules.addresser.AddressRetriever
+import common.modules.membership.Event.EventType
 import schema.ImplicitGrpcConversions._
 
 
@@ -16,8 +17,8 @@ object MembershipActor {
   private val MEMBERSHIP_FILE      = MEMBERSHIP_DIR/(MEMBERSHIP_FILENAME + MEMBERSHIP_EXTENSION)
 
 
-  def apply(addressRetriever: AddressRetriever)(implicit actorContext: ActorContext): ActorRef =
-    actorContext.actorOf(
+  def apply(addressRetriever: AddressRetriever)(implicit actorSystem: ActorSystem): ActorRef =
+    actorSystem.actorOf(
       Props(new MembershipActor(addressRetriever)),
       "membershipActor"
     )
@@ -53,6 +54,18 @@ class MembershipActor(addressRetriever: AddressRetriever) extends Actor
 
 
   override def receive: Receive = {
+
+    // Event types that arrive from other nodes through the membership gRPC service
+    case event: Event => {
+
+      event.eventType match {
+        case EventType.Join(joinInfo) =>
+        case EventType.Suspect(suspectInfo) =>
+        case EventType.Failure(failureInfo) =>
+        case EventType.Refute(refuteInfo) =>
+        case EventType.Leave(_) =>
+      }
+    }
 
     case MembershipAPI.GetRandomNode(nodeState) =>
       sender ! None // TODO

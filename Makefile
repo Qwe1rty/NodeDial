@@ -1,3 +1,13 @@
+CHORDIAL_VERSION = 1.1.0
+
+DOCKER_SERVER = chordial/server
+DOCKER_CLIENT = chordial/client
+
+
+####################
+## Build commands ##
+####################
+
 clean:
 	@sbt clean
 
@@ -5,33 +15,37 @@ compile: clean
 	@sbt assembly
 
 docker:
-	docker build \
+	@docker build \
 		--build-arg JAR_FILE=$(shell find . -name "*Server-assembly-*.jar") \
 		--file build/docker/Dockerfile.server \
-		--tag chordial/server:latest \
-		--tag chordial/server:1.1.0 \
+		--tag $(DOCKER_SERVER):latest \
+		--tag $(DOCKER_SERVER):$(CHORDIAL_VERSION) \
 		. & \
-	docker build \
+	@docker build \
 		--build-arg JAR_FILE=$(shell find . -name "*Client-assembly-*.jar") \
 		--file build/docker/Dockerfile.client \
-		--tag chordial/client:latest \
-		--tag chordial/client:1.1.0 \
+		--tag $(DOCKER_CLIENT):latest \
+		--tag $(DOCKER_CLIENT):$(CHORDIAL_VERSION) \
 		.
 
 all: compile docker
 
 
-#run-client:
-#	@java -jar $(shell find . -name "*Client-assembly-*.jar")
+##################
+## Run Commands ##
+##################
 
 run-server:
-	docker logs -f $(shell docker run -d chordial/server:latest)
+	@docker logs -f $(shell docker run -d -p 8080 $(DOCKER_SERVER):latest)
 
 log-server:
-	docker logs -f $(shell docker ps -q --filter ancestor="chordial/server:latest")
-
-#kill-client:
-#	docker stop $(shell docker ps -q --filter ancestor="chordial/client:latest")
+	@docker logs -f $(shell docker ps -q --filter ancestor="$(DOCKER_SERVER):latest")
 
 kill-server:
-	docker stop $(shell docker ps -q --filter ancestor="chordial/server:latest")
+	@docker stop $(shell docker ps -q --filter ancestor="$(DOCKER_SERVER):latest")
+
+run-client:
+	@java -jar $(shell find . -name "*Client-assembly-*.jar")
+#
+#kill-client:
+#	docker stop $(shell docker ps -q --filter ancestor="$(DOCKER_CLIENT):latest")
