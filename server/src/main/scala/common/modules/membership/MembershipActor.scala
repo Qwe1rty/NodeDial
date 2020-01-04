@@ -39,6 +39,7 @@ class MembershipActor(addressRetriever: AddressRetriever) extends Actor
 
     if (MEMBERSHIP_FILE.notExists) {
       val newID: String = System.nanoTime().toString.sha256
+      log.info("Node ID not found - generating new ID")
 
       MEMBERSHIP_DIR.createDirectoryIfNotExists()
       MEMBERSHIP_FILE.writeByteArray(newID)
@@ -48,6 +49,7 @@ class MembershipActor(addressRetriever: AddressRetriever) extends Actor
 
     else MEMBERSHIP_FILE.loadBytes
   }
+  log.info(s"Membership has determined node ID: ${nodeID}")
 
   // TODO: contact seed node for full sync
 
@@ -63,6 +65,8 @@ class MembershipActor(addressRetriever: AddressRetriever) extends Actor
       event.eventType match {
 
         case EventType.Join(joinInfo) =>
+          log.debug(s"Join event - ${event.nodeId}")
+          
           if (membershipTable.version(event.nodeId).isDefined) {
             sender ! Some(membershipTable(event.nodeId))
           }
@@ -72,40 +76,55 @@ class MembershipActor(addressRetriever: AddressRetriever) extends Actor
           }
 
         case EventType.Suspect(suspectInfo) =>
+          log.debug(s"Suspect event - ${event.nodeId}")
+          
           if (event.nodeId != nodeID) {
             membershipTable = membershipTable.updated(event.nodeId, NodeState.SUSPECT)
             sender ! None
           }
           else if (suspectInfo.version == membershipTable.version(nodeID).get) {
             membershipTable = membershipTable.increment(nodeID)
-            sender ! Some(membershipTable.version(nodeID))
+            sender ! Some(membershipTable.version(nodeID)) // refute
           }
 
         case EventType.Failure(failureInfo) =>
+          log.debug(s"Failure event - ${event.nodeId}")
+          
+          if (event.nodeId != nodeID) {
+            membershipTable = membershipTable.updated(event.nodeId, NodeState.DEAD)
+            sender ! None
+          }
+          else if (failureInfo.version == membershipTable.version(nodeID).get) { // TODO merge duplicates
+            membershipTable = membershipTable.increment(nodeID)
+            sender ! Some(membershipTable.version(nodeID)) // refute
+          }
 
         case EventType.Refute(refuteInfo) =>
+          log.debug(s"Refute event - ${event.nodeId}")
+          
           membershipTable.version(event.nodeId).foreach(localVersion => {
-            if (refuteInfo.version > localVersion)
-              membershipTable = membershipTable.updated(NodeInfo(
-                event.nodeId,
-                membershipTable.address(event.nodeId).get,
-                refuteInfo.version,
-                NodeState.ALIVE
-              ))
+            if (refuteInfo.version > localVersion) membershipTable = membershipTable.updated(NodeInfo(
+              event.nodeId,
+              membershipTable.address(event.nodeId).get,
+              refuteInfo.version,
+              NodeState.ALIVE
+            ))
           })
 
-        case EventType.Leave(_) => membershipTable -= nodeID
+        case EventType.Leave(_) => {
+          log.debug(s"Leave event - ${event.nodeId}")
+
+          membershipTable -= nodeID
+        }
       }
 
       subscribers.foreach(_ ! event)
     }
 
 
-    case MembershipAPI.GetRandomNode(nodeState) =>
-      sender ! None // TODO
+    case MembershipAPI.GetRandomNode(nodeState) => ???
 
-    case MembershipAPI.GetRandomNodes(nodeState, number) =>
-      sender ! Nil // TODO
+    case MembershipAPI.GetRandomNodes(nodeState, number) => ???
 
 
     case MembershipAPI.Subscribe(actorRef) => subscribers += actorRef

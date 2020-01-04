@@ -53,7 +53,7 @@ class FailureDetectorActor
     case Tick => if (scheduledDirectChecks < DIRECT_CONNECTIONS_LIMIT) {
       scheduledDirectChecks += 1
 
-      (membershipActor ? GetRandomNode())
+      (membershipActor ? GetRandomNode(NodeState.ALIVE))
         .mapTo[Option[Membership]]
         .onComplete(self ! DirectRequest(_))
     }
@@ -89,7 +89,7 @@ class FailureDetectorActor
 
     case FollowupTrigger(target) => {
 
-      (membershipActor ? GetRandomNodes(FOLLOWUP_TEAM_SIZE))
+      (membershipActor ? GetRandomNodes(NodeState.ALIVE, FOLLOWUP_TEAM_SIZE))
         .mapTo[Seq[Membership]]
         .onComplete(self ! FollowupRequest(target, _))
     }

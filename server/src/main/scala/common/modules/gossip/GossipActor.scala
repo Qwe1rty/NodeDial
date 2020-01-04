@@ -15,7 +15,7 @@ object GossipActor {
 
 
 class GossipActor
-    (membershipActor: ActorRef)
+    (membershipActor: ActorRef, delay: FiniteDuration)
     (implicit ec: ExecutionContext)
   extends Actor
   with ActorLogging
@@ -24,7 +24,7 @@ class GossipActor
 
   import GossipActor.Response
 
-  start(100.millisecond)
+  start(delay)
 
 
   override def receive: Receive = {

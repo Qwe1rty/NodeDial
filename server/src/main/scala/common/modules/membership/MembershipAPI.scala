@@ -33,7 +33,7 @@ object MembershipAPI {
    * @param number requested number of other random nodes
    * @param nodeState the state that the random nodes will be drawn from
    */
-  case class GetRandomNodes(number: Int, nodeState: NodeState = NodeState.ALIVE)
+  case class GetRandomNodes(nodeState: NodeState = NodeState.ALIVE, number: Int = 1)
 
 
   /**

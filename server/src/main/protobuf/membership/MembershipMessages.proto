@@ -78,7 +78,7 @@ message Event {
 }
 
 message EventReply {
-    optional NodeInfo node_info = 1;
+    optional NodeInfo node_info = 1; // Currently unused
 }
 
 
