@@ -20,13 +20,14 @@ docker:
 		--file build/docker/Dockerfile.server \
 		--tag $(DOCKER_SERVER):latest \
 		--tag $(DOCKER_SERVER):$(CHORDIAL_VERSION) \
-		. & \
-	@docker build \
-		--build-arg JAR_FILE=$(shell find . -name "*Client-assembly-*.jar") \
-		--file build/docker/Dockerfile.client \
-		--tag $(DOCKER_CLIENT):latest \
-		--tag $(DOCKER_CLIENT):$(CHORDIAL_VERSION) \
 		.
+#		. & \
+#	docker build \
+#		--build-arg JAR_FILE=$(shell find . -name "*Client-assembly-*.jar") \
+#		--file build/docker/Dockerfile.client \
+#		--tag $(DOCKER_CLIENT):latest \
+#		--tag $(DOCKER_CLIENT):$(CHORDIAL_VERSION) \
+#		.
 
 all: compile docker
 
@@ -36,7 +37,7 @@ all: compile docker
 ##################
 
 run-server:
-	@docker logs -f $(shell docker run -d -p 8080 $(DOCKER_SERVER):latest)
+	@docker logs -f $(shell docker run -d -p 8080:8080 $(DOCKER_SERVER):latest)
 
 log-server:
 	@docker logs -f $(shell docker ps -q --filter ancestor="$(DOCKER_SERVER):latest")

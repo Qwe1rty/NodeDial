@@ -25,5 +25,8 @@ MEMBERSHIP:
 - Move the "Tick" publish semaphore to the ActorTimers trait
 - Possibly allow for different seed node and self IP addresser methods
 
+PARTITIONING:
+- Eventually decouple the hash range join from the membership join through separate gossips
+
 BUILD SETUP:
 - Keep the ports configured in a central place (currently in code, makefile, & docker build)

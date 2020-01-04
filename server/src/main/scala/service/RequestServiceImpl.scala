@@ -14,10 +14,8 @@ import scala.concurrent.{ExecutionContext, Future}
 
 object RequestServiceImpl {
 
-  def apply(requestServiceActor: ActorRef)(implicit actorSystem: ActorSystem): RequestService = {
-
+  def apply(requestServiceActor: ActorRef)(implicit actorSystem: ActorSystem): RequestService =
     new RequestServiceImpl(requestServiceActor)
-  }
 }
 
 
@@ -27,8 +25,8 @@ class RequestServiceImpl(requestServiceActor: ActorRef)(implicit actorSystem: Ac
   implicit val executionContext: ExecutionContext = actorSystem.dispatcher
 
   final private val log = LoggerFactory.getLogger(RequestServiceImpl.getClass)
+  final private val service: HttpRequest => Future[HttpResponse] = RequestServiceHandler(this)
 
-  val service: HttpRequest => Future[HttpResponse] = RequestServiceHandler(this)
   Http()
     .bindAndHandleAsync(
       service,

@@ -54,6 +54,39 @@ object MembershipAPI {
   case class ReportEvent(nodeState: NodeState, membershipPair: Membership)
 
 
-  case class Subscribe()(implicit actorRef: ActorRef)
-  case class Unsubscribe()(implicit actorRef: ActorRef)
+  /**
+   * Registers an actor to receive incoming event updates from the membership module
+   *
+   * @param actorRef actor reference
+   */
+  case class Subscribe(actorRef: ActorRef)
+
+  object Subscribe {
+
+    def apply()(implicit actorRef: ActorRef, d: Disambiguate.type): Subscribe =
+      Subscribe(actorRef)
+  }
+
+  /**
+   * Removes an actor from the membership module's event update list
+   *
+   * @param actorRef actor reference
+   */
+  case class Unsubscribe(actorRef: ActorRef)
+
+  object Unsubscribe {
+
+    def apply()(implicit actorRef: ActorRef, d: Disambiguate.type): Unsubscribe =
+      Unsubscribe(actorRef)
+  }
+
+  /**
+   * An object that allows for the creation of the Subscribe and Unsubscribe objects through
+   * implicit passing of the "self" field in an actor
+   *
+   * Since the companion object's "apply" function appears the same as the class constructors
+   * after type erasure, this ensures that they are actually different as there's effectively
+   * a new parameter
+   */
+  private implicit object Disambiguate
 }

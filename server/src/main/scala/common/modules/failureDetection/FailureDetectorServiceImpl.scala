@@ -1,8 +1,11 @@
 package common.modules.failureDetection
 
 import akka.actor.ActorSystem
+import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
+import akka.http.scaladsl.{Http, HttpConnectionContext}
 import akka.stream.ActorMaterializer
 import com.risksense.ipaddr.IpAddress
+import common.ChordialDefaults
 import common.modules.failureDetection.FailureDetectorConstants.{SUSPICION_DEADLINE, createGrpcSettings}
 import common.modules.membership._
 import org.slf4j.LoggerFactory
@@ -12,7 +15,11 @@ import service.RequestServiceImpl
 import scala.concurrent.{ExecutionContext, Future}
 
 
-object FailureDetectorServiceImpl
+object FailureDetectorServiceImpl {
+
+  def apply()(implicit actorSystem: ActorSystem): FailureDetectorService =
+    new FailureDetectorServiceImpl()
+}
 
 
 class FailureDetectorServiceImpl(implicit actorSystem: ActorSystem) extends FailureDetectorService {
@@ -21,6 +28,17 @@ class FailureDetectorServiceImpl(implicit actorSystem: ActorSystem) extends Fail
   implicit private val executionContext: ExecutionContext = actorSystem.dispatcher
 
   final private val log = LoggerFactory.getLogger(RequestServiceImpl.getClass)
+  final private val service: HttpRequest => Future[HttpResponse] = FailureDetectorServiceHandler(this)
+
+  Http()
+    .bindAndHandleAsync(
+      service,
+      interface = "127.0.0.1",
+      port = ChordialDefaults.MEMBERSHIP_PORT,
+      connectionContext = HttpConnectionContext())
+    .foreach(
+      binding => log.info(s"Failure detector service bound to ${binding.localAddress}")
+    )
 
 
   /**
