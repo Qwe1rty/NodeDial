@@ -6,8 +6,8 @@ import common.ChordialConstants
 import common.modules.addresser.AddressRetriever
 import common.modules.membership.Event.EventType
 import common.utils.ActorDefaults
+import schema.ImplicitDataConversions._
 import schema.ImplicitGrpcConversions._
-
 
 object MembershipActor {
 
@@ -57,9 +57,9 @@ class MembershipActor(addressRetriever: AddressRetriever) extends Actor
   override def receive: Receive = {
 
     // Event types that arrive from other nodes through the membership gRPC service
+    // TODO replace the "sender ! ..." pattern with separate gossip component
     case event: Event => {
 
-      subscribers.foreach(_ ! event)
       event.eventType match {
 
         case EventType.Join(joinInfo) =>
@@ -72,13 +72,34 @@ class MembershipActor(addressRetriever: AddressRetriever) extends Actor
           }
 
         case EventType.Suspect(suspectInfo) =>
-
+          if (event.nodeId != nodeID) {
+            membershipTable = membershipTable.updated(event.nodeId, NodeState.SUSPECT)
+            sender ! None
+          }
+          else if (suspectInfo.version == membershipTable.version(nodeID).get) {
+            membershipTable = membershipTable.increment(nodeID)
+            sender ! Some(membershipTable.version(nodeID))
+          }
 
         case EventType.Failure(failureInfo) =>
+
         case EventType.Refute(refuteInfo) =>
-        case EventType.Leave(_) =>
+          membershipTable.version(event.nodeId).foreach(localVersion => {
+            if (refuteInfo.version > localVersion)
+              membershipTable = membershipTable.updated(NodeInfo(
+                event.nodeId,
+                membershipTable.address(event.nodeId).get,
+                refuteInfo.version,
+                NodeState.ALIVE
+              ))
+          })
+
+        case EventType.Leave(_) => membershipTable -= nodeID
       }
+
+      subscribers.foreach(_ ! event)
     }
+
 
     case MembershipAPI.GetRandomNode(nodeState) =>
       sender ! None // TODO
@@ -86,9 +107,11 @@ class MembershipActor(addressRetriever: AddressRetriever) extends Actor
     case MembershipAPI.GetRandomNodes(nodeState, number) =>
       sender ! Nil // TODO
 
+
     case MembershipAPI.Subscribe(actorRef) => subscribers += actorRef
 
     case MembershipAPI.Unsubscribe(actorRef) => subscribers -= actorRef
+
 
     case x => log.error(receivedUnknown(x))
   }

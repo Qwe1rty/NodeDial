@@ -11,9 +11,7 @@ databases such as Redis, Cassandra, and Dynamo
 ## Project Plan
 
 This is a loose outline of all the core features that should be included, and the order
-of implementation
-
-_Italics indicate that this component is in progress_
+of implementation. _Italics indicate that this component is in progress_
 
 - [x] **Milestone 0: Setup**
   - [x] Repo and build setup
@@ -58,11 +56,12 @@ _Italics indicate that this component is in progress_
 ---
 ## Project Setup
 
-Install Scala/SBT: <https://www.techrepublic.com/article/how-to-install-sbt-on-ubuntu-for-scala-and-java-projects/>
+First, the project build requires that you have some prerequisites installed on your system: 
+* Install Scala/SBT: <https://www.techrepublic.com/article/how-to-install-sbt-on-ubuntu-for-scala-and-java-projects/>
+* Install protobuf: <https://github.com/protocolbuffers/protobuf>
+* (Windows/WSL only) Reconfigure Docker: <https://nickjanetakis.com/blog/setting-up-docker-for-windows-and-wsl-to-work-flawlessly>
 
-Install protobuf: <https://github.com/protocolbuffers/protobuf>
-
-Run `make all` at project root, which will build the fat JARs and locally create the server
+Afterwards, run `make all` at project root, which will build the fat JARs and locally create the server
 docker image. Then, run `make run-server` to start it up
 
 When you `Ctrl-C` the terminal that the server was started on, it detach the terminal from
