@@ -18,13 +18,14 @@ private[failureDetection] object FailureDetectorConstants extends GrpcSettingsFa
 
 
   override def createGrpcSettings
-      (ipAddress: IpAddress, timeout: FiniteDuration)
-      (implicit actorSystem: ActorSystem): GrpcClientSettings = {
+  (ipAddress: IpAddress, timeout: FiniteDuration)
+  (implicit actorSystem: ActorSystem): GrpcClientSettings = {
 
     GrpcClientSettings
       .connectToServiceAt(
         ipAddress.toString,
         common.ChordialDefaults.MEMBERSHIP_PORT
       )
+      .withDeadline(timeout)
   }
 }

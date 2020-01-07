@@ -40,9 +40,10 @@ class MembershipServiceImpl(membershipActor: ActorRef)(implicit actorSystem: Act
   /**
    * Push-based synchronization RPC
    */
-  override def publish(in: Event): Future[EventReply] = {
+  override def publish(event: Event): Future[EventReply] = {
 
-    ???
+    membershipActor ! event
+    Future.successful(EventReply())
   }
 
   /**

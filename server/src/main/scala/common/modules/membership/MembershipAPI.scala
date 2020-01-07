@@ -4,7 +4,12 @@ import akka.actor.ActorRef
 import com.risksense.ipaddr.IpAddress
 
 
-// A named tuple that contains the node ID and IP address
+/**
+ * A named tuple that contains the node ID and IP address
+ *
+ * @param nodeID the node ID
+ * @param ipAddress the IP address
+ */
 case class Membership private(nodeID: String, ipAddress: IpAddress) {
 
   override def toString: String = s"[${nodeID}, ${ipAddress}]"
@@ -79,6 +84,7 @@ object MembershipAPI {
     def apply()(implicit actorRef: ActorRef, d: Disambiguate.type): Unsubscribe =
       Unsubscribe(actorRef)
   }
+
 
   /**
    * An object that allows for the creation of the Subscribe and Unsubscribe objects through

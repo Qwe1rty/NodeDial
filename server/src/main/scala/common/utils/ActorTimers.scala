@@ -17,7 +17,7 @@ trait ActorTimers extends Timers {
 
   import ActorTimers._
 
-  def start(delay: FiniteDuration): Unit =
+  def start(delay: FiniteDuration, key: Any = TimerKey): Unit =
     timers.startTimerWithFixedDelay(TimerKey, Tick, delay)
 
   def stop(): Unit = timers.cancel(TimerKey)
