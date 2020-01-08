@@ -2,12 +2,16 @@ package common.modules.membership
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import com.roundeights.hasher.Implicits._
-import common.ChordialConstants
+import common.{ChordialConstants, ChordialDefaults}
 import common.modules.addresser.AddressRetriever
+import common.modules.gossip.GossipAPI.PublishRequest
+import common.modules.gossip.{GossipActor, GossipKey}
 import common.modules.membership.Event.EventType
 import common.utils.ActorDefaults
 import schema.ImplicitDataConversions._
 import schema.ImplicitGrpcConversions._
+
+import scala.concurrent.duration._
 
 object MembershipActor {
 
@@ -25,9 +29,13 @@ object MembershipActor {
 }
 
 
-class MembershipActor(addressRetriever: AddressRetriever) extends Actor
-                                                          with ActorLogging
-                                                          with ActorDefaults {
+class MembershipActor
+    (addressRetriever: AddressRetriever)
+    (implicit actorSystem: ActorSystem)
+  extends Actor
+  with ActorLogging
+  with ActorDefaults {
+
   import MembershipActor._
 
   private var subscribers = Set[ActorRef]()
@@ -53,6 +61,8 @@ class MembershipActor(addressRetriever: AddressRetriever) extends Actor
 
   // TODO: contact seed node for full sync
 
+  private val gossipActor = GossipActor(self, 200.millisecond, "membership")
+
   //// wait on signal from partition actor to gossip join event (call RPC publish on seed node)
 
 
@@ -66,13 +76,9 @@ class MembershipActor(addressRetriever: AddressRetriever) extends Actor
 
         case EventType.Join(joinInfo) =>
           log.debug(s"Join event - ${event.nodeId}")
-          
-          if (membershipTable.version(event.nodeId).isDefined) {
-            sender ! Some(membershipTable(event.nodeId))
-          }
-          else {
+
+          if (membershipTable.version(event.nodeId).isEmpty) {
             membershipTable += NodeInfo(event.nodeId, joinInfo.ipAddress, 0, NodeState.ALIVE)
-            sender ! None
           }
 
         case EventType.Suspect(suspectInfo) =>
@@ -80,11 +86,15 @@ class MembershipActor(addressRetriever: AddressRetriever) extends Actor
           
           if (event.nodeId != nodeID) {
             membershipTable = membershipTable.updated(event.nodeId, NodeState.SUSPECT)
-            sender ! None
           }
           else if (suspectInfo.version == membershipTable.version(nodeID).get) {
             membershipTable = membershipTable.increment(nodeID)
-            sender ! Some(membershipTable.version(nodeID)) // refute
+
+            gossipActor ! PublishRequest(
+              GossipKey(nodeID, None),
+              ChordialDefaults.bufferCapacity(membershipTable.size)
+              // TODO include the refute message here somewhere
+            )
           }
 
         case EventType.Failure(failureInfo) =>
