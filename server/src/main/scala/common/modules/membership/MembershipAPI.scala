@@ -18,7 +18,7 @@ case class Membership private(nodeID: String, ipAddress: IpAddress) {
 
 object MembershipAPI {
 
-  case class GetClusterSize()
+  case object GetClusterSize
 
   /**
    * Requests a random node of the specified node state. Returns an `Option[MembershipPair]`

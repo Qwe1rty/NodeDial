@@ -6,16 +6,9 @@ import akka.stream.Materializer
 import scala.concurrent.ExecutionContext
 
 
-// TODO figure out what these key/val mappings need to be
-
 case class GossipKey(nodeID: String, extension: Option[Any] = None)
 
-case class GossipPayload(payload: GrpcClientSettings => (Materializer, ExecutionContext) => Unit)
-
-//trait GossipPayload {
-//
-//  def apply(grpcClientSettings: GrpcClientSettings)(implicit mat: Materializer, ex: ExecutionContext)
-//}
+case class GossipPayload(rpc: GrpcClientSettings => (Materializer, ExecutionContext) => Unit)
 
 
 object GossipAPI {
@@ -25,7 +18,7 @@ object GossipAPI {
    * defined number of gossip cycles
    *
    * @param key key associated with publish task
-   * @param count number of gossip cycles to publish
+   * @param payload the gRPC payload function to be called on
    */
-  case class PublishRequest(key: GossipKey, payload: GossipPayload, count: Int)
+  case class PublishRequest(key: GossipKey, payload: GossipPayload)
 }

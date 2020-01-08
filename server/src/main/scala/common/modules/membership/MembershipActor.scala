@@ -1,10 +1,8 @@
 package common.modules.membership
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
-import akka.grpc.GrpcClientSettings
-import akka.stream.Materializer
 import com.roundeights.hasher.Implicits._
-import common.{ChordialConstants, ChordialDefaults}
+import common.ChordialConstants
 import common.modules.addresser.AddressRetriever
 import common.modules.gossip.GossipAPI.PublishRequest
 import common.modules.gossip.{GossipActor, GossipKey, GossipPayload}
@@ -13,7 +11,6 @@ import common.utils.ActorDefaults
 import schema.ImplicitDataConversions._
 import schema.ImplicitGrpcConversions._
 
-import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
 object MembershipActor {
@@ -83,6 +80,10 @@ class MembershipActor
           if (membershipTable.version(event.nodeId).isEmpty) {
             membershipTable += NodeInfo(event.nodeId, joinInfo.ipAddress, 0, NodeState.ALIVE)
           }
+//          gossipActor ! PublishRequest(
+//            GossipKey(nodeID),
+//
+//          )
 
         case EventType.Suspect(suspectInfo) =>
           log.debug(s"Suspect event - ${event.nodeId}")
@@ -95,17 +96,11 @@ class MembershipActor
 
             gossipActor ! PublishRequest(
               GossipKey(nodeID),
-//              new GossipPayload() { override def apply(grpcClientSettings: GrpcClientSettings)(implicit mat: Materializer, ex: ExecutionContext): Unit = {
-//                MembershipServiceClient(grpcClientSettings)
-//                  .publish()
-//              }},
-              // TODO make this not horrible
-              GossipPayload(grpcClientSettings => (mat, ec) => {
-                MembershipServiceClient(grpcClientSettings)(mat, ec)
-                  .publish(Event(nodeID).withRefute(Refute(membershipTable.version(nodeID).get)))
-              }),
-              ChordialDefaults.bufferCapacity(membershipTable.size)
-            )
+              GossipPayload(grpcClientSettings => (materializer, executionContext) => {
+                  MembershipServiceClient(grpcClientSettings)(materializer, executionContext)
+                    .publish(Event(nodeID).withRefute(Refute(membershipTable.version(nodeID).get)))
+                }
+              ))
           }
 
         case EventType.Failure(failureInfo) =>
@@ -113,11 +108,17 @@ class MembershipActor
           
           if (event.nodeId != nodeID) {
             membershipTable = membershipTable.updated(event.nodeId, NodeState.DEAD)
-            sender ! None
           }
           else if (failureInfo.version == membershipTable.version(nodeID).get) { // TODO merge duplicates
             membershipTable = membershipTable.increment(nodeID)
-            sender ! Some(membershipTable.version(nodeID)) // refute
+
+            gossipActor ! PublishRequest(
+              GossipKey(nodeID),
+              GossipPayload(grpcClientSettings => (materializer, executionContext) => {
+                  MembershipServiceClient(grpcClientSettings)(materializer, executionContext)
+                    .publish(Event(nodeID).withRefute(Refute(membershipTable.version(nodeID).get)))
+                }
+              ))
           }
 
         case EventType.Refute(refuteInfo) =>
@@ -142,6 +143,8 @@ class MembershipActor
       subscribers.foreach(_ ! event)
     }
 
+
+    case MembershipAPI.GetClusterSize => sender ! membershipTable.size
 
     case MembershipAPI.GetRandomNode(nodeState) => ???
 

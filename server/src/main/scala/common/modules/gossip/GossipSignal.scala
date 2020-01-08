@@ -7,5 +7,6 @@ import scala.util.Try
 
 private[gossip] object GossipSignal {
 
-  case class SendRPC(key: GossipKey, member: Try[Option[Membership]])
+  case class ClusterSizeReceived(key: GossipKey, payload: GossipPayload, clusterSizeRequest: Try[Int])
+  case class SendRPC(key: GossipKey, randomMemberRequest: Try[Option[Membership]])
 }
