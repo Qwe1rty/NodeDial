@@ -6,6 +6,7 @@ import akka.stream.ActorMaterializer
 import common.ChordialDefaults.ACTOR_REQUEST_TIMEOUT
 import common.modules.failureDetection.FailureDetectorConstants._
 import common.modules.failureDetection.FailureDetectorSignal._
+import common.modules.membership.Event.Suspect
 import common.modules.membership.MembershipAPI._
 import common.modules.membership._
 import common.utils.ActorTimers.Tick

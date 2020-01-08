@@ -6,7 +6,8 @@ import common.ChordialConstants
 import common.modules.addresser.AddressRetriever
 import common.modules.gossip.GossipAPI.PublishRequest
 import common.modules.gossip.{GossipActor, GossipKey, GossipPayload}
-import common.modules.membership.Event.{EventType, Refute}
+import common.modules.membership.Event.{EventType, Failure, Refute, Suspect}
+import common.modules.membership.NodeState.SUSPECT
 import common.utils.ActorDefaults
 import schema.ImplicitDataConversions._
 import schema.ImplicitGrpcConversions._
@@ -61,7 +62,7 @@ class MembershipActor
 
   // TODO: contact seed node for full sync
 
-  private val gossipActor = GossipActor(self, 200.millisecond, "membership")
+  private val gossipActor = GossipActor[Event](self, 200.millisecond, "membership")
 
   //// wait on signal from partition actor to gossip join event (call RPC publish on seed node)
 
@@ -69,7 +70,6 @@ class MembershipActor
   override def receive: Receive = {
 
     // Event types that arrive from other nodes through the membership gRPC service
-    // TODO replace the "sender ! ..." pattern with separate gossip component
     case event: Event => {
 
       event.eventType match {
@@ -77,7 +77,7 @@ class MembershipActor
         case EventType.Join(joinInfo) =>
           log.debug(s"Join event - ${event.nodeId}")
 
-          if (membershipTable.version(event.nodeId).isEmpty) {
+          if (!membershipTable.contains(event.nodeId)) {
             membershipTable += NodeInfo(event.nodeId, joinInfo.ipAddress, 0, NodeState.ALIVE)
           }
 //          gossipActor ! PublishRequest(
@@ -91,15 +91,15 @@ class MembershipActor
           if (event.nodeId != nodeID) {
             membershipTable = membershipTable.updated(event.nodeId, NodeState.SUSPECT)
           }
-          else if (suspectInfo.version == membershipTable.version(nodeID).get) {
+          else if (suspectInfo.version == membershipTable.version(nodeID)) {
             membershipTable = membershipTable.increment(nodeID)
+            val refuteEvent = Event(nodeID).withRefute(Refute(membershipTable.version(nodeID)))
 
             gossipActor ! PublishRequest(
-              GossipKey(nodeID),
-              GossipPayload(grpcClientSettings => (materializer, executionContext) => {
-                  MembershipServiceClient(grpcClientSettings)(materializer, executionContext)
-                    .publish(Event(nodeID).withRefute(Refute(membershipTable.version(nodeID).get)))
-                }
+              GossipKey(refuteEvent),
+              GossipPayload(grpcClientSettings => (materializer, executionContext) =>
+                MembershipServiceClient(grpcClientSettings)(materializer, executionContext)
+                  .publish(refuteEvent)
               ))
           }
 
@@ -109,25 +109,25 @@ class MembershipActor
           if (event.nodeId != nodeID) {
             membershipTable = membershipTable.updated(event.nodeId, NodeState.DEAD)
           }
-          else if (failureInfo.version == membershipTable.version(nodeID).get) { // TODO merge duplicates
+          else if (failureInfo.version == membershipTable.version(nodeID)) { // TODO merge duplicates
             membershipTable = membershipTable.increment(nodeID)
+            val refuteEvent = Event(nodeID).withRefute(Refute(membershipTable.version(nodeID)))
 
             gossipActor ! PublishRequest(
-              GossipKey(nodeID),
-              GossipPayload(grpcClientSettings => (materializer, executionContext) => {
-                  MembershipServiceClient(grpcClientSettings)(materializer, executionContext)
-                    .publish(Event(nodeID).withRefute(Refute(membershipTable.version(nodeID).get)))
-                }
+              GossipKey(refuteEvent),
+              GossipPayload(grpcClientSettings => (materializer, executionContext) =>
+                MembershipServiceClient(grpcClientSettings)(materializer, executionContext)
+                  .publish(refuteEvent)
               ))
           }
 
         case EventType.Refute(refuteInfo) =>
           log.debug(s"Refute event - ${event.nodeId}")
           
-          membershipTable.version(event.nodeId).foreach(localVersion => {
-            if (refuteInfo.version > localVersion) membershipTable = membershipTable.updated(NodeInfo(
+          membershipTable.get(event.nodeId).foreach(currentEntry => {
+            if (refuteInfo.version > currentEntry.version) membershipTable = membershipTable.updated(NodeInfo(
               event.nodeId,
-              membershipTable.address(event.nodeId).get,
+              membershipTable.address(event.nodeId),
               refuteInfo.version,
               NodeState.ALIVE
             ))
@@ -137,6 +137,8 @@ class MembershipActor
           log.debug(s"Leave event - ${event.nodeId}")
 
           membershipTable -= nodeID
+
+
         }
       }
 
@@ -149,6 +151,26 @@ class MembershipActor
     case MembershipAPI.GetRandomNode(nodeState) => ???
 
     case MembershipAPI.GetRandomNodes(nodeState, number) => ???
+
+
+    case MembershipAPI.DeclareEvent(nodeState, membershipPair) => {
+
+      val targetID = membershipPair.nodeID
+
+      val eventCandidate: Option[Event] = nodeState match {
+        case NodeState.SUSPECT => Some(Event(targetID).withSuspect(Suspect(membershipTable.version(targetID))))
+        case NodeState.DEAD =>    Some(Event(targetID).withFailure(Failure(membershipTable.version(targetID))))
+        case _ =>                 None
+      }
+
+      eventCandidate.foreach(event => gossipActor ! PublishRequest(
+        GossipKey(event),
+        GossipPayload(grpcClientSettings => (materializer, executionContext) =>
+          MembershipServiceClient(grpcClientSettings)(materializer, executionContext)
+            .publish(event)
+        ))
+      )
+    }
 
 
     case MembershipAPI.Subscribe(actorRef) => subscribers += actorRef

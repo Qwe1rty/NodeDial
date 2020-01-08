@@ -6,8 +6,7 @@ import akka.stream.Materializer
 import scala.concurrent.ExecutionContext
 
 
-case class GossipKey(nodeID: String, extension: Option[Any] = None)
-
+case class GossipKey[+KeyType](key: KeyType)
 case class GossipPayload(rpc: GrpcClientSettings => (Materializer, ExecutionContext) => Unit)
 
 
@@ -20,5 +19,5 @@ object GossipAPI {
    * @param key key associated with publish task
    * @param payload the gRPC payload function to be called on
    */
-  case class PublishRequest(key: GossipKey, payload: GossipPayload)
+  case class PublishRequest[+KeyType](key: KeyType, payload: GossipPayload)
 }

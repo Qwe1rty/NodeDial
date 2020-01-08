@@ -15,6 +15,7 @@ import common.modules.gossip.GossipSignal.{ClusterSizeReceived, SendRPC}
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
+import scala.reflect.ClassTag
 import scala.util.{Failure, Success}
 
 
@@ -29,13 +30,15 @@ object GossipActor extends GrpcSettingsFactory {
   }
 
 
-  def apply
+  def apply[KeyType: ClassTag]
       (membershipActor: ActorRef, delay: FiniteDuration, affiliation: String)
-      (implicit actorSystem: ActorSystem): ActorRef =
+      (implicit actorSystem: ActorSystem): ActorRef = {
+
     actorSystem.actorOf(
-      Props(new GossipActor(membershipActor, delay)),
+      Props(new GossipActor[KeyType](membershipActor, delay)),
       s"gossipActor-${affiliation}"
     )
+  }
 
   override def createGrpcSettings
       (ipAddress: IpAddress, timeout: FiniteDuration)
@@ -51,7 +54,7 @@ object GossipActor extends GrpcSettingsFactory {
 }
 
 
-class GossipActor
+class GossipActor[KeyType: ClassTag]
     (membershipActor: ActorRef, delay: FiniteDuration)
     (implicit actorSystem: ActorSystem)
   extends Actor
@@ -65,7 +68,7 @@ class GossipActor
   implicit private val materializer: ActorMaterializer = ActorMaterializer()(context)
   implicit private val executionContext: ExecutionContext = actorSystem.dispatcher
 
-  private val keyTable = mutable.Map[GossipKey, PayloadCount]()
+  private val keyTable = mutable.Map[GossipKey[KeyType], PayloadCount]()
 
   start(delay)
 
@@ -79,7 +82,7 @@ class GossipActor
         .onComplete(randomMemberRequest => self ! SendRPC(gossipEntry._1, randomMemberRequest))
     }
 
-    case SendRPC(key, randomMemberRequest) => randomMemberRequest match {
+    case SendRPC(key: GossipKey[KeyType], randomMemberRequest) => randomMemberRequest match {
 
       case Success(requestResult) => requestResult.foreach(member => {
         keyTable(key)(createGrpcSettings(member.ipAddress, delay * 2))
@@ -90,19 +93,19 @@ class GossipActor
     }
 
 
-    case GossipAPI.PublishRequest(key, payload) => {
+    case GossipAPI.PublishRequest(key: GossipKey[KeyType], payload) => {
 
       (membershipActor ? MembershipAPI.GetClusterSize)
         .mapTo[Int]
         .onComplete(self ! ClusterSizeReceived(key, payload, _))
     }
 
-    case ClusterSizeReceived(key, payload, clusterSizeRequest) => clusterSizeRequest match {
+    case ClusterSizeReceived(key: GossipKey[KeyType], payload, clusterSizeRequest) => clusterSizeRequest match {
 
-      case Success(clusterSize) => keyTable += (key -> PayloadCount(
+      case Success(clusterSize) => keyTable += key -> PayloadCount(
         payload,
         ChordialDefaults.bufferCapacity(clusterSize)
-      ))
+      )
 
       case Failure(e) => log.error(s"Cluster size request could not be completed: ${e}")
     }

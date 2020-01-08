@@ -21,7 +21,7 @@ object MembershipAPI {
   case object GetClusterSize
 
   /**
-   * Requests a random node of the specified node state. Returns an `Option[MembershipPair]`
+   * Requests a random node of the specified node state. Returns an `Option[Membership]`
    * object, which will be equal to `None` if there are no other nodes in the cluster
    *
    * @param nodeState the state that the random node will be drawn from
@@ -29,10 +29,10 @@ object MembershipAPI {
   case class GetRandomNode(nodeState: NodeState = NodeState.ALIVE)
 
   /**
-   * Requests multiple random nodes of the specified node state. Returns a `Seq[MembershipPair]`
+   * Requests multiple random nodes of the specified node state. Returns a `Seq[Membership]`
    * object, which will contain `number` elements.
    *
-   * (Unless there are fewer other nodes in the cluster, then the `Seq[MembershipPair]` object
+   * (Unless there are fewer other nodes in the cluster, then the `Seq[Membership]` object
    * may contain less elements)
    *
    * @param number requested number of other random nodes

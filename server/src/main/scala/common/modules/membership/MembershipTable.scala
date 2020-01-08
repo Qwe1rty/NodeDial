@@ -28,11 +28,11 @@ private[membership] class MembershipTable private() extends Map[String, NodeInfo
   override def get(nodeID: String): Option[NodeInfo] =
     super.get(nodeID)
 
-  def address(nodeID: String): Option[IpAddress] =
-    get(nodeID).map(_.ipAddress)
+  def address(nodeID: String): IpAddress =
+    this(nodeID).ipAddress
 
-  def version(nodeID: String): Option[Int] =
-    get(nodeID).map(_.version)
+  def version(nodeID: String): Int =
+    this(nodeID).version
 
 
   // Getters (Aggregated)

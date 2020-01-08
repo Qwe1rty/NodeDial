@@ -11,20 +11,22 @@ import scala.util.{Failure, Success, Try}
 
 object RequestActor {
 
-  def apply[A <: ResponseTrait]
+  def apply[A <: ResponseTrait: ClassTag]
       (requestPromise: Promise[A], name: String)
       (callback: Option[Array[Byte]] => A)
-      (implicit ct: ClassTag[A], parentContext: ActorContext): ActorRef = {
+      (implicit parentContext: ActorContext): ActorRef = {
 
-    parentContext.actorOf(Props(new RequestActor[A](requestPromise)(callback)), name)
+    parentContext.actorOf(
+      Props(new RequestActor[A](requestPromise)(callback)),
+      name
+    )
   }
 }
 
 
-class RequestActor[+A <: ResponseTrait]
+class RequestActor[A <: ResponseTrait: ClassTag]
     (requestPromise: Promise[A])
     (callback: Option[Array[Byte]] => A)
-    (implicit ct: ClassTag[A])
   extends Actor
   with ActorLogging
   with ActorDefaults {
