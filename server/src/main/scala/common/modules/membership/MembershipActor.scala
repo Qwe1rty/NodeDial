@@ -6,7 +6,7 @@ import common.ChordialConstants
 import common.modules.addresser.AddressRetriever
 import common.modules.gossip.GossipAPI.PublishRequest
 import common.modules.gossip.{GossipActor, GossipKey, GossipPayload}
-import common.modules.membership.Event.{EventType, Failure, Refute, Suspect}
+import common.modules.membership.Event.{EventType, Failure, Leave, Refute, Suspect}
 import common.modules.membership.NodeState.SUSPECT
 import common.utils.ActorDefaults
 import schema.ImplicitDataConversions._
@@ -67,6 +67,28 @@ class MembershipActor
   //// wait on signal from partition actor to gossip join event (call RPC publish on seed node)
 
 
+  /**
+   * Publish event to internal subscribers
+   *
+   * @param event event to publish
+   */
+  private def publishInternally(event: Event): Unit = subscribers.foreach(_ ! event)
+
+  /**
+   * Publish event to other nodes via gossip
+   *
+   * @param event event to publish
+   */
+  private def publishExternally(event: Event): Unit = {
+
+    gossipActor ! PublishRequest(
+      GossipKey(event),
+      GossipPayload(grpcClientSettings => (materializer, executionContext) =>
+        MembershipServiceClient(grpcClientSettings)(materializer, executionContext)
+          .publish(event)
+      ))
+  }
+
   override def receive: Receive = {
 
     // Event types that arrive from other nodes through the membership gRPC service
@@ -93,14 +115,7 @@ class MembershipActor
           }
           else if (suspectInfo.version == membershipTable.version(nodeID)) {
             membershipTable = membershipTable.increment(nodeID)
-            val refuteEvent = Event(nodeID).withRefute(Refute(membershipTable.version(nodeID)))
-
-            gossipActor ! PublishRequest(
-              GossipKey(refuteEvent),
-              GossipPayload(grpcClientSettings => (materializer, executionContext) =>
-                MembershipServiceClient(grpcClientSettings)(materializer, executionContext)
-                  .publish(refuteEvent)
-              ))
+            publishExternally( Event(nodeID).withRefute(Refute(membershipTable.version(nodeID))) )
           }
 
         case EventType.Failure(failureInfo) =>
@@ -111,14 +126,7 @@ class MembershipActor
           }
           else if (failureInfo.version == membershipTable.version(nodeID)) { // TODO merge duplicates
             membershipTable = membershipTable.increment(nodeID)
-            val refuteEvent = Event(nodeID).withRefute(Refute(membershipTable.version(nodeID)))
-
-            gossipActor ! PublishRequest(
-              GossipKey(refuteEvent),
-              GossipPayload(grpcClientSettings => (materializer, executionContext) =>
-                MembershipServiceClient(grpcClientSettings)(materializer, executionContext)
-                  .publish(refuteEvent)
-              ))
+            publishExternally( Event(nodeID).withRefute(Refute(membershipTable.version(nodeID))) )
           }
 
         case EventType.Refute(refuteInfo) =>
@@ -136,13 +144,12 @@ class MembershipActor
         case EventType.Leave(_) => {
           log.debug(s"Leave event - ${event.nodeId}")
 
-          membershipTable -= nodeID
-
-
+          membershipTable -= event.nodeId
+          publishExternally( Event(event.nodeId).withLeave(Leave()) )
         }
       }
 
-      subscribers.foreach(_ ! event)
+      publishInternally(event)
     }
 
 
@@ -156,6 +163,7 @@ class MembershipActor
     case MembershipAPI.DeclareEvent(nodeState, membershipPair) => {
 
       val targetID = membershipPair.nodeID
+      log.info(s"Declaring node ${targetID} according to detected state ${nodeState}")
 
       val eventCandidate: Option[Event] = nodeState match {
         case NodeState.SUSPECT => Some(Event(targetID).withSuspect(Suspect(membershipTable.version(targetID))))
@@ -163,13 +171,7 @@ class MembershipActor
         case _ =>                 None
       }
 
-      eventCandidate.foreach(event => gossipActor ! PublishRequest(
-        GossipKey(event),
-        GossipPayload(grpcClientSettings => (materializer, executionContext) =>
-          MembershipServiceClient(grpcClientSettings)(materializer, executionContext)
-            .publish(event)
-        ))
-      )
+      eventCandidate.foreach(publishExternally)
     }
 
 
