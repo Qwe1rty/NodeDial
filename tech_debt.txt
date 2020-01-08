@@ -25,6 +25,9 @@ MEMBERSHIP:
 - Move the "Tick" publish semaphore to the ActorTimers trait
 - Possibly allow for different seed node and self IP addresser methods
 
+GOSSIP:
+- Generally just improve the API payload specification
+
 PARTITIONING:
 - Eventually decouple the hash range join from the membership join through separate gossips
 

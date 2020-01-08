@@ -7,12 +7,14 @@ import common.modules.membership.{Membership, MembershipAPI}
 import common.utils.ActorTimers.Tick
 import common.utils.{ActorDefaults, ActorTimers, GrpcSettingsFactory}
 import akka.pattern.ask
+import akka.stream.ActorMaterializer
 import akka.util.Timeout
 import common.modules.gossip.GossipSignal.SendRPC
 
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
+import scala.util.{Failure, Success}
 
 
 object GossipActor extends GrpcSettingsFactory {
@@ -47,7 +49,10 @@ class GossipActor
   with ActorDefaults
   with ActorTimers {
 
-  implicit private val membershipAskTimeout: Timeout = delay
+  import GossipActor._
+
+  implicit private val membershipAskTimeout: Timeout = delay * 2 // Semi-synchronous, can be bounded by cycle length
+  implicit private val materializer: ActorMaterializer = ActorMaterializer()(context)
   implicit private val executionContext: ExecutionContext = actorSystem.dispatcher
 
   private val keyCounter = mutable.Map[GossipKey, Int]()
@@ -61,15 +66,24 @@ class GossipActor
 
       (membershipActor ? MembershipAPI.GetRandomNode())
         .mapTo[Option[Membership]]
-        .onComplete(member => self ! SendRPC(gossipEntry._1, member))
+        .onComplete(randomMemberRequest => self ! SendRPC(gossipEntry._1, randomMemberRequest))
     }
 
-    case SendRPC(key, member) => {
-      
+    case SendRPC(key, randomMemberRequest) => randomMemberRequest match {
+
+      case Success(requestResult) => requestResult.foreach(member => {
+
+        
+//        val grpcClient = FailureDetectorServiceClient(createGrpcSettings(member.ipAddress, delay))
+//
+//        grpcClient.
+      })
+
+      case Failure(e) => log.error(s"Error encountered on membership node request: ${e}")
     }
 
 
-    case GossipAPI.PublishRequest(key, count) => keyCounter += (key -> count)
+    case GossipAPI.PublishRequest(key, payload, count) => keyCounter += (key -> count)
 
     case x => log.error(receivedUnknown(x))
   }
