@@ -29,7 +29,7 @@ object FailureDetectorActor {
 }
 
 
-class FailureDetectorActor
+class FailureDetectorActor private
     (membershipActor: ActorRef)
     (implicit actorSystem: ActorSystem)
   extends Actor

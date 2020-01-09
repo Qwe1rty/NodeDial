@@ -6,8 +6,7 @@ import akka.http.scaladsl.{Http, HttpConnectionContext}
 import akka.stream.ActorMaterializer
 import com.risksense.ipaddr.IpAddress
 import common.ChordialDefaults
-import FailureDetectorConstants.{SUSPICION_DEADLINE, createGrpcSettings}
-import common.modules.membership._
+import common.membership.failureDetection.FailureDetectorConstants.{SUSPICION_DEADLINE, createGrpcSettings}
 import org.slf4j.LoggerFactory
 import schema.ImplicitDataConversions._
 import service.RequestServiceImpl

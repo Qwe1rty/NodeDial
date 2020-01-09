@@ -42,7 +42,7 @@ private object ChordialServer extends App {
   val membershipActor = MembershipActor(addressRetriever, REQUIRED_TRIGGERS)
 
   val failureDetectorActor = FailureDetectorActor(membershipActor)
-  val _: FailureDetectorService = FailureDetectorServiceImpl()
+  FailureDetectorServiceImpl()
 
   /*
    * Service layer components
@@ -50,7 +50,7 @@ private object ChordialServer extends App {
   log.info("Initializing external facing gRPC service")
 
   val requestServiceActor = RequestServiceActor(persistenceActor)
-  val _: RequestService = RequestServiceImpl(requestServiceActor)
+  RequestServiceImpl(requestServiceActor)
 
   log.info("Service layer initialized")
 }

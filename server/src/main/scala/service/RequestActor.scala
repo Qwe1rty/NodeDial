@@ -24,7 +24,7 @@ object RequestActor {
 }
 
 
-class RequestActor[A <: ResponseTrait: ClassTag]
+class RequestActor[A <: ResponseTrait: ClassTag] private
     (requestPromise: Promise[A])
     (callback: Option[Array[Byte]] => A)
   extends Actor

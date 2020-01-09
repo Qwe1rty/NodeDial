@@ -35,8 +35,8 @@ object MembershipActor {
 }
 
 
-class MembershipActor
-    (addressRetriever: AddressRetriever, initializationCount: Int)
+class MembershipActor private
+    (addressRetriever: AddressRetriever, private var initializationCount: Int)
     (implicit actorSystem: ActorSystem)
   extends Actor
   with ActorLogging

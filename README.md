@@ -15,7 +15,7 @@ of implementation. _Italics indicate that this component is in progress_
 
 - [x] **Milestone 0: Setup**
   - [x] Repo and build setup
-- [ ] **Milestone 1: Persistence Layer**
+- [x] **Milestone 1: Persistence Layer**
   - [x] External service setup via gRPC
   - [ ] Establish persistence layer, should support locally atomic/isolated operations
     - [x] Key isolation
@@ -27,13 +27,13 @@ of implementation. _Italics indicate that this component is in progress_
   - [x] Multi-subproject setup for common components
   - [x] Basic testing of core functionality
 - [ ] **Milestone 2: Cluster Membership**
-  - [ ] Membership list of other nodes' IPs
+  - [ ] _Membership list of other nodes' IPs and liveness states_
     - [ ] _Node state tracking and broadcasting, following the SWIM protocol_
       - [ ] _Cluster joins/rejoins/leaves_
       - [x] Suspicion/death refutation
     - [ ] _Gossip component_
       - [x] Push mechanism for join/leave broadcasting
-      - [ ] Pull mechanism for anti-entropy
+      - [ ] _Pull mechanism for anti-entropy_
     - [x] Failure detection through direct + indirect check mechanism
   - [ ] Local kubernetes cluster setup and integration
     - [x] Service containerization

@@ -12,6 +12,7 @@ import akka.util.Timeout
 import common.ChordialDefaults
 import common.membership.{Membership, MembershipAPI}
 import GossipSignal.{ClusterSizeReceived, SendRPC}
+import common.membership.types.NodeState
 
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext
@@ -55,7 +56,7 @@ object GossipActor extends GrpcSettingsFactory {
 }
 
 
-class GossipActor[KeyType: ClassTag]
+class GossipActor[KeyType: ClassTag] private
     (membershipActor: ActorRef, delay: FiniteDuration)
     (implicit actorSystem: ActorSystem)
   extends Actor
