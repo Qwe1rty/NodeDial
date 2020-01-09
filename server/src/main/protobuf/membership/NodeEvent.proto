@@ -1,0 +1,54 @@
+syntax = "proto2";
+
+option java_multiple_files = true;
+option java_package = "common.membership";
+option java_outer_classname = "ChordialMembershipMessages";
+
+import "membership/NodeInfo.proto";
+import "partitioning/PartitioningMessages.proto";
+
+package chordial.membership;
+
+
+/*
+ * The "Event" message types are used as push signals to notify other nodes
+ * when any cluster event happens, such as a node trying to join the
+ * cluster, or the failure detector reporting a failure, etc.
+ */
+message Event {
+
+    message Join {
+        // NOTE: version is implicitly 0
+        required fixed32 ip_address = 1;
+        required partitioning.PartitionHashes partition_hashes = 2;
+    }
+
+    message Suspect {
+        required uint32 version = 1;
+    }
+
+    message Failure {
+        required uint32 version = 1;
+    }
+
+    message Refute {
+        required uint32 version = 1;
+    }
+
+    message Leave {}
+
+    required string node_id = 1;
+    oneof event_type {
+        Join join = 2;
+        Suspect suspect = 3;
+        Failure failure = 4;
+        Refute refute = 5;
+        Leave leave = 6;
+    }
+}
+
+message EventReply {
+    optional NodeInfo node_info = 1; // Currently unused
+}
+
+

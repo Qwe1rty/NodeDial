@@ -1,7 +1,8 @@
-package common.modules.membership
+package common.membership
 
 import akka.actor.ActorRef
 import com.risksense.ipaddr.IpAddress
+import common.membership.types.NodeState
 
 
 /**
@@ -18,19 +19,35 @@ case class Membership private(nodeID: String, ipAddress: IpAddress) {
 
 object MembershipAPI {
 
+  // Cluster-level information calls
+
+  /**
+   * Get the current size of the cluster.
+   * Returns an `Int` value
+   */
   case object GetClusterSize
 
   /**
-   * Requests a random node of the specified node state. Returns an `Option[Membership]`
-   * object, which will be equal to `None` if there are no other nodes in the cluster
+   * Get the full set of cluster information.
+   * Returns a ``
+   */
+  case object GetClusterInfo
+
+
+  // Node-level information calls
+
+  /**
+   * Requests a random node of the specified node state.
+   * Returns an `Option[Membership]` object, which will be equal to `None` if there are
+   * no other nodes in the cluster
    *
    * @param nodeState the state that the random node will be drawn from
    */
   case class GetRandomNode(nodeState: NodeState = NodeState.ALIVE)
 
   /**
-   * Requests multiple random nodes of the specified node state. Returns a `Seq[Membership]`
-   * object, which will contain `number` elements.
+   * Requests multiple random nodes of the specified node state.
+   * Returns a `Seq[Membership]` object, which will contain a max of `number` elements.
    *
    * (Unless there are fewer other nodes in the cluster, then the `Seq[Membership]` object
    * may contain less elements)
@@ -41,23 +58,19 @@ object MembershipAPI {
   case class GetRandomNodes(nodeState: NodeState = NodeState.ALIVE, number: Int = 1)
 
 
+  // Event-related calls
+
   /**
-   * Signals the membership actor to broadcast the declaration across to the other nodes
+   * Signals the membership actor to broadcast the declaration across to the other nodes and
+   * to internal subscribers
    *
    * @param nodeState state of the node
    * @param membershipPair node identifier
    */
   case class DeclareEvent(nodeState: NodeState, membershipPair: Membership)
 
-  /**
-   * Signals the membership actor to update its internal information with the reported event,
-   * as well as publish the event to any subscribers
-   *
-   * @param nodeState state of the node
-   * @param membershipPair node identifier
-   */
-  case class ReportEvent(nodeState: NodeState, membershipPair: Membership)
 
+  // Subscription calls
 
   /**
    * Registers an actor to receive incoming event updates from the membership module

@@ -1,4 +1,4 @@
-package common.modules.gossip
+package common.gossip
 
 import akka.grpc.GrpcClientSettings
 import akka.stream.Materializer
@@ -19,5 +19,5 @@ object GossipAPI {
    * @param key key associated with publish task
    * @param payload the gRPC payload function to be called on
    */
-  case class PublishRequest[+KeyType](key: KeyType, payload: GossipPayload)
+  case class PublishRequest[+KeyType](key: GossipKey[KeyType], payload: GossipPayload)
 }

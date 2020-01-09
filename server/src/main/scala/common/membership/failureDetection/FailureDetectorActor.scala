@@ -1,14 +1,14 @@
-package common.modules.failureDetection
+package common.membership.failureDetection
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import akka.pattern.ask
 import akka.stream.ActorMaterializer
 import common.ChordialDefaults.ACTOR_REQUEST_TIMEOUT
-import common.modules.failureDetection.FailureDetectorConstants._
-import common.modules.failureDetection.FailureDetectorSignal._
-import common.modules.membership.Event.Suspect
-import common.modules.membership.MembershipAPI._
-import common.modules.membership._
+import common.membership.Membership
+import common.membership.MembershipAPI._
+import common.membership.failureDetection.FailureDetectorConstants._
+import common.membership.failureDetection.FailureDetectorSignal._
+import common.membership.types.NodeState
 import common.utils.ActorTimers.Tick
 import common.utils.{ActorDefaults, ActorTimers}
 import schema.ImplicitDataConversions._
@@ -48,7 +48,6 @@ class FailureDetectorActor
   start(1500.millisecond)
 
 
-  // TODO possible version number tracing (from the membership actor) during failure detection cycle
   override def receive: Receive = {
 
     case Tick => if (scheduledDirectChecks < DIRECT_CONNECTIONS_LIMIT) {

@@ -1,13 +1,14 @@
-package common.modules.membership
+package common.membership
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import com.roundeights.hasher.Implicits._
 import common.ChordialConstants
-import common.modules.addresser.AddressRetriever
-import common.modules.gossip.GossipAPI.PublishRequest
-import common.modules.gossip.{GossipActor, GossipKey, GossipPayload}
-import common.modules.membership.Event.{EventType, Failure, Leave, Refute, Suspect}
-import common.modules.membership.NodeState.SUSPECT
+import common.gossip.GossipAPI.PublishRequest
+import common.gossip.{GossipActor, GossipKey, GossipPayload}
+import common.membership.Event.{EventType, Failure, Leave, Refute, Suspect}
+import common.membership.addresser.AddressRetriever
+import common.membership.types.{NodeInfo, NodeState}
+import common.membership.types.NodeState.{ALIVE, DEAD, SUSPECT}
 import common.utils.ActorDefaults
 import schema.ImplicitDataConversions._
 import schema.ImplicitGrpcConversions._
@@ -22,16 +23,20 @@ object MembershipActor {
   private val MEMBERSHIP_FILE      = MEMBERSHIP_DIR/(MEMBERSHIP_FILENAME + MEMBERSHIP_EXTENSION)
 
 
-  def apply(addressRetriever: AddressRetriever)(implicit actorSystem: ActorSystem): ActorRef =
+  def apply
+      (addressRetriever: AddressRetriever, initializationCount: Int)
+      (implicit actorSystem: ActorSystem): ActorRef = {
+
     actorSystem.actorOf(
-      Props(new MembershipActor(addressRetriever)),
+      Props(new MembershipActor(addressRetriever, initializationCount)),
       "membershipActor"
     )
+  }
 }
 
 
 class MembershipActor
-    (addressRetriever: AddressRetriever)
+    (addressRetriever: AddressRetriever, initializationCount: Int)
     (implicit actorSystem: ActorSystem)
   extends Actor
   with ActorLogging
@@ -44,7 +49,7 @@ class MembershipActor
 
   // Allow exception to propagate on nodeID file operations, to kill program and exit with
   // non-0 code. Must be allowed to succeed
-  private val nodeID: String = {
+  private val (nodeID: String, rejoin: Boolean) = {
 
     if (MEMBERSHIP_FILE.notExists) {
       val newID: String = System.nanoTime().toString.sha256
@@ -53,12 +58,12 @@ class MembershipActor
       MEMBERSHIP_DIR.createDirectoryIfNotExists()
       MEMBERSHIP_FILE.writeByteArray(newID)
 
-      newID
+      (newID, true)
     }
 
-    else MEMBERSHIP_FILE.loadBytes
+    else (MEMBERSHIP_FILE.loadBytes, false)
   }
-  log.info(s"Membership has determined node ID: ${nodeID}")
+  log.info(s"Membership has determined node ID: ${nodeID}, with rejoin status: ${rejoin}")
 
   // TODO: contact seed node for full sync
 
@@ -72,7 +77,8 @@ class MembershipActor
    *
    * @param event event to publish
    */
-  private def publishInternally(event: Event): Unit = subscribers.foreach(_ ! event)
+  private def publishInternally(event: Event): Unit =
+    subscribers.foreach(_ ! event)
 
   /**
    * Publish event to other nodes via gossip
@@ -100,7 +106,7 @@ class MembershipActor
           log.debug(s"Join event - ${event.nodeId}")
 
           if (!membershipTable.contains(event.nodeId)) {
-            membershipTable += NodeInfo(event.nodeId, joinInfo.ipAddress, 0, NodeState.ALIVE)
+            membershipTable += NodeInfo(event.nodeId, joinInfo.ipAddress, 0, ALIVE)
           }
 //          gossipActor ! PublishRequest(
 //            GossipKey(nodeID),
@@ -111,41 +117,44 @@ class MembershipActor
           log.debug(s"Suspect event - ${event.nodeId}")
           
           if (event.nodeId != nodeID) {
-            membershipTable = membershipTable.updated(event.nodeId, NodeState.SUSPECT)
+            membershipTable = membershipTable.updated(event.nodeId, SUSPECT)
           }
           else if (suspectInfo.version == membershipTable.version(nodeID)) {
             membershipTable = membershipTable.increment(nodeID)
-            publishExternally( Event(nodeID).withRefute(Refute(membershipTable.version(nodeID))) )
+            publishExternally(Event(nodeID).withRefute(Refute(membershipTable.version(nodeID))))
           }
 
         case EventType.Failure(failureInfo) =>
           log.debug(s"Failure event - ${event.nodeId}")
           
           if (event.nodeId != nodeID) {
-            membershipTable = membershipTable.updated(event.nodeId, NodeState.DEAD)
+            membershipTable = membershipTable.updated(event.nodeId, DEAD)
           }
           else if (failureInfo.version == membershipTable.version(nodeID)) { // TODO merge duplicates
             membershipTable = membershipTable.increment(nodeID)
-            publishExternally( Event(nodeID).withRefute(Refute(membershipTable.version(nodeID))) )
+            publishExternally(Event(nodeID).withRefute(Refute(membershipTable.version(nodeID))))
           }
 
         case EventType.Refute(refuteInfo) =>
           log.debug(s"Refute event - ${event.nodeId}")
           
           membershipTable.get(event.nodeId).foreach(currentEntry => {
-            if (refuteInfo.version > currentEntry.version) membershipTable = membershipTable.updated(NodeInfo(
-              event.nodeId,
-              membershipTable.address(event.nodeId),
-              refuteInfo.version,
-              NodeState.ALIVE
-            ))
+            if (refuteInfo.version > currentEntry.version) {
+              membershipTable = membershipTable.updated(NodeInfo(
+                event.nodeId,
+                membershipTable.address(event.nodeId),
+                refuteInfo.version,
+                NodeState.ALIVE
+              ))
+              publishExternally(Event(event.nodeId).withRefute(Refute(membershipTable.version(event.nodeId))))
+            }
           })
 
         case EventType.Leave(_) => {
           log.debug(s"Leave event - ${event.nodeId}")
 
           membershipTable -= event.nodeId
-          publishExternally( Event(event.nodeId).withLeave(Leave()) )
+          publishExternally(Event(event.nodeId).withLeave(Leave()) )
         }
       }
 
@@ -171,7 +180,10 @@ class MembershipActor
         case _ =>                 None
       }
 
-      eventCandidate.foreach(publishExternally)
+      eventCandidate.foreach(event => {
+        publishExternally(event)
+        publishInternally(event)
+      })
     }
 
 

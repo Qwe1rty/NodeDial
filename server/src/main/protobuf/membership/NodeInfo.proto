@@ -1,0 +1,39 @@
+syntax = "proto2";
+
+option java_multiple_files = true;
+option java_package = "common.membership.types";
+option java_outer_classname = "ChordialMembershipNode";
+
+package chordial.membership;
+
+
+/*
+ * NodeInfo contains the full package of information known about a node.
+ *
+ * Note that as long as the DB is restarted in the same directory, the node will
+ * have the same node ID, whereas the IP can change during the crash-recovery
+ * process
+ */
+message NodeInfo {
+    required string node_id = 1;
+    required fixed32 ip_address = 2;
+    required uint32 version = 3;
+    required NodeState state = 4;
+}
+
+/*
+ * Tracks the state of each node. The valid transitions are:
+ *   ALIVE -> SUSPECT, on Event.Suspect
+ *   SUSPECT -> ALIVE, on Event.Refute
+ *   SUSPECT -> DEAD,  on Event.Failure
+ *   DEAD -> ALIVE,    on Event.Refute
+ *
+ * NOTE: Event.Join adds the entry to the table with state ALIVE, and
+ *       Event.Leave completely removes the entry from the membership table
+ */
+enum NodeState {
+    ALIVE = 0;
+    SUSPECT = 1;
+    DEAD = 2;
+}
+

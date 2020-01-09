@@ -1,8 +1,9 @@
 import akka.actor.ActorSystem
 import com.typesafe.config.ConfigFactory
-import common.modules.addresser.KubernetesAddresser
-import common.modules.failureDetection.FailureDetectorActor
-import common.modules.membership.MembershipActor
+import common.ChordialConstants._
+import common.membership.MembershipActor
+import common.membership.addresser.KubernetesAddresser
+import common.membership.failureDetection.{FailureDetectorActor, FailureDetectorService, FailureDetectorServiceImpl}
 import org.slf4j.LoggerFactory
 import persistence.io.PersistenceActor
 import persistence.threading.ThreadPartitionActor
@@ -38,9 +39,10 @@ private object ChordialServer extends App {
   log.info("Initializing membership layer components")
 
   val addressRetriever = KubernetesAddresser
-  val membershipActor = MembershipActor(addressRetriever)
+  val membershipActor = MembershipActor(addressRetriever, REQUIRED_TRIGGERS)
 
   val failureDetectorActor = FailureDetectorActor(membershipActor)
+  val _: FailureDetectorService = FailureDetectorServiceImpl()
 
   /*
    * Service layer components

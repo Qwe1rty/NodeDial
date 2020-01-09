@@ -1,7 +1,7 @@
 syntax = "proto2";
 
 option java_multiple_files = true;
-option java_package = "common.modules.membership";
+option java_package = "common.membership.failureDetection";
 option java_outer_classname = "ChordialFailureCheck";
 
 package chordial.membership;

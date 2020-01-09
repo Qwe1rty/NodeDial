@@ -1,16 +1,17 @@
-package common.modules.gossip
+package common.gossip
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import akka.grpc.GrpcClientSettings
 import com.risksense.ipaddr.IpAddress
-import common.modules.membership.{Membership, MembershipAPI, NodeState}
+import common.modules.membership.{MembershipAPI, NodeState}
 import common.utils.ActorTimers.Tick
 import common.utils.{ActorDefaults, ActorTimers, GrpcSettingsFactory}
 import akka.pattern.ask
 import akka.stream.{ActorMaterializer, Materializer}
 import akka.util.Timeout
 import common.ChordialDefaults
-import common.modules.gossip.GossipSignal.{ClusterSizeReceived, SendRPC}
+import common.membership.{Membership, MembershipAPI}
+import GossipSignal.{ClusterSizeReceived, SendRPC}
 
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext

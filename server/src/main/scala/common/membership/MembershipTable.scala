@@ -1,6 +1,7 @@
-package common.modules.membership
+package common.membership
 
 import com.risksense.ipaddr.IpAddress
+import common.membership.types.{NodeInfo, NodeState}
 import schema.ImplicitDataConversions._
 
 

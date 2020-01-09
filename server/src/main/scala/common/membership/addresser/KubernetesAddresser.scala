@@ -1,4 +1,4 @@
-package common.modules.addresser
+package common.membership.addresser
 
 import com.risksense.ipaddr.IpAddress
 

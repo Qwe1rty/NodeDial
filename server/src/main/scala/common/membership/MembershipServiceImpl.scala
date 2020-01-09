@@ -1,4 +1,4 @@
-package common.modules.membership
+package common.membership
 
 import akka.actor.{ActorRef, ActorSystem}
 import akka.http.scaladsl.{Http, HttpConnectionContext}
@@ -49,7 +49,10 @@ class MembershipServiceImpl(membershipActor: ActorRef)(implicit actorSystem: Act
   /**
    * Pull-based synchronization RPC, for full recovery situations
    */
-  override def fullSync(in: FullSyncRequest): Future[SyncResponse] = ???
+  override def fullSync(in: FullSyncRequest): Future[SyncResponse] = {
+
+
+  }
 
   /**
    * Pull-based synchronization RPC, for passive updates

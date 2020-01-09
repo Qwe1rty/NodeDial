@@ -30,9 +30,9 @@ of implementation. _Italics indicate that this component is in progress_
   - [ ] Membership list of other nodes' IPs
     - [ ] _Node state tracking and broadcasting, following the SWIM protocol_
       - [ ] _Cluster joins/rejoins/leaves_
-      - [ ] Suspicion/death refutation
+      - [x] Suspicion/death refutation
     - [ ] _Gossip component_
-      - [ ] _Push mechanism for join/leave broadcasting_
+      - [x] Push mechanism for join/leave broadcasting
       - [ ] Pull mechanism for anti-entropy
     - [x] Failure detection through direct + indirect check mechanism
   - [ ] Local kubernetes cluster setup and integration
