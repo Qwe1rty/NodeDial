@@ -1,4 +1,4 @@
-CHORDIAL_VERSION = 1.1.0
+CHORDIAL_VERSION = 1.2.0
 
 DOCKER_SERVER = chordial/server
 DOCKER_CLIENT = chordial/client

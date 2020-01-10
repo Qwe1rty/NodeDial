@@ -103,7 +103,7 @@ class MembershipActor private
       event.eventType match {
 
         case EventType.Join(joinInfo) =>
-          log.debug(s"Join event - ${event.nodeId}")
+          log.debug(s"Join event - ${event.nodeId} - ${joinInfo}")
 
           if (!membershipTable.contains(event.nodeId)) {
             membershipTable += NodeInfo(event.nodeId, joinInfo.ipAddress, 0, ALIVE)
@@ -114,7 +114,7 @@ class MembershipActor private
 //          )
 
         case EventType.Suspect(suspectInfo) =>
-          log.debug(s"Suspect event - ${event.nodeId}")
+          log.debug(s"Suspect event - ${event.nodeId} - ${suspectInfo}")
           
           if (event.nodeId != nodeID) {
             membershipTable = membershipTable.updated(event.nodeId, SUSPECT)
@@ -125,7 +125,7 @@ class MembershipActor private
           }
 
         case EventType.Failure(failureInfo) =>
-          log.debug(s"Failure event - ${event.nodeId}")
+          log.debug(s"Failure event - ${event.nodeId} - ${failureInfo}")
           
           if (event.nodeId != nodeID) {
             membershipTable = membershipTable.updated(event.nodeId, DEAD)
@@ -136,7 +136,7 @@ class MembershipActor private
           }
 
         case EventType.Refute(refuteInfo) =>
-          log.debug(s"Refute event - ${event.nodeId}")
+          log.debug(s"Refute event - ${event.nodeId} - ${refuteInfo}")
           
           membershipTable.get(event.nodeId).foreach(currentEntry => {
             if (refuteInfo.version > currentEntry.version) {
@@ -154,7 +154,7 @@ class MembershipActor private
           log.debug(s"Leave event - ${event.nodeId}")
 
           membershipTable -= event.nodeId
-          publishExternally(Event(event.nodeId).withLeave(Leave()) )
+          publishExternally(Event(event.nodeId).withLeave(Leave()))
         }
       }
 

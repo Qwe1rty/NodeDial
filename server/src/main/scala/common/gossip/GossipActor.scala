@@ -3,7 +3,6 @@ package common.gossip
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import akka.grpc.GrpcClientSettings
 import com.risksense.ipaddr.IpAddress
-import common.modules.membership.{MembershipAPI, NodeState}
 import common.utils.ActorTimers.Tick
 import common.utils.{ActorDefaults, ActorTimers, GrpcSettingsFactory}
 import akka.pattern.ask

@@ -3,11 +3,10 @@ import com.typesafe.config.ConfigFactory
 import common.ChordialConstants._
 import common.membership.MembershipActor
 import common.membership.addresser.KubernetesAddresser
-import common.membership.failureDetection.{FailureDetectorActor, FailureDetectorService, FailureDetectorServiceImpl}
+import common.membership.failureDetection.{FailureDetectorActor, FailureDetectorServiceImpl}
 import org.slf4j.LoggerFactory
 import persistence.io.PersistenceActor
 import persistence.threading.ThreadPartitionActor
-import schema.service.RequestService
 import service.{RequestServiceActor, RequestServiceImpl}
 
 
