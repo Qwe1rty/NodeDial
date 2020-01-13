@@ -31,4 +31,10 @@ object ImplicitDataConversions {
 
   implicit def intToIp(ipAddress: Int): IpAddress =
     IpAddress(ipAddress.toLong)
+
+  implicit def ipToString(ipAddress: IpAddress): String =
+    ipAddress.toString
+
+  implicit def stringToIp(ipAddress: String): IpAddress =
+    IpAddress(ipAddress)
 }

@@ -12,6 +12,7 @@ import common.ChordialDefaults
 import common.membership.{Membership, MembershipAPI}
 import GossipSignal.{ClusterSizeReceived, SendRPC}
 import common.membership.types.NodeState
+import schema.ImplicitDataConversions._
 
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext
@@ -47,7 +48,7 @@ object GossipActor extends GrpcSettingsFactory {
 
     GrpcClientSettings
       .connectToServiceAt(
-        ipAddress.toString,
+        ipAddress,
         common.ChordialDefaults.MEMBERSHIP_PORT
       )
       .withDeadline(timeout)
@@ -103,10 +104,9 @@ class GossipActor[KeyType: ClassTag] private
 
     case ClusterSizeReceived(key: GossipKey[KeyType], payload, clusterSizeRequest) => clusterSizeRequest match {
 
-      case Success(clusterSize) => keyTable += key -> PayloadCount(
-        payload,
-        ChordialDefaults.bufferCapacity(clusterSize)
-      )
+      case Success(clusterSize) => if (!keyTable.contains(key)) {
+          keyTable += key -> PayloadCount(payload, ChordialDefaults.bufferCapacity(clusterSize))
+      }
 
       case Failure(e) => log.error(s"Cluster size request could not be completed: ${e}")
     }

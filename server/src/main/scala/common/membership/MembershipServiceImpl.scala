@@ -1,10 +1,13 @@
 package common.membership
 
 import akka.actor.{ActorRef, ActorSystem}
-import akka.http.scaladsl.{Http, HttpConnectionContext}
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
+import akka.http.scaladsl.{Http, HttpConnectionContext}
+import akka.pattern.ask
 import akka.stream.{ActorMaterializer, Materializer}
 import common.ChordialDefaults
+import common.ChordialDefaults.ACTOR_REQUEST_TIMEOUT
+import common.membership.types.NodeInfo
 import org.slf4j.LoggerFactory
 import service.RequestServiceImpl
 
@@ -51,7 +54,11 @@ class MembershipServiceImpl(membershipActor: ActorRef)(implicit actorSystem: Act
    */
   override def fullSync(in: FullSyncRequest): Future[SyncResponse] = {
 
-
+    (membershipActor ? MembershipAPI.GetClusterInfo)
+      .mapTo[Seq[NodeInfo]]
+      .map { nodeSeq =>
+        SyncResponse(nodeSeq.map(SyncInfo(_)))
+      }
   }
 
   /**

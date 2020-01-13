@@ -1,21 +1,28 @@
 package common.membership
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
+import akka.grpc.GrpcClientSettings
+import akka.stream.ActorMaterializer
 import com.roundeights.hasher.Implicits._
-import common.ChordialConstants
 import common.gossip.GossipAPI.PublishRequest
 import common.gossip.{GossipActor, GossipKey, GossipPayload}
 import common.membership.Event.{EventType, Failure, Leave, Refute, Suspect}
 import common.membership.addresser.AddressRetriever
-import common.membership.types.{NodeInfo, NodeState}
 import common.membership.types.NodeState.{ALIVE, DEAD, SUSPECT}
+import common.membership.types.{NodeInfo, NodeState}
 import common.utils.ActorDefaults
+import common.{ChordialConstants, ChordialDefaults}
 import schema.ImplicitDataConversions._
 import schema.ImplicitGrpcConversions._
 
+import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
+import scala.util.{Success, Try}
+
 
 object MembershipActor {
+
+  private case class SeedResponse(syncResponse: Try[SyncResponse])
 
   private val MEMBERSHIP_DIR       = ChordialConstants.BASE_DIRECTORY/"membership"
   private val MEMBERSHIP_FILENAME  = "cluster"
@@ -47,8 +54,10 @@ class MembershipActor private
   private var subscribers = Set[ActorRef]()
   private var membershipTable = MembershipTable() // TODO make sure this has the current node ID at the very least
 
-  // Allow exception to propagate on nodeID file operations, to kill program and exit with
-  // non-0 code. Must be allowed to succeed
+  /*
+   * Allow exception to propagate on nodeID file operations, to kill program and exit with
+   * non-0 code. Must be allowed to succeed
+   */
   private val (nodeID: String, rejoin: Boolean) = {
 
     if (MEMBERSHIP_FILE.notExists) {
@@ -65,11 +74,7 @@ class MembershipActor private
   }
   log.info(s"Membership has determined node ID: ${nodeID}, with rejoin status: ${rejoin}")
 
-  // TODO: contact seed node for full sync
-
   private val gossipActor = GossipActor[Event](self, 200.millisecond, "membership")
-
-  //// wait on signal from partition actor to gossip join event (call RPC publish on seed node)
 
 
   /**
@@ -108,10 +113,7 @@ class MembershipActor private
           if (!membershipTable.contains(event.nodeId)) {
             membershipTable += NodeInfo(event.nodeId, joinInfo.ipAddress, 0, ALIVE)
           }
-//          gossipActor ! PublishRequest(
-//            GossipKey(nodeID),
-//
-//          )
+          publishExternally(event)
 
         case EventType.Suspect(suspectInfo) =>
           log.debug(s"Suspect event - ${event.nodeId} - ${suspectInfo}")
@@ -146,7 +148,7 @@ class MembershipActor private
                 refuteInfo.version,
                 NodeState.ALIVE
               ))
-              publishExternally(Event(event.nodeId).withRefute(Refute(membershipTable.version(event.nodeId))))
+              publishExternally(event)
             }
           })
 
@@ -154,7 +156,7 @@ class MembershipActor private
           log.debug(s"Leave event - ${event.nodeId}")
 
           membershipTable -= event.nodeId
-          publishExternally(Event(event.nodeId).withLeave(Leave()))
+          publishExternally(event)
         }
       }
 
@@ -162,12 +164,40 @@ class MembershipActor private
     }
 
 
-    case MembershipAPI.GetClusterSize => sender ! membershipTable.size
+    case MembershipAPI.DeclareReadiness => {
 
-    case MembershipAPI.GetRandomNode(nodeState) => ???
+      log.info("Membership readiness signal received")
+      initializationCount -= 1
 
-    case MembershipAPI.GetRandomNodes(nodeState, number) => ???
+      if (initializationCount <= 0) {
+        log.info("Contacting seed node for membership listing")
 
+        implicit val ec: ExecutionContext = actorSystem.dispatcher
+
+        val grpcClientSettings = GrpcClientSettings.connectToServiceAt(
+          addressRetriever.seedIP,
+          ChordialDefaults.MEMBERSHIP_PORT
+        )
+
+        MembershipServiceClient(grpcClientSettings)(ActorMaterializer()(context), ec)
+          .fullSync(FullSyncRequest(nodeID, addressRetriever.selfIP))
+          .onComplete(self ! SeedResponse(_))
+      }
+    }
+
+    case SeedResponse(syncResponse) => syncResponse match {
+
+      case Success(response) => {
+
+      }
+
+      case scala.util.Failure(e) => {
+        log.error(s"Was unable to retrieve membership info from seed node: ${e}")
+
+        self ! MembershipAPI.DeclareReadiness
+        log.error("Attempting to reconnect with seed node")
+      }
+    }
 
     case MembershipAPI.DeclareEvent(nodeState, membershipPair) => {
 
@@ -187,9 +217,25 @@ class MembershipActor private
     }
 
 
-    case MembershipAPI.Subscribe(actorRef) => subscribers += actorRef
+    case MembershipAPI.GetClusterSize =>
+      sender ! membershipTable.size
 
-    case MembershipAPI.Unsubscribe(actorRef) => subscribers -= actorRef
+    case MembershipAPI.GetClusterInfo =>
+      sender ! membershipTable.values.toSeq.map(SyncInfo(_, None)) 
+
+
+    case MembershipAPI.GetRandomNode(nodeState) =>
+      sender ! membershipTable.random(nodeState)
+
+    case MembershipAPI.GetRandomNodes(nodeState, number) =>
+      sender ! membershipTable.random(nodeState, number)
+
+
+    case MembershipAPI.Subscribe(actorRef) =>
+      subscribers += actorRef
+
+    case MembershipAPI.Unsubscribe(actorRef) =>
+      subscribers -= actorRef
 
 
     case x => log.error(receivedUnknown(x))

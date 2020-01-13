@@ -55,6 +55,17 @@ private[membership] class MembershipTable private(
 
 
   // Modifiers
+  def ++(that: MembershipTable): MembershipTable = new MembershipTable({
+      (stateGroups.keySet ++ that.stateGroups.keySet)
+        .map { state =>
+          state -> (stateGroups.getOrElse(state, Set()) ++ that.stateGroups.getOrElse(state, Set()))
+        }
+        .toMap
+    },
+    table ++ that.table
+  )
+
+
   @deprecated
   override def +[V1 >: NodeInfo](entry: (String, V1)): Map[String, V1] =
     new MembershipTable(stateGroups, table.updated(entry._1, entry._2))
@@ -104,8 +115,15 @@ private[membership] class MembershipTable private(
     else self
   }
 
-  def increment(nodeID: String): MembershipTable =
-    self.updated(nodeID, self.get(nodeID).map(_.version).getOrElse(1))
+  def increment(nodeID: String): MembershipTable = {
+    self.updated(
+      nodeID,
+      self
+        .get(nodeID)
+        .map(_.version)
+        .getOrElse(1)
+    )
+  }
 
 
   // Other

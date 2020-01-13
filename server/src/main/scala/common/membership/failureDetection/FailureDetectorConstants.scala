@@ -4,6 +4,7 @@ import akka.actor.ActorSystem
 import akka.grpc.GrpcClientSettings
 import com.risksense.ipaddr.IpAddress
 import common.utils.GrpcSettingsFactory
+import schema.ImplicitDataConversions._
 
 import scala.concurrent.duration._
 
@@ -23,7 +24,7 @@ private[failureDetection] object FailureDetectorConstants extends GrpcSettingsFa
 
     GrpcClientSettings
       .connectToServiceAt(
-        ipAddress.toString,
+        ipAddress,
         common.ChordialDefaults.MEMBERSHIP_PORT
       )
       .withDeadline(timeout)

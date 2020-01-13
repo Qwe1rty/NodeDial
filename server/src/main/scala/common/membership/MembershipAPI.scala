@@ -19,6 +19,27 @@ case class Membership private(nodeID: String, ipAddress: IpAddress) {
 
 object MembershipAPI {
 
+  // Event-related calls
+
+  /**
+   * Signals the membership actor that a prerequisite service is ready (essentially a
+   * "countdown" for the membership to start join procedure)
+   * Does not return anything
+   */
+  case object DeclareReadiness
+
+  /**
+   * Signals the membership actor to broadcast the declaration across to the other nodes and
+   * to internal subscribers.
+   * Does not return anything
+   *
+   * @param nodeState state of the node
+   * @param membershipPair node identifier
+   */
+  case class DeclareEvent(nodeState: NodeState, membershipPair: Membership)
+
+
+
   // Cluster-level information calls
 
   /**
@@ -29,7 +50,7 @@ object MembershipAPI {
 
   /**
    * Get the full set of cluster information.
-   * Returns a ``
+   * Returns a `Seq[NodeInfo]`
    */
   case object GetClusterInfo
 
@@ -56,18 +77,6 @@ object MembershipAPI {
    * @param nodeState the state that the random nodes will be drawn from
    */
   case class GetRandomNodes(nodeState: NodeState = NodeState.ALIVE, number: Int = 1)
-
-
-  // Event-related calls
-
-  /**
-   * Signals the membership actor to broadcast the declaration across to the other nodes and
-   * to internal subscribers
-   *
-   * @param nodeState state of the node
-   * @param membershipPair node identifier
-   */
-  case class DeclareEvent(nodeState: NodeState, membershipPair: Membership)
 
 
   // Subscription calls
