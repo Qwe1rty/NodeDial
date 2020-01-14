@@ -5,7 +5,7 @@ import common.membership.MembershipActor
 import common.membership.addresser.KubernetesAddresser
 import common.membership.failureDetection.{FailureDetectorActor, FailureDetectorServiceImpl}
 import org.slf4j.LoggerFactory
-import persistence.io.PersistenceActor
+import persistence.PersistenceActor
 import persistence.threading.ThreadPartitionActor
 import service.{RequestServiceActor, RequestServiceImpl}
 

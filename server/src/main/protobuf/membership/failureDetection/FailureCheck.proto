@@ -1,0 +1,28 @@
+syntax = "proto2";
+
+option java_multiple_files = true;
+option java_package = "common.membership.failureDetection";
+option java_outer_classname = "ChordialFailureCheck";
+
+package chordial.membership.failureDetection;
+
+
+message DirectMessage {}
+
+message FollowupMessage {
+    required fixed32 ip_address = 1;
+}
+
+message Confirmation {}
+
+
+service FailureDetectorService {
+
+    // RPC for initial failure check, and will be declared SUSPECT if
+    // confirmation cannot be returned
+    rpc DirectCheck (DirectMessage) returns (Confirmation) {}
+
+    // RPC for followup checks, and will be declared DEAD if none of the
+    // followup checks are able to be confirmed
+    rpc FollowupCheck (FollowupMessage) returns (Confirmation) {}
+}

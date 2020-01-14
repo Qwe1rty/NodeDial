@@ -5,6 +5,7 @@ import common.membership.types.{NodeInfo, NodeState}
 import schema.ImplicitDataConversions._
 
 import scala.collection.immutable.MapLike
+import scala.util.Random
 
 
 /**
@@ -51,7 +52,18 @@ private[membership] class MembershipTable private(
   def states(nodeState: NodeState): Set[String] =
     stateGroups(nodeState)
 
-  def random(nodeState: NodeState, quantity: Int = 1): Seq[String] = ???
+  def random(nodeState: NodeState, quantity: Int = 1): Set[String] = {
+    stateGroups.get(nodeState) match {
+      case Some(stateGroup) => quantity match {
+        case 1 => {
+          val index = Random.nextInt(stateGroup.size)
+          Set(stateGroup.view(index, index + 1).last)
+        }
+        case n => Random.shuffle(stateGroup).take(n)
+      }
+      case None => Set[String]()
+    }
+  }
 
 
   // Modifiers

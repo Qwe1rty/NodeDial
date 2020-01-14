@@ -188,7 +188,8 @@ class MembershipActor private
     case SeedResponse(syncResponse) => syncResponse match {
 
       case Success(response) => {
-
+        log.info("Successful full sync response received from seed node")
+        membershipTable ++= response.syncInfo
       }
 
       case scala.util.Failure(e) => {
@@ -221,7 +222,7 @@ class MembershipActor private
       sender ! membershipTable.size
 
     case MembershipAPI.GetClusterInfo =>
-      sender ! membershipTable.values.toSeq.map(SyncInfo(_, None)) 
+      sender ! membershipTable.values.toSeq.map(SyncInfo(_, None))
 
 
     case MembershipAPI.GetRandomNode(nodeState) =>

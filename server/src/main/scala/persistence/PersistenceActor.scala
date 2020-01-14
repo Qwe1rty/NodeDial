@@ -1,9 +1,10 @@
-package persistence.io
+package persistence
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import better.files.File
 import common.ChordialConstants
 import common.utils.ActorDefaults
+import persistence.io.KeyStateActor
 import service.OperationPackage
 
 
