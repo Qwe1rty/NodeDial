@@ -1,9 +1,10 @@
 import akka.actor.ActorSystem
 import com.typesafe.config.ConfigFactory
 import common.ChordialConstants._
-import common.membership.MembershipActor
+import common.membership.{Membership, MembershipAPI, MembershipActor}
 import common.membership.addresser.KubernetesAddresser
 import common.membership.failureDetection.{FailureDetectorActor, FailureDetectorServiceImpl}
+import common.membership.types.NodeState
 import org.slf4j.LoggerFactory
 import persistence.PersistenceActor
 import persistence.threading.ThreadPartitionActor
@@ -52,4 +53,10 @@ private object ChordialServer extends App {
   RequestServiceImpl(requestServiceActor)
 
   log.info("Service layer initialized")
+
+
+  scala.sys.addShutdownHook(membershipActor ! MembershipAPI.DeclareEvent(
+    NodeState.DEAD,
+    Membership(MembershipActor.nodeID, addressRetriever.selfIP)
+  ))
 }

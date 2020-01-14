@@ -12,6 +12,7 @@ import common.membership.types.NodeState.{ALIVE, DEAD, SUSPECT}
 import common.membership.types.{NodeInfo, NodeState}
 import common.utils.ActorDefaults
 import common.{ChordialConstants, ChordialDefaults}
+import org.slf4j.LoggerFactory
 import schema.ImplicitDataConversions._
 import schema.ImplicitGrpcConversions._
 
@@ -28,6 +29,29 @@ object MembershipActor {
   private val MEMBERSHIP_FILENAME  = "cluster"
   private val MEMBERSHIP_EXTENSION = ".info"
   private val MEMBERSHIP_FILE      = MEMBERSHIP_DIR/(MEMBERSHIP_FILENAME + MEMBERSHIP_EXTENSION)
+
+  private val log = LoggerFactory.getLogger(MembershipActor.getClass)
+
+
+  /*
+   * Allow exception to propagate on nodeID file operations, to kill program and exit with
+   * non-0 code. Must be allowed to succeed
+   */
+  val (nodeID: String, rejoin: Boolean) = {
+
+    if (MEMBERSHIP_FILE.notExists) {
+      val newID: String = System.nanoTime().toString.sha256
+      log.info("Node ID not found - generating new ID")
+
+      MEMBERSHIP_DIR.createDirectoryIfNotExists()
+      MEMBERSHIP_FILE.writeByteArray(newID)
+
+      (newID, true)
+    }
+
+    else (MEMBERSHIP_FILE.loadBytes, false)
+  }
+  log.info(s"Membership has determined node ID: ${nodeID}, with rejoin flag: ${rejoin}")
 
 
   def apply
@@ -51,30 +75,15 @@ class MembershipActor private
 
   import MembershipActor._
 
-  private var subscribers = Set[ActorRef]()
-  private var membershipTable = MembershipTable() // TODO make sure this has the current node ID at the very least
-
-  /*
-   * Allow exception to propagate on nodeID file operations, to kill program and exit with
-   * non-0 code. Must be allowed to succeed
-   */
-  private val (nodeID: String, rejoin: Boolean) = {
-
-    if (MEMBERSHIP_FILE.notExists) {
-      val newID: String = System.nanoTime().toString.sha256
-      log.info("Node ID not found - generating new ID")
-
-      MEMBERSHIP_DIR.createDirectoryIfNotExists()
-      MEMBERSHIP_FILE.writeByteArray(newID)
-
-      (newID, true)
-    }
-
-    else (MEMBERSHIP_FILE.loadBytes, false)
-  }
-  log.info(s"Membership has determined node ID: ${nodeID}, with rejoin status: ${rejoin}")
-
   private val gossipActor = GossipActor[Event](self, 200.millisecond, "membership")
+
+  private var subscribers = Set[ActorRef]()
+  private var membershipTable = MembershipTable() + NodeInfo(
+    nodeID,
+    addressRetriever.selfIP,
+    0,
+    NodeState.ALIVE
+  )
 
 
   /**
@@ -117,7 +126,7 @@ class MembershipActor private
 
         case EventType.Suspect(suspectInfo) =>
           log.debug(s"Suspect event - ${event.nodeId} - ${suspectInfo}")
-          
+
           if (event.nodeId != nodeID) {
             membershipTable = membershipTable.updated(event.nodeId, SUSPECT)
           }
@@ -128,7 +137,7 @@ class MembershipActor private
 
         case EventType.Failure(failureInfo) =>
           log.debug(s"Failure event - ${event.nodeId} - ${failureInfo}")
-          
+
           if (event.nodeId != nodeID) {
             membershipTable = membershipTable.updated(event.nodeId, DEAD)
           }
@@ -139,7 +148,7 @@ class MembershipActor private
 
         case EventType.Refute(refuteInfo) =>
           log.debug(s"Refute event - ${event.nodeId} - ${refuteInfo}")
-          
+
           membershipTable.get(event.nodeId).foreach(currentEntry => {
             if (refuteInfo.version > currentEntry.version) {
               membershipTable = membershipTable.updated(NodeInfo(
@@ -203,11 +212,12 @@ class MembershipActor private
     case MembershipAPI.DeclareEvent(nodeState, membershipPair) => {
 
       val targetID = membershipPair.nodeID
+      val version = membershipTable.version(targetID)
       log.info(s"Declaring node ${targetID} according to detected state ${nodeState}")
 
       val eventCandidate: Option[Event] = nodeState match {
-        case NodeState.SUSPECT => Some(Event(targetID).withSuspect(Suspect(membershipTable.version(targetID))))
-        case NodeState.DEAD =>    Some(Event(targetID).withFailure(Failure(membershipTable.version(targetID))))
+        case NodeState.SUSPECT => Some(Event(targetID).withSuspect(Suspect(version)))
+        case NodeState.DEAD =>    Some(Event(targetID).withFailure(Failure(version)))
         case _ =>                 None
       }
 

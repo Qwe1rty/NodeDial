@@ -29,7 +29,8 @@ of implementation. _Italics indicate that this component is in progress_
 - [ ] **Milestone 2: Cluster Membership**
   - [ ] _Membership list of other nodes' IPs and liveness states_
     - [ ] _Node state tracking and broadcasting, following the SWIM protocol_
-      - [ ] _Cluster joins/rejoins/leaves_
+      - [x] Cluster joins/leaves
+      - [ ] Cluster rejoins and recovery
       - [x] Suspicion/death refutation
     - [ ] _Gossip component_
       - [x] Push mechanism for join/leave broadcasting
