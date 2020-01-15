@@ -6,6 +6,7 @@ import akka.stream.ActorMaterializer
 import com.roundeights.hasher.Implicits._
 import common.gossip.GossipAPI.PublishRequest
 import common.gossip.{GossipActor, GossipKey, GossipPayload}
+import common.membership.Event.EventType.Empty
 import common.membership.Event.{EventType, Failure, Leave, Refute, Suspect}
 import common.membership.addresser.AddressRetriever
 import common.membership.types.NodeState.{ALIVE, DEAD, SUSPECT}
@@ -167,6 +168,8 @@ class MembershipActor private
           membershipTable -= event.nodeId
           publishExternally(event)
         }
+
+        case Empty => log.error(s"Received invalid Empty event - ${event.nodeId}")
       }
 
       publishInternally(event)
@@ -198,7 +201,7 @@ class MembershipActor private
 
       case Success(response) => {
         log.info("Successful full sync response received from seed node")
-        membershipTable ++= response.syncInfo
+        membershipTable ++= response.syncInfo.map(_.nodeInfo)
       }
 
       case scala.util.Failure(e) => {

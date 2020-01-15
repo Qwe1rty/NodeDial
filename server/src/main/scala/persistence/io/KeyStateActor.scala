@@ -3,6 +3,7 @@ package persistence.io
 import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, Props}
 import better.files.File
 import common.utils.ActorDefaults
+import persistence.PersistenceActor
 import schema.service.{DeleteRequest, GetRequest, PostRequest}
 import service.OperationPackage
 

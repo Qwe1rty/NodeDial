@@ -52,17 +52,15 @@ private[membership] class MembershipTable private(
   def states(nodeState: NodeState): Set[String] =
     stateGroups(nodeState)
 
-  def random(nodeState: NodeState, quantity: Int = 1): Set[String] = {
-    stateGroups.get(nodeState) match {
-      case Some(stateGroup) => quantity match {
-        case 1 => {
-          val index = Random.nextInt(stateGroup.size)
-          Set(stateGroup.view(index, index + 1).last)
-        }
-        case n => Random.shuffle(stateGroup).take(n)
+  def random(nodeState: NodeState, quantity: Int = 1): Set[String] = stateGroups.get(nodeState) match {
+    case Some(stateGroup) => quantity match {
+      case 1 => {
+        val index = Random.nextInt(stateGroup.size)
+        Set(stateGroup.view(index, index + 1).last)
       }
-      case None => Set[String]()
+      case n => Random.shuffle(stateGroup).take(n)
     }
+    case None => Set[String]()
   }
 
 
@@ -77,11 +75,24 @@ private[membership] class MembershipTable private(
     table ++ that.table
   )
 
+  def ++(that: Seq[NodeInfo]): MembershipTable = self ++ new MembershipTable({
+      that
+        .groupBy(_.state)
+        .mapValues { nodeInfoSeq =>
+          nodeInfoSeq
+            .map(_.nodeId)
+            .toSet
+        }
+    },
+    that.map(nodeInfo => nodeInfo.nodeId -> nodeInfo).toMap
+  )
 
   @deprecated
   override def +[V1 >: NodeInfo](entry: (String, V1)): Map[String, V1] =
-    new MembershipTable(stateGroups, table.updated(entry._1, entry._2))
+    throw new UnsupportedOperationException("Cannot add upper bounded object to NodeInfo table")
 
+  def +(entry: (String, NodeInfo)): MembershipTable =
+    self + entry._2
 
   def +(nodeInfo: NodeInfo): MembershipTable = new MembershipTable({
       val nodeState = nodeInfo.state
@@ -143,5 +154,8 @@ private[membership] class MembershipTable private(
     table.contains(nodeID)
 
   override def iterator: Iterator[(String, NodeInfo)] =
-    super.iterator
+    table.iterator
+
+  override def empty: MembershipTable =
+    MembershipTable()
 }
