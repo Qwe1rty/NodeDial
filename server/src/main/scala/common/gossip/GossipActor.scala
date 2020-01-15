@@ -23,7 +23,7 @@ import scala.util.{Failure, Success}
 
 object GossipActor extends GrpcSettingsFactory {
 
-  private case class PayloadCount(payload: GossipPayload, var count: Int) {
+  private case class PayloadTracker(payload: GossipPayload, var count: Int, var cooldown: Int) {
 
     def apply(grpcClientSettings: GrpcClientSettings)(implicit mat: Materializer, ec: ExecutionContext): Unit = {
       payload.rpc(grpcClientSettings)
@@ -70,7 +70,7 @@ class GossipActor[KeyType: ClassTag] private
   implicit private val materializer: ActorMaterializer = ActorMaterializer()(context)
   implicit private val executionContext: ExecutionContext = actorSystem.dispatcher
 
-  private val keyTable = mutable.Map[GossipKey[KeyType], PayloadCount]()
+  private val keyTable = mutable.Map[GossipKey[KeyType], PayloadTracker]()
 
   start(delay)
 
@@ -87,8 +87,12 @@ class GossipActor[KeyType: ClassTag] private
     case SendRPC(key: GossipKey[KeyType], randomMemberRequest) => randomMemberRequest match {
 
       case Success(requestResult) => requestResult.foreach(member => {
-        keyTable(key)(createGrpcSettings(member.ipAddress, delay * 2))
-        if (keyTable(key).count <= 0) keyTable -= key
+        val payload = keyTable(key)
+
+        payload.count -= 1
+        payload(createGrpcSettings(member.ipAddress, delay * 2))
+
+        if (payload.count <= payload.cooldown) keyTable -= key
       })
 
       case Failure(e) => log.error(s"Error encountered on membership node request: ${e}")
@@ -105,7 +109,8 @@ class GossipActor[KeyType: ClassTag] private
     case ClusterSizeReceived(key: GossipKey[KeyType], payload, clusterSizeRequest) => clusterSizeRequest match {
 
       case Success(clusterSize) => if (!keyTable.contains(key)) {
-          keyTable += key -> PayloadCount(payload, ChordialDefaults.bufferCapacity(clusterSize))
+        val bufferCapacity = ChordialDefaults.bufferCapacity(clusterSize)
+        keyTable += key -> PayloadTracker(payload, bufferCapacity, -3 * bufferCapacity)
       }
 
       case Failure(e) => log.error(s"Cluster size request could not be completed: ${e}")
