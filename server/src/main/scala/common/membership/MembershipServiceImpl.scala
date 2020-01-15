@@ -32,7 +32,7 @@ class MembershipServiceImpl(membershipActor: ActorRef)(implicit actorSystem: Act
   Http()
     .bindAndHandleAsync(
       service,
-      interface = "127.0.0.1",
+      interface = "0.0.0.0",
       port = ChordialDefaults.MEMBERSHIP_PORT,
       connectionContext = HttpConnectionContext())
     .foreach(

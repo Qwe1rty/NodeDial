@@ -30,7 +30,7 @@ class RequestServiceImpl(requestServiceActor: ActorRef)(implicit actorSystem: Ac
   Http()
     .bindAndHandleAsync(
       service,
-      interface = "127.0.0.1",
+      interface = "0.0.0.0",
       port = ChordialDefaults.EXTERNAL_REQUEST_PORT,
       connectionContext = HttpConnectionContext())
     .foreach(
