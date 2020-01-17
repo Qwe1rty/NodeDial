@@ -15,7 +15,7 @@ object PartitionActor {
 
 class PartitionActor private(persistenceActor: ActorRef) extends Actor
                                                          with ActorLogging {
-  private val partitionRing = PartitionRing()
+  private val partitionRing = ShardRing()
 
   // TODO subscribe to membership service
 

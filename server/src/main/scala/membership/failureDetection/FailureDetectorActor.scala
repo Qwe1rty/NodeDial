@@ -1,16 +1,17 @@
-package common.membership.failureDetection
+package membership.failureDetection
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import akka.pattern.ask
 import akka.stream.ActorMaterializer
 import common.ChordialDefaults.ACTOR_REQUEST_TIMEOUT
-import common.membership.Membership
-import common.membership.MembershipAPI._
-import common.membership.failureDetection.FailureDetectorConstants._
-import common.membership.failureDetection.FailureDetectorSignal._
+import common.membership.failureDetection.{DirectMessage, FailureDetectorServiceClient, FollowupMessage}
 import common.membership.types.NodeState
 import common.utils.ActorTimers.Tick
 import common.utils.{ActorDefaults, ActorTimers}
+import membership.Membership
+import membership.MembershipAPI.{DeclareEvent, GetRandomNode, GetRandomNodes}
+import membership.failureDetection.FailureDetectorConstants._
+import membership.failureDetection.FailureDetectorSignal._
 import schema.ImplicitDataConversions._
 
 import scala.concurrent.ExecutionContext

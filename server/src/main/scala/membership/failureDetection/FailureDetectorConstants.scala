@@ -1,4 +1,4 @@
-package common.membership.failureDetection
+package membership.failureDetection
 
 import akka.actor.ActorSystem
 import akka.grpc.GrpcClientSettings

@@ -1,6 +1,7 @@
-package common.membership.addresser
+package membership.addresser
 
 import com.risksense.ipaddr.IpAddress
+
 
 trait AddressRetriever {
 

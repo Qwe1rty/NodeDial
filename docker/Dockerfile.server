@@ -8,5 +8,5 @@ EXPOSE 22200
 RUN mkdir -p /var/lib/chordial
 WORKDIR /var/lib/chordial
 
-COPY $JAR_FILE build/docker/run.sh ./
+COPY $JAR_FILE docker/run.sh ./
 ENTRYPOINT ["./run.sh"]

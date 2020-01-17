@@ -1,6 +1,7 @@
-package common.membership.failureDetection
+package membership.failureDetection
 
-import common.membership.Membership
+import common.membership.failureDetection.Confirmation
+import membership.Membership
 
 import scala.util.Try
 

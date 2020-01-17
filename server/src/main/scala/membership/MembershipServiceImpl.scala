@@ -1,4 +1,4 @@
-package common.membership
+package membership
 
 import akka.actor.{ActorRef, ActorSystem}
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
@@ -8,6 +8,7 @@ import akka.stream.{ActorMaterializer, Materializer}
 import common.ChordialDefaults
 import common.ChordialDefaults.ACTOR_REQUEST_TIMEOUT
 import common.membership.types.NodeInfo
+import common.membership._
 import org.slf4j.LoggerFactory
 import service.RequestServiceImpl
 

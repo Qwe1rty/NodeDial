@@ -1,4 +1,4 @@
-CHORDIAL_VERSION = 1.2.0
+CHORDIAL_VERSION = 1.2.1
 
 DOCKER_SERVER = chordial/server
 DOCKER_CLIENT = chordial/client
@@ -17,14 +17,14 @@ compile: clean
 docker:
 	@docker build \
 		--build-arg JAR_FILE=$(shell find . -name "*Server-assembly-*.jar") \
-		--file build/docker/Dockerfile.server \
+		--file docker/Dockerfile.server \
 		--tag $(DOCKER_SERVER):latest \
 		--tag $(DOCKER_SERVER):$(CHORDIAL_VERSION) \
 		.
 #		. & \
 #	docker build \
 #		--build-arg JAR_FILE=$(shell find . -name "*Client-assembly-*.jar") \
-#		--file build/docker/Dockerfile.client \
+#		--file docker/Dockerfile.client \
 #		--tag $(DOCKER_CLIENT):latest \
 #		--tag $(DOCKER_CLIENT):$(CHORDIAL_VERSION) \
 #		.

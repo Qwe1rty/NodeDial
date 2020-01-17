@@ -1,13 +1,13 @@
 package partitioning
 
 
-object PartitionRing {
+object ShardRing {
 
-  def apply(): PartitionRing = new PartitionRing
+  def apply(): ShardRing = new ShardRing
 }
 
 
-class PartitionRing {
+class ShardRing {
 
   def add(ipAddress: Int, hashList: Seq[String]): Unit = ???
 

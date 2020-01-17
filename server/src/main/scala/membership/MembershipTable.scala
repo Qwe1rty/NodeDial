@@ -1,4 +1,4 @@
-package common.membership
+package membership
 
 import com.risksense.ipaddr.IpAddress
 import common.membership.types.{NodeInfo, NodeState}

@@ -1,6 +1,6 @@
 package common.gossip
 
-import common.membership.Membership
+import membership.Membership
 
 import scala.util.Try
 

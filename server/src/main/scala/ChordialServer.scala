@@ -1,10 +1,10 @@
 import akka.actor.ActorSystem
 import com.typesafe.config.ConfigFactory
 import common.ChordialConstants._
-import common.membership.{Membership, MembershipAPI, MembershipActor}
-import common.membership.addresser.KubernetesAddresser
-import common.membership.failureDetection.{FailureDetectorActor, FailureDetectorServiceImpl}
 import common.membership.types.NodeState
+import membership.addresser.KubernetesAddresser
+import membership.failureDetection.{FailureDetectorActor, FailureDetectorServiceImpl}
+import membership.{Membership, MembershipAPI, MembershipActor}
 import org.slf4j.LoggerFactory
 import persistence.PersistenceActor
 import persistence.threading.ThreadPartitionActor

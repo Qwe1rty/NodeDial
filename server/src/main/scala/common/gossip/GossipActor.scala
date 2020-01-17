@@ -2,16 +2,16 @@ package common.gossip
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import akka.grpc.GrpcClientSettings
-import com.risksense.ipaddr.IpAddress
-import common.utils.ActorTimers.Tick
-import common.utils.{ActorDefaults, ActorTimers, GrpcSettingsFactory}
 import akka.pattern.ask
 import akka.stream.{ActorMaterializer, Materializer}
 import akka.util.Timeout
+import com.risksense.ipaddr.IpAddress
 import common.ChordialDefaults
-import common.membership.{Membership, MembershipAPI}
-import GossipSignal.{ClusterSizeReceived, SendRPC}
+import common.gossip.GossipSignal.{ClusterSizeReceived, SendRPC}
 import common.membership.types.NodeState
+import common.utils.ActorTimers.Tick
+import common.utils.{ActorDefaults, ActorTimers, GrpcSettingsFactory}
+import membership.{Membership, MembershipAPI}
 import schema.ImplicitDataConversions._
 
 import scala.collection.mutable
@@ -23,7 +23,7 @@ import scala.util.{Failure, Success}
 
 object GossipActor extends GrpcSettingsFactory {
 
-  private case class PayloadTracker(payload: GossipPayload, var count: Int, var cooldown: Int) {
+  private case class PayloadTracker(payload: GossipPayload, var count: Int, cooldown: Int) {
 
     def apply(grpcClientSettings: GrpcClientSettings)(implicit mat: Materializer, ec: ExecutionContext): Unit = {
       payload.rpc(grpcClientSettings)

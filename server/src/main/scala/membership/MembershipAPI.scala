@@ -1,4 +1,4 @@
-package common.membership
+package membership
 
 import akka.actor.ActorRef
 import com.risksense.ipaddr.IpAddress
