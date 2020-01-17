@@ -25,7 +25,7 @@ private[failureDetection] object FailureDetectorConstants extends GrpcSettingsFa
     GrpcClientSettings
       .connectToServiceAt(
         ipAddress,
-        common.ChordialDefaults.MEMBERSHIP_PORT
+        common.ChordialConstants.MEMBERSHIP_PORT
       )
       .withDeadline(timeout)
   }

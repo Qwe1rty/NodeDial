@@ -5,10 +5,10 @@ import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.http.scaladsl.{Http, HttpConnectionContext}
 import akka.pattern.ask
 import akka.stream.{ActorMaterializer, Materializer}
-import common.ChordialDefaults
+import common.ChordialConstants
 import common.ChordialDefaults.ACTOR_REQUEST_TIMEOUT
-import common.membership.types.NodeInfo
 import common.membership._
+import common.membership.types.NodeInfo
 import org.slf4j.LoggerFactory
 import service.RequestServiceImpl
 
@@ -34,7 +34,7 @@ class MembershipServiceImpl(membershipActor: ActorRef)(implicit actorSystem: Act
     .bindAndHandleAsync(
       service,
       interface = "0.0.0.0",
-      port = ChordialDefaults.MEMBERSHIP_PORT,
+      port = ChordialConstants.MEMBERSHIP_PORT,
       connectionContext = HttpConnectionContext())
     .foreach(
       binding => log.info(s"Membership service bound to ${binding.localAddress}")

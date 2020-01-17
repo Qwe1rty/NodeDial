@@ -5,7 +5,7 @@ import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.http.scaladsl.{Http, HttpConnectionContext}
 import akka.pattern.ask
 import akka.stream.{ActorMaterializer, Materializer}
-import common.ChordialDefaults
+import common.ChordialConstants
 import org.slf4j.LoggerFactory
 import schema.service._
 
@@ -31,7 +31,7 @@ class RequestServiceImpl(requestServiceActor: ActorRef)(implicit actorSystem: Ac
     .bindAndHandleAsync(
       service,
       interface = "0.0.0.0",
-      port = ChordialDefaults.EXTERNAL_REQUEST_PORT,
+      port = ChordialConstants.EXTERNAL_REQUEST_PORT,
       connectionContext = HttpConnectionContext())
     .foreach(
       binding => log.info(s"gRPC request service bound to ${binding.localAddress}")

@@ -4,15 +4,15 @@ import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import akka.grpc.GrpcClientSettings
 import akka.stream.ActorMaterializer
 import com.roundeights.hasher.Implicits._
+import common.ChordialConstants
 import common.gossip.GossipAPI.PublishRequest
 import common.gossip.{GossipActor, GossipKey, GossipPayload}
 import common.membership.Event.EventType.Empty
 import common.membership.Event.{EventType, Failure, Refute, Suspect}
 import common.membership.types.NodeState.{ALIVE, DEAD, SUSPECT}
 import common.membership.types.{NodeInfo, NodeState}
-import common.membership.{Event, FullSyncRequest, MembershipServiceClient, SyncInfo, SyncResponse}
+import common.membership._
 import common.utils.ActorDefaults
-import common.{ChordialConstants, ChordialDefaults}
 import membership.addresser.AddressRetriever
 import org.slf4j.LoggerFactory
 import schema.ImplicitDataConversions._
@@ -182,14 +182,14 @@ class MembershipActor private
       log.info("Membership readiness signal received")
       initializationCount -= 1
 
-      if (initializationCount <= 0) {
+      if (initializationCount <= 0) addressRetriever.seedIP.foreach { seedIP =>
         log.info("Contacting seed node for membership listing")
 
         implicit val ec: ExecutionContext = actorSystem.dispatcher
 
         val grpcClientSettings = GrpcClientSettings.connectToServiceAt(
-          addressRetriever.seedIP,
-          ChordialDefaults.MEMBERSHIP_PORT
+          seedIP,
+          ChordialConstants.MEMBERSHIP_PORT
         )
 
         MembershipServiceClient(grpcClientSettings)(ActorMaterializer()(context), ec)
