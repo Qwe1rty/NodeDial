@@ -1,0 +1,70 @@
+## Headless Service definition
+apiVersion: v1
+kind: Service
+metadata:
+  name: chordial-headless
+  namespace: chordial-ns
+  labels:
+    app: chordial
+spec:
+  clusterIP: None
+  ports:
+    - name: membership
+      port: 22200
+    - name: partitioning
+      port: 22201
+    - name: replication
+      port: 22202
+  selector:
+    app: chordial
+
+---
+
+## StatefulSet definition
+apiVersion: v1
+kind: StatefulSet
+metadata:
+  name: chordial-ss
+  namespace: chordial-ns
+  labels:
+    app: chordial
+spec:
+  serviceName: chordial
+  replicas: 1
+  template:
+
+    ## Pod definition
+    metadata:
+      name: chordial-pod
+      namespace: chordial-ns
+      labels:
+        app: chordial
+    spec:
+      containers:
+        - name: chordial-container
+          image: chordial/server:1.2.1
+          imagePullPolicy: IfNotPresent
+          resources:
+            limits:
+              memory: "500Mi"
+            requests:
+              memory: "300Mi"
+          env:
+            - name: MY_POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: MY_POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          ports:
+            - name: service
+              containerPort: 8080
+            - name: membership
+              containerPort: 22200
+            - name: partitioning
+              containerPort: 22201
+            - name: replication
+              containerPort: 22202
+

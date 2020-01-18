@@ -6,6 +6,7 @@ GENERAL:
 - Some form of proper environment variable/configuration/dependency injection
 - Document everything both in the code and on Github
 - Convert usages of the "String" type for hashes into "Digest"
+- Add cluster names
 
 SERVICE:
 - Replace the ActorMaterializer instance with the system wide one
