@@ -79,6 +79,7 @@ class MembershipActor private
 
   private val gossipActor = GossipActor[Event](self, 200.millisecond, "membership")
 
+  private var readiness = false
   private var subscribers = Set[ActorRef]()
   private var membershipTable = MembershipTable() + NodeInfo(
     nodeID,
@@ -200,10 +201,13 @@ class MembershipActor private
         }
         else log.info("Seed IP was the same as this current node's IP, no full sync necessary")
 
+        readiness = true
       }
 
-      // TODO set internal readiness state and gRPC endpoint for clients/k8s to check
     }
+
+    case MembershipAPI.CheckReadiness =>
+      sender ! readiness
 
     case SeedResponse(syncResponse) => syncResponse match {
 

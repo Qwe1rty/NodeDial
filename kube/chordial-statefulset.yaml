@@ -41,9 +41,9 @@ spec:
         requests:
           storage: 20Mi
       storageClassName: chordial-storage
-
-  ## Pod definition
   template:
+
+    ## Pod definition
     metadata:
       name: chordial-pod
       namespace: chordial-ns

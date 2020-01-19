@@ -30,4 +30,11 @@ service RequestService {
             delete: "/v1/api/keys/{key}"
         };
     }
+
+
+    rpc Readiness(ReadinessCheck) returns (ReadinessConfirmation) {
+        option (google.api.http) = {
+            get: "/v1/api/readiness"
+        };
+    }
 }

@@ -29,6 +29,12 @@ object MembershipAPI {
   case object DeclareReadiness
 
   /**
+   * Asks the membership actor whether or not the node is ready to receive client requests
+   * Returns a `Boolean` value
+   */
+  case object CheckReadiness
+
+  /**
    * Signals the membership actor to broadcast the declaration across to the other nodes and
    * to internal subscribers.
    * Does not return anything

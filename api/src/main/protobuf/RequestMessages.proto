@@ -41,3 +41,10 @@ message DeleteRequest {
 message DeleteResponse {
     option (scalapb.message).extends = "schema.ResponseTrait";
 }
+
+
+message ReadinessCheck {}
+
+message ReadinessConfirmation {
+    required bool is_ready = 1;
+}

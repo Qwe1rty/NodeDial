@@ -69,7 +69,7 @@ object KubernetesAddresser extends AddressRetriever {
           case Some(ipAddress) =>
             log.info(s"IP address found through environment variable: ${ipAddress}")
           case None =>
-            log.error(s"IP address environment variable not found")
+            log.warn(s"IP address environment variable not found")
         }
         environmentAddress
     }
