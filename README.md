@@ -41,6 +41,10 @@ Various links that help explain various aspects of the build setup used in this 
 * Dockerizing Scala apps
   * Walkthrough: https://blog.elegantmonkeys.com/dockerizing-your-scala-application-6590385fd501
 * Java downgrading: <https://askubuntu.com/questions/1133216/downgrading-java-11-to-java-8>
+* Kubernetes Cluster Setup:
+  * Example StatefulSet deployment (ZooKeeper): <https://kubernetes.io/docs/tasks/run-application/scale-stateful-set/>
+  * Example StatefulSet deployment (Cassandra): <https://kubernetes.io/docs/tutorials/stateful-application/cassandra/>
+  * Cassandra deployment walkthrough/breakdown: <https://convit.de/blog/blog-cassandra-kubernetes-it-good-fit-convit.html>
 
 
 ---
@@ -73,7 +77,7 @@ of implementation. _Italics indicate that this component is in progress_
     - [ ] Pull mechanism for anti-entropy
   - [x] Failure detection through direct + indirect check mechanism
   - [ ] _Local kubernetes cluster setup and integration_
-    - [x] Service containerization
+    - [x] Service containerization  
 - [ ] **Milestone 3: Partitioning Layer**
   - [ ] Partitioning via virtual nodes
     - [ ] Partition ring data structure

@@ -35,3 +35,4 @@ PARTITIONING:
 
 BUILD SETUP:
 - Keep the ports configured in a central place (currently in code, makefile, & docker build)
+- Move over to Minikube from Docker Desktop, to ensure most recent K8s version (v1.17.0)

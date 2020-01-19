@@ -6,7 +6,7 @@ import schema.ImplicitDataConversions._
 trait AddressRetriever {
 
   /**
-   * The IP address of this node, where other nodes can use this IP address to  contact
+   * The IP address of this node, where other nodes can use this IP address to contact
    * this node
    *
    * @return the IP address of this node

@@ -183,19 +183,26 @@ class MembershipActor private
       initializationCount -= 1
 
       if (initializationCount <= 0) addressRetriever.seedIP.foreach { seedIP =>
-        log.info("Contacting seed node for membership listing")
 
-        implicit val ec: ExecutionContext = actorSystem.dispatcher
+        if (seedIP != addressRetriever.selfIP) {
+          log.info("Contacting seed node for membership listing")
 
-        val grpcClientSettings = GrpcClientSettings.connectToServiceAt(
-          seedIP,
-          ChordialConstants.MEMBERSHIP_PORT
-        )
+          implicit val ec: ExecutionContext = actorSystem.dispatcher
 
-        MembershipServiceClient(grpcClientSettings)(ActorMaterializer()(context), ec)
-          .fullSync(FullSyncRequest(nodeID, addressRetriever.selfIP))
-          .onComplete(self ! SeedResponse(_))
+          val grpcClientSettings = GrpcClientSettings.connectToServiceAt(
+            seedIP,
+            ChordialConstants.MEMBERSHIP_PORT
+          )
+
+          MembershipServiceClient(grpcClientSettings)(ActorMaterializer()(context), ec)
+            .fullSync(FullSyncRequest(nodeID, addressRetriever.selfIP))
+            .onComplete(self ! SeedResponse(_))
+        }
+        else log.info("Seed IP was the same as this current node's IP, no full sync necessary")
+
       }
+
+      // TODO set internal readiness state and gRPC endpoint for clients/k8s to check
     }
 
     case SeedResponse(syncResponse) => syncResponse match {

@@ -1,7 +1,7 @@
 import com.lightbend.sbt.javaagent.JavaAgent.JavaAgentKeys.javaAgents
 import sbt.project
 
-ThisBuild / version := "1.2.1"
+ThisBuild / version := "1.2.2"
 ThisBuild / scalaVersion := "2.12.0"
 
 
