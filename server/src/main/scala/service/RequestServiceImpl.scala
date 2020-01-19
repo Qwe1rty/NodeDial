@@ -5,9 +5,9 @@ import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.http.scaladsl.{Http, HttpConnectionContext}
 import akka.pattern.ask
 import akka.stream.{ActorMaterializer, Materializer}
-import common.ChordialConstants
 import membership.MembershipAPI
 import org.slf4j.LoggerFactory
+import schema.PortConfiguration.EXTERNAL_REQUEST_PORT
 import schema.service._
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -39,13 +39,13 @@ class RequestServiceImpl
     .bindAndHandleAsync(
       service,
       interface = "0.0.0.0",
-      port = ChordialConstants.EXTERNAL_REQUEST_PORT,
+      port = EXTERNAL_REQUEST_PORT,
       connectionContext = HttpConnectionContext())
     .foreach(
       binding => log.info(s"gRPC request service bound to ${binding.localAddress}")
     )
 
-  import common.ChordialDefaults.EXTERNAL_REQUEST_TIMEOUT
+  import common.ServerDefaults.EXTERNAL_REQUEST_TIMEOUT
 
 
   override def get(in: GetRequest): Future[GetResponse] = {

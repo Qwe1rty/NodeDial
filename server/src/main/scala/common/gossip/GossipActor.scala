@@ -6,13 +6,14 @@ import akka.pattern.ask
 import akka.stream.{ActorMaterializer, Materializer}
 import akka.util.Timeout
 import com.risksense.ipaddr.IpAddress
-import common.ChordialDefaults
+import common.ServerDefaults
 import common.gossip.GossipSignal.{ClusterSizeReceived, SendRPC}
 import common.membership.types.NodeState
 import common.utils.ActorTimers.Tick
 import common.utils.{ActorDefaults, ActorTimers, GrpcSettingsFactory}
 import membership.{Membership, MembershipAPI}
 import schema.ImplicitDataConversions._
+import schema.PortConfiguration.MEMBERSHIP_PORT
 
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext
@@ -49,7 +50,7 @@ object GossipActor extends GrpcSettingsFactory {
     GrpcClientSettings
       .connectToServiceAt(
         ipAddress,
-        common.ChordialConstants.MEMBERSHIP_PORT
+        MEMBERSHIP_PORT
       )
       .withDeadline(timeout)
   }
@@ -109,7 +110,7 @@ class GossipActor[KeyType: ClassTag] private
     case ClusterSizeReceived(key: GossipKey[KeyType], payload, clusterSizeRequest) => clusterSizeRequest match {
 
       case Success(clusterSize) => if (!keyTable.contains(key)) {
-        val bufferCapacity = ChordialDefaults.bufferCapacity(clusterSize)
+        val bufferCapacity = ServerDefaults.bufferCapacity(clusterSize)
         keyTable += key -> PayloadTracker(payload, bufferCapacity, -3 * bufferCapacity)
       }
 

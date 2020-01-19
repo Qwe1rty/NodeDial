@@ -1,6 +1,6 @@
 import akka.actor.ActorSystem
 import com.typesafe.config.ConfigFactory
-import common.ChordialConstants._
+import common.ServerConstants._
 import common.membership.types.NodeState
 import membership.addresser.KubernetesAddresser
 import membership.failureDetection.{FailureDetectorActor, FailureDetectorServiceImpl}

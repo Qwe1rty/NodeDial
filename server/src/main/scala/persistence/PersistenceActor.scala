@@ -2,7 +2,7 @@ package persistence
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import better.files.File
-import common.ChordialConstants
+import common.ServerConstants
 import common.utils.ActorDefaults
 import membership.MembershipAPI
 import persistence.io.KeyStateActor
@@ -11,7 +11,7 @@ import service.OperationPackage
 
 object PersistenceActor {
 
-  val PERSISTENCE_DIRECTORY: File = ChordialConstants.BASE_DIRECTORY/"data"
+  val PERSISTENCE_DIRECTORY: File = ServerConstants.BASE_DIRECTORY/"data"
 
 
   def apply

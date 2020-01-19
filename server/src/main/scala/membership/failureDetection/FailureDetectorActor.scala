@@ -3,7 +3,7 @@ package membership.failureDetection
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import akka.pattern.ask
 import akka.stream.ActorMaterializer
-import common.ChordialDefaults.ACTOR_REQUEST_TIMEOUT
+import common.ServerDefaults.ACTOR_REQUEST_TIMEOUT
 import common.membership.failureDetection.{DirectMessage, FailureDetectorServiceClient, FollowupMessage}
 import common.membership.types.NodeState
 import common.utils.ActorTimers.Tick

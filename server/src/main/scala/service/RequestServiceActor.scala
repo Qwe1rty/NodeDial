@@ -18,7 +18,7 @@ object RequestServiceActor {
       (implicit actorSystem: ActorSystem): ActorRef = {
 
     actorSystem.actorOf(
-      Props(new RequestServiceActor(requestProcessorActor)),
+      Props(new RequestServiceActor(requestProcessorActor, membershipActor)),
       "requestServiceActor"
     )
   }

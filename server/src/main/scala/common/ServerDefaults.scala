@@ -7,7 +7,7 @@ import akka.util.Timeout
 import scala.concurrent.duration.Duration
 
 
-object ChordialDefaults {
+object ServerDefaults {
 
   implicit val EXTERNAL_REQUEST_TIMEOUT: Timeout = Timeout(Duration(10, TimeUnit.SECONDS))
   implicit val INTERNAL_REQUEST_TIMEOUT: Timeout = Timeout(Duration(20, TimeUnit.SECONDS))

@@ -4,14 +4,14 @@ import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import akka.grpc.GrpcClientSettings
 import akka.stream.ActorMaterializer
 import com.roundeights.hasher.Implicits._
-import common.ChordialConstants
+import common.ServerConstants
 import common.gossip.GossipAPI.PublishRequest
 import common.gossip.{GossipActor, GossipKey, GossipPayload}
 import common.membership.Event.EventType.Empty
 import common.membership.Event.{EventType, Failure, Refute, Suspect}
+import common.membership._
 import common.membership.types.NodeState.{ALIVE, DEAD, SUSPECT}
 import common.membership.types.{NodeInfo, NodeState}
-import common.membership._
 import common.utils.ActorDefaults
 import membership.addresser.AddressRetriever
 import org.slf4j.LoggerFactory
@@ -27,7 +27,7 @@ object MembershipActor {
 
   private case class SeedResponse(syncResponse: Try[SyncResponse])
 
-  private val MEMBERSHIP_DIR       = ChordialConstants.BASE_DIRECTORY/"membership"
+  private val MEMBERSHIP_DIR       = ServerConstants.BASE_DIRECTORY/"membership"
   private val MEMBERSHIP_FILENAME  = "cluster"
   private val MEMBERSHIP_EXTENSION = ".info"
   private val MEMBERSHIP_FILE      = MEMBERSHIP_DIR/(MEMBERSHIP_FILENAME + MEMBERSHIP_EXTENSION)
@@ -192,7 +192,7 @@ class MembershipActor private
 
           val grpcClientSettings = GrpcClientSettings.connectToServiceAt(
             seedIP,
-            ChordialConstants.MEMBERSHIP_PORT
+            MEMBERSHIP_PORT
           )
 
           MembershipServiceClient(grpcClientSettings)(ActorMaterializer()(context), ec)

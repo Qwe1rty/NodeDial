@@ -19,6 +19,7 @@ lazy val dependencies =
     val logbackV = "1.2.3"
     val betterFilesV = "3.8.0"
     val hasherV = "1.2.2"
+    val scoptV = "3.7.1"
 
 
     val protoCommon =  "com.google.api.grpc"  % "proto-google-common-protos" % protoCommonV % "protobuf"
@@ -33,6 +34,7 @@ lazy val dependencies =
     val logback     = "ch.qos.logback"        % "logback-classic"            % logbackV
     val betterFiles = "com.github.pathikrit" %% "better-files"               % betterFilesV
     val hasher      = "com.outr"             %% "hasher"                     % hasherV
+    val scopt       = "com.github.scopt"     %% "scopt"                      % scoptV
   }
 
 lazy val grpcLibraryGroup = Seq(
@@ -77,7 +79,9 @@ lazy val client = (project in file("client"))
     name := "ChordialClient",
     assemblySettings,
     javaAgents += jettyAgent,
-    libraryDependencies ++= coreLibraryGroup
+    libraryDependencies ++= coreLibraryGroup ++ Seq(
+      dependencies.scopt
+    )
   )
   .dependsOn(api)
 
