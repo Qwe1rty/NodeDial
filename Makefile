@@ -1,7 +1,11 @@
-CHORDIAL_VERSION = 1.2.2
+CHORDIAL_VERSION = 1.2.3
 
 DOCKER_SERVER = chordial/server
 DOCKER_CLIENT = chordial/client
+
+ROOT_LOCATION = /var/lib/chordial
+SERVER_LOCATION = $(ROOT_LOCATION)/server
+CLIENT_LOCATION = $(ROOT_LOCATION)/client
 
 
 ####################
@@ -11,23 +15,18 @@ DOCKER_CLIENT = chordial/client
 clean:
 	@sbt clean
 
-compile: clean
+build: clean
 	@sbt assembly
 
+.PHONY: docker
 docker:
 	@docker build \
-		--build-arg JAR_FILE=$(shell find . -name "*Server-assembly-*.jar") \
-		--file docker/Dockerfile.server \
+		--build-arg SERVER_JAR_FILE=$(shell find . -name "ChordialServer-assembly-*.jar") \
+		--build-arg CLIENT_JAR_FILE=$(shell find . -name "ChordialClient-assembly-*.jar") \
+		--file docker/Dockerfile \
 		--tag $(DOCKER_SERVER):latest \
 		--tag $(DOCKER_SERVER):$(CHORDIAL_VERSION) \
 		.
-#		. & \
-#	docker build \
-#		--build-arg JAR_FILE=$(shell find . -name "*Client-assembly-*.jar") \
-#		--file docker/Dockerfile.client \
-#		--tag $(DOCKER_CLIENT):latest \
-#		--tag $(DOCKER_CLIENT):$(CHORDIAL_VERSION) \
-#		.
 
 all: compile docker
 
@@ -42,11 +41,18 @@ run-server:
 log-server:
 	@docker logs -f $(shell docker ps -q --filter ancestor="$(DOCKER_SERVER):latest")
 
+exec-server:
+	@docker exec -it $(shell docker ps -q --filter ancestor="$(DOCKER_SERVER):latest") sh
+
 kill-server:
 	@docker stop $(shell docker ps -q --filter ancestor="$(DOCKER_SERVER):latest")
 
-run-client:
-	@java -jar $(shell find . -name "*Client-assembly-*.jar")
-#
-#kill-client:
-#	docker stop $(shell docker ps -q --filter ancestor="$(DOCKER_CLIENT):latest")
+
+## NOTE: sudo permissions required to install global client.
+install-client:
+	@sudo mkdir -p $(CLIENT_LOCATION)
+	@sudo cp -f $(shell find . -name "ChordialClient-assembly-*.jar") $(CLIENT_LOCATION)
+	@sudo cp -f docker/run-client.sh /usr/local/bin/chordial
+
+#local-client:
+#	@java -jar $(shell find . -name "ChordialClient-assembly-*.jar")

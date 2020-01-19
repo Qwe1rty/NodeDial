@@ -52,7 +52,7 @@ spec:
     spec:
       containers:
       - name: chordial-container
-        image: chordial/server:1.2.2
+        image: chordial/server:1.2.3
         imagePullPolicy: IfNotPresent
         resources:
           limits:
@@ -81,7 +81,7 @@ spec:
           containerPort: 22202
         volumeMounts:
         - name: chordial-storage
-          mountPath: /var/chordial
+          mountPath: /var/lib/chordial
 
 ---
 

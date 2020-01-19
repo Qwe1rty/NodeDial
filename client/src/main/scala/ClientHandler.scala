@@ -10,7 +10,6 @@ import schema.service.RequestServiceClient
 import scala.concurrent.ExecutionContextExecutor
 import scala.concurrent.duration.Duration
 import scala.language.implicitConversions
-import scala.util.{Success, Try}
 
 
 object ClientHandler {
@@ -36,10 +35,10 @@ object ClientHandler {
 
 
 case class ClientHandler(
-  key:        Option[String]    = None,
-  value:      Option[String]    = None,
-  timeout:    Duration          = Duration(10, TimeUnit.SECONDS),
-  host:       String            = "0.0.0.0",
+  key:        Option[String] = None,
+  value:      Option[String] = None,
+  timeout:    Duration       = Duration(10, TimeUnit.SECONDS),
+  host:       String         = "0.0.0.0",
 
-  conclusion: Try[Unit] = Success(())
+  operation: ClientOperation = INVALID
 )

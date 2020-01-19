@@ -1,65 +1,100 @@
 import org.slf4j.LoggerFactory
 import schema.ImplicitGrpcConversions._
 import schema.service.{GetRequest, PostRequest, ReadinessCheck}
-import scopt.{OptionDef, OptionParser}
+import scopt.OptionParser
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success, Try}
 
 
+/**
+ * This is the client stub for the Chordial database. It provides an interface to conveniently
+ * call the external server gRPC methods
+ *
+ * For the specification of this stub, run the client stub with the --help argument
+ */
 private object ChordialClient extends App {
 
   import ClientHandler._
 
-  lazy val log = LoggerFactory.getLogger(ChordialClient.getClass)
+  lazy val separator = sys.props("line.separator")
 
 
-  val parser: OptionParser[ClientHandler] = new OptionParser[ClientHandler]("chordialClient") {
+  val parser: OptionParser[ClientHandler] = new OptionParser[ClientHandler]("chordial") {
 
     head(
       """This Chordial client program is a tool to interact with the database node instances
         |For more information, check out: https://github.com/Qwe1rty/Chordial
-        |
         |""".stripMargin)
 
-    private val optionMappings = Map[Char, OptionDef[_, ClientHandler]](
 
-      'k' -> opt[String]('k', "key")
-          .required()
-          .action((keyParam, handler) => handler.copy(key = Some(keyParam)))
-          .text("The key for an entry in the database"),
+    opt[String]('k', "key")
+      .action((keyParam, handler) => handler.copy(key = Some(keyParam)))
+      .text("The key for an entry in the database")
 
-      'v' -> opt[String]('v', "value")
-          .required()
-          .action((valueParam, handler) => handler.copy(value = Some(valueParam)))
-          .text("The value associated with a key"),
+    opt[String]('v', "value")
+      .action((valueParam, handler) => handler.copy(value = Some(valueParam)))
+      .text("The value associated with a key")
 
-      't' -> opt[String]('t', "timeout")
-          .validate(timeoutParam => {
-            Try(Duration(timeoutParam)) match {
-              case Success(_) => success
-              case Failure(e) => failure(e.getMessage)
-            }
-          })
-          .action((timeoutParam, handler) => handler.copy(timeout = Duration(timeoutParam)))
-          .text("The timeout for the resulting gRPC call made to the server"),
+    opt[String]('t', "timeout")
+      .validate(timeoutParam => {
+        Try(Duration(timeoutParam)) match {
+          case Success(_) => success
+          case Failure(e) => failure(e.getMessage)
+        }
+      })
+      .action((timeoutParam, handler) => handler.copy(timeout = Duration(timeoutParam)))
+      .text("The timeout for the resulting gRPC call made to the server. By default, it is 10 seconds")
 
-      'h' -> opt[String]('h', "host")
-          .action((hostParam, handler) => handler.copy(host = hostParam))
-          .text("The hostname to target. If omitted, it will contact the address 0.0.0.0")
-    )
+    opt[String]('h', "host")
+      .action((hostParam, handler) => handler.copy(host = hostParam))
+      .text("The hostname to target. If omitted, it will contact the address 0.0.0.0")
+
 
     help("help")
       .text("prints this usage text")
 
-    cmd("get")
-      .children(
-        optionMappings('k')
-      )
-      .action((_, handler) => {
-        log.info("Sending GET request")
+    note(separator)
 
+
+    cmd("get")
+      .action((_, handler) => handler.copy(operation = GET))
+      .text("Get a value from the database" + separator)
+
+    cmd("post")
+      .action((_, handler) => handler.copy(operation = POST))
+      .text("Insert a value into the database. If present, will overwrite existing value for the specified key" + separator)
+
+    cmd("delete")
+      .action((_, handler) => handler.copy(operation = DELETE))
+      .text("Delete a value from the database" + separator)
+
+    cmd("ready")
+      .action((_, handler) => handler.copy(operation = READY))
+      .text("Perform a readiness check - readiness indicates the node is ready to receive requests" + separator)
+
+
+    checkConfig(handler => {
+      if (handler.operation.equals(POST) && handler.value.isEmpty) {
+        failure("Value field cannot be empty")
+      }
+
+      handler.operation match {
+        case _ @ (GET | POST | DELETE) => failure("Key field cannot be empty")
+        case _ => success
+      }
+    })
+  }
+
+
+  // The exit code specifications (especially the error exit codes) are especially needed, as it's used
+  // to signal to the Kubernetes liveness/readiness probes whether or not the result was successful
+  //
+  parser.parse(args, ClientHandler()) match {
+    case Some(handler) => handler.operation match {
+
+      case GET =>
         Try(Await.ready(
           handler.get(GetRequest(handler.key.get)),
           handler.timeout * 2
@@ -68,27 +103,18 @@ private object ChordialClient extends App {
           case Success(future) => future.value.get match {
             case Success(getResponse) =>
               val stringValue: String = getResponse.value // Convert ByteString to String
-              log.info(s"GET request successful: ${stringValue}")
-              handler
+              println(s"GET request successful: ${stringValue}")
+              sys.exit(0)
             case Failure(requestError) =>
-              log.warn(s"GET request failed: ${requestError}")
-              handler.copy(conclusion = Failure(requestError))
+              println(s"GET request failed: ${requestError}")
+              sys.exit(3)
           }
           case Failure(timeout) =>
-            log.error(s"Internal client timeout error during GET: ${timeout}")
-            handler.copy(conclusion = Failure(timeout))
+            println(s"Internal client error during GET: ${timeout}")
+            sys.exit(2)
         }
-      })
-      .text("Get a value from the database")
 
-    cmd("post")
-      .children(
-        optionMappings('k'),
-        optionMappings('v')
-      )
-      .action((_, handler) => {
-        log.info("Sending POST request")
-
+      case POST =>
         Try(Await.ready(
           handler.post(PostRequest(
             handler.key.get,
@@ -99,32 +125,22 @@ private object ChordialClient extends App {
         match {
           case Success(future) => future.value.get match {
             case Success(postResponse) =>
-              log.info(s"POST request successful: ${postResponse}")
-              handler
+              println(s"POST request successful: ${postResponse}")
+              sys.exit(0)
             case Failure(requestError) =>
-              log.info(s"POST request failed: ${requestError}")
-              handler.copy(conclusion = Failure(requestError))
+              println(s"POST request failed: ${requestError}")
+              sys.exit(4)
           }
           case Failure(timeout) =>
-            log.error(s"Internal client timeout error during POST: ${timeout}")
-            handler.copy(conclusion = Failure(timeout))
+            println(s"Internal client error during POST: ${timeout}")
+            sys.exit(3)
         }
-      })
-      .text("Insert a value into the database. If present, will overwrite existing value for the specified key")
 
-    cmd("delete")
-      .children(
-        optionMappings('k')
-      )
-      .action((_, handler) => {
-        val message = "Delete is not currently implemented"
-        log.info(message)
-        handler.copy(conclusion = Failure(new UnsupportedOperationException(message)))
-      })
-      .text("Delete a value from the database")
+      case DELETE =>
+        println("Deletes are currently not implemented")
+        sys.exit(2)
 
-    cmd("ready")
-      .action((_, handler) => {
+      case READY =>
         Try(Await.ready(
           handler.readiness(ReadinessCheck()),
           handler.timeout * 2
@@ -132,31 +148,28 @@ private object ChordialClient extends App {
         match {
           case Success(future) => future.value.get match {
             case Success(readinessResponse) =>
-              log.info(s"Readiness response received with status: ${readinessResponse.isReady}")
+              println(s"Readiness response received with status: ${readinessResponse.isReady}")
               if (!readinessResponse.isReady) {
-                handler.copy(conclusion = Failure(new IllegalMonitorStateException("Node is not ready")))
+                println("Node is not ready - reporting exit code as failure")
+                sys.exit(5)
               }
-              else handler
+              else sys.exit(0)
 
             case Failure(requestError) =>
-              log.info(s"Readiness check failed: ${requestError}")
-              handler.copy(conclusion = Failure(requestError))
+              println(s"Readiness check failed: ${requestError}")
+              sys.exit(4)
           }
           case Failure(timeout) =>
-            log.error(s"Internal client timeout error during readiness check: ${timeout}")
-            handler.copy(conclusion = Failure(timeout))
+            println(s"Internal client error during readiness check: ${timeout}")
+            sys.exit(3)
         }
-      })
-      .text("Perform a readiness check - readiness indicates the node is ready to receive requests")
-  }
 
+      case _ =>
+        println("UNKNOWN ERROR")
+        sys.exit(100)
+    }
 
-  parser.parse(args, ClientHandler()) match {
-    case Some(handler) =>
-      handler.conclusion match {
-        case Success(_) => sys.exit(0)
-        case Failure(_) => sys.exit(1)
-      }
     case None => sys.exit(1)
   }
+
 }

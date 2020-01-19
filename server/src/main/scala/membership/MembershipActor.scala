@@ -17,6 +17,7 @@ import membership.addresser.AddressRetriever
 import org.slf4j.LoggerFactory
 import schema.ImplicitDataConversions._
 import schema.ImplicitGrpcConversions._
+import schema.PortConfiguration.MEMBERSHIP_PORT
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
