@@ -22,21 +22,10 @@ private object ChordialServer extends App {
   implicit val actorSystem: ActorSystem = ActorSystem("Chordial", config)
 
 
-  /*
-   * Persistence layer components
-   */
-  log.info("Initializing top-level persistence layer components")
-
-  val threadPartitionActor = ThreadPartitionActor()
-  val persistenceActor = PersistenceActor(threadPartitionActor)
-
-  log.info("Persistence layer top-level actors created")
-
-  /*
-   * Membership layer components
-   *   TODO eventually allow different address retriever methods
-   */
-  log.info("Initializing membership layer components")
+  // Membership module components
+  //    TODO eventually allow different address retriever methods
+  //
+  log.info("Initializing membership module components")
 
   val addressRetriever = KubernetesAddresser
   val membershipActor = MembershipActor(addressRetriever, REQUIRED_TRIGGERS)
@@ -44,13 +33,24 @@ private object ChordialServer extends App {
   val failureDetectorActor = FailureDetectorActor(membershipActor)
   FailureDetectorServiceImpl()
 
-  /*
-   * Service layer components
-   */
+  log.info("Membership module components initialized")
+
+
+  // Persistence layer components
+  //
+  log.info("Initializing top-level persistence layer components")
+
+  val threadPartitionActor = ThreadPartitionActor()
+  val persistenceActor = PersistenceActor(threadPartitionActor, membershipActor)
+
+  log.info("Persistence layer top-level actors created")
+
+  // Service layer components
+  //
   log.info("Initializing external facing gRPC service")
 
-  val requestServiceActor = RequestServiceActor(persistenceActor)
-  RequestServiceImpl(requestServiceActor)
+  val requestServiceActor = RequestServiceActor(persistenceActor, membershipActor)
+  RequestServiceImpl(requestServiceActor, membershipActor)
 
   log.info("Service layer initialized")
 

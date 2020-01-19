@@ -4,6 +4,7 @@ import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import com.google.protobuf.ByteString
 import com.roundeights.hasher.Implicits._
 import common.utils.ActorDefaults
+import membership.MembershipAPI
 import schema.RequestTrait
 import schema.service._
 
@@ -12,19 +13,30 @@ import scala.concurrent.{Future, Promise}
 
 object RequestServiceActor {
 
-  def apply(requestProcessorActor: ActorRef)(implicit actorSystem: ActorSystem): ActorRef =
+  def apply
+      (requestProcessorActor: ActorRef, membershipActor: ActorRef)
+      (implicit actorSystem: ActorSystem): ActorRef = {
+
     actorSystem.actorOf(
       Props(new RequestServiceActor(requestProcessorActor)),
       "requestServiceActor"
     )
+  }
+
 }
 
 
-class RequestServiceActor private(requestProcessorActor: ActorRef) extends Actor
-                                                                   with ActorLogging
-                                                                   with ActorDefaults {
+class RequestServiceActor private(
+    requestProcessorActor: ActorRef,
+    membershipActor: ActorRef
+  )
+  extends Actor
+  with ActorLogging
+  with ActorDefaults {
+
   final private var requestCounter = Map[String, Int]()
 
+  membershipActor ! MembershipAPI.DeclareReadiness
   log.info(s"Request service actor initialized")
 
 

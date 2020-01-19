@@ -4,6 +4,7 @@ import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import better.files.File
 import common.ChordialConstants
 import common.utils.ActorDefaults
+import membership.MembershipAPI
 import persistence.io.KeyStateActor
 import service.OperationPackage
 
@@ -13,22 +14,34 @@ object PersistenceActor {
   val PERSISTENCE_DIRECTORY: File = ChordialConstants.BASE_DIRECTORY/"data"
 
 
-  def apply(executorActor: ActorRef)(implicit actorSystem: ActorSystem): ActorRef =
+  def apply
+      (executorActor: ActorRef, membershipActor: ActorRef)
+      (implicit actorSystem: ActorSystem): ActorRef = {
+
     actorSystem.actorOf(
-      Props(new PersistenceActor(executorActor)),
+      Props(new PersistenceActor(executorActor, membershipActor)),
       "persistenceActor"
     )
+  }
+
 }
 
 
-class PersistenceActor private(executorActor: ActorRef) extends Actor
-                                                        with ActorLogging
-                                                        with ActorDefaults {
+class PersistenceActor private(
+    executorActor: ActorRef,
+    membershipActor: ActorRef
+  )
+  extends Actor
+  with ActorLogging
+  with ActorDefaults {
 
   private var keyMapping = Map[String, ActorRef]()
 
   PersistenceActor.PERSISTENCE_DIRECTORY.createDirectoryIfNotExists()
   log.info(s"Directory ${PersistenceActor.PERSISTENCE_DIRECTORY.toString()} opened")
+
+  membershipActor ! MembershipAPI.DeclareReadiness
+  log.info("Persistence actor initialized")
 
 
   override def receive: Receive = {

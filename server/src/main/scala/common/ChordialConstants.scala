@@ -13,5 +13,5 @@ object ChordialConstants {
 
   val BASE_DIRECTORY: File = File.root/"var"/"chordial"
 
-  val REQUIRED_TRIGGERS: Int = 1
+  val REQUIRED_TRIGGERS: Int = 2
 }
