@@ -18,10 +18,22 @@ object KubernetesAddresser extends AddressRetriever {
    *
    * stackoverflow.com/questions/30746888/how-to-know-a-pods-own-ip-address-from-inside-a-container-in-the-pod
    *
+   * If the MY_POD_IP variable is not found, it will attempt to read the SELF_IP variable
+   * as an alternative
+   *
    * @return the IP address of this pod
    */
-  override def selfIP: IpAddress =
-    sys.env("MY_POD_IP")
+  override def selfIP: IpAddress = {
+
+    sys.env.get("MY_POD_IP") match {
+
+      case Some(podIP) =>
+        podIP
+
+      case None =>
+        super.selfIP
+    }
+  }
 
   /**
    * This addresser is purposefully suited to work with a Kubernetes cluster setup.
@@ -45,7 +57,7 @@ object KubernetesAddresser extends AddressRetriever {
    */
   override def seedIP: Option[IpAddress] = {
 
-    val log = LoggerFactory.getLogger(MembershipActor.getClass)
+    lazy val log = LoggerFactory.getLogger(MembershipActor.getClass)
 
     sys.env.get("SEED_HOSTNAME") match {
 

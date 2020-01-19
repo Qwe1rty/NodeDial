@@ -1,4 +1,3 @@
-import org.slf4j.LoggerFactory
 import schema.ImplicitGrpcConversions._
 import schema.service.{GetRequest, PostRequest, ReadinessCheck}
 import scopt.OptionParser
@@ -9,7 +8,7 @@ import scala.util.{Failure, Success, Try}
 
 
 /**
- * This is the client stub for the Chordial database. It provides an interface to conveniently
+ * This is the CLI client tool for the Chordial database. It provides an interface to conveniently
  * call the external server gRPC methods
  *
  * For the specification of this stub, run the client stub with the --help argument
@@ -24,18 +23,18 @@ private object ChordialClient extends App {
   val parser: OptionParser[ClientHandler] = new OptionParser[ClientHandler]("chordial") {
 
     head(
-      """This Chordial client program is a tool to interact with the database node instances
+      """This Chordial client program is a CLI tool to interact with the database node instances
         |For more information, check out: https://github.com/Qwe1rty/Chordial
         |""".stripMargin)
 
 
     opt[String]('k', "key")
       .action((keyParam, handler) => handler.copy(key = Some(keyParam)))
-      .text("The key for an entry in the database")
+      .text("key for an entry in the database")
 
     opt[String]('v', "value")
       .action((valueParam, handler) => handler.copy(value = Some(valueParam)))
-      .text("The value associated with a key")
+      .text("value associated with a key")
 
     opt[String]('t', "timeout")
       .validate(timeoutParam => {
@@ -45,11 +44,11 @@ private object ChordialClient extends App {
         }
       })
       .action((timeoutParam, handler) => handler.copy(timeout = Duration(timeoutParam)))
-      .text("The timeout for the resulting gRPC call made to the server. By default, it is 10 seconds")
+      .text("timeout for the resulting gRPC call made to the server. If omitted, it will be set to 10 seconds")
 
     opt[String]('h', "host")
       .action((hostParam, handler) => handler.copy(host = hostParam))
-      .text("The hostname to target. If omitted, it will contact the address 0.0.0.0")
+      .text("hostname to target. If omitted, the address 0.0.0.0 will be used")
 
 
     help("help")

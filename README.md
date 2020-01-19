@@ -1,36 +1,99 @@
 
 # Chordial
 
-## **Currently a work in progress!!!**
+A distributed, scalable key-value database system! Modeled around existing NoSQL databases such 
+as Redis, Cassandra, and Dynamo, it is built with horizontal scalability and cloud deployments in
+mind - check out the [build walkthrough](#project-setup-and-walkthrough) and deployment guide for 
+more info
 
-An attempt at making a distributed key-value database system, modeled around existing NoSQL
-databases such as Redis, Cassandra, and Dynamo
+**Project development is currently ongoing! Check out the [project plan](#project-development-plan)
+for a development overview**
 
 
 ---
-## Project Setup
+## Project Setup and Walkthrough
 
 #### Dependency Installation
 
-First, the project build requires that you have some prerequisites installed on your system: 
+First, the project build requires that you have some prerequisites installed on your system.
+
+The project itself will require both a Scala and protobuf compiler. The build commands will also
+include infrastructure setup, with Docker and Kubernetes providing the 
+
+Here are some reference links that may be helpful for installing dependencies: 
+
 * Install Scala/SBT: <https://www.techrepublic.com/article/how-to-install-sbt-on-ubuntu-for-scala-and-java-projects/>
 * Install protobuf: <https://github.com/protocolbuffers/protobuf>
 * Install Docker: <https://nickjanetakis.com/blog/setting-up-docker-for-windows-and-wsl-to-work-flawlessly> (Windows/WSL specific link)
 * Install Kubernetes: <https://itnext.io/setting-up-the-kubernetes-tooling-on-windows-10-wsl-d852ddc6699c> (Windows/WSL specific link)
 
-#### Project Build
+#### Compilation and Local Server Setup
 
-Afterwards, run `make all` at project root, which will build the fat JARs and locally create the server
-docker image. Then, run `make run-server` to start it up
+Afterwards, run `make all` at project root, which will build the fat JARs and create the server
+docker image on your local environment. Then, run `make run-server` to start it up
 
 When you `Ctrl-C` the terminal that the server was started on, it detach the terminal from
-the docker log output but will not shut down the server. To shut it down, run `make kill-server`
+the docker log output but will not shut down the server. To shut it down, run  the `make kill-server`
+command
 
 To reattach the terminal to the server instance, run `make log-server`
+
+#### Using the CLI Tool
+
+When building the server instance, you'll also build the CLI tool that allows you to conveniently 
+make requests to your server
+
+Once the project is successfully built and the server is running, run the `make install-client`
+command to install the client `JAR` and wrapper script into to your `$PATH` space. 
+**Note that this will require `sudo` privileges, as it is copying them to `/var/lib/` and `/usr/local/bin`
+ respectively**  
+ 
+Now, you should be able to just run the `chordial` command from anywhere. Test your installation by 
+running `chordial --help`, which should print out this lovely menu:
+
+```
+This Chordial client program is a CLI tool to interact with the database node instances
+For more information, check out: https://github.com/Qwe1rty/Chordial
+
+Usage: chordial [get|post|delete|ready] [options]
+
+  -k, --key <value>      key for an entry in the database
+  -v, --value <value>    value associated with a key
+  -t, --timeout <value>  timeout for the resulting gRPC call made to the server. If omitted, it will be set to 10 seconds
+  -h, --host <value>     hostname to target. If omitted, the address 0.0.0.0 will be used
+  --help                 prints this usage text
+
+
+Command: get
+Get a value from the database
+
+Command: post
+Insert a value into the database. If present, will overwrite existing value for the specified key
+
+Command: delete
+Delete a value from the database
+
+Command: ready
+Perform a readiness check - readiness indicates the node is ready to receive requests
+```
+
+Before sending read or write requests, you will need to wait until the database has fully
+initialized first. You can check readiness through the `chordial ready` command
+
+Once the server is ready, you can start hitting it with read/write requests 
+
+**SECTION IN PROGRESS**
+
+#### Kubernetes Cluster Setup
+
+If everything seems to work okay, you can now set up a Kubernetes cluster! Note that this section may
+skip over details about setting up non-Chordial related Kubernetes components (such as the DNS 
+service), so some familiarity with Kubernetes would be really helpful 
   
 #### Build Setup Notes
 
-Various links that help explain various aspects of the build setup used in this project:
+Here are some various resources that elaborate on various aspects of the build setup used in this
+project:
 
 * gRPC and ScalaPB
   * Importing Google common protobuf files: <https://github.com/googleapis/common-protos-java>
@@ -48,13 +111,13 @@ Various links that help explain various aspects of the build setup used in this 
 
 
 ---
-## Project Plan
+## Project Development Plan
 
-This is a loose outline of all the core features that should be included, and the order
-of implementation. _Italics indicate that this component is in progress_
+This is a loose outline of all the core features that should be included, and the general order
+of implementation. _Italics indicate that this component is in progress!_
 
-- [x] **Milestone 0: Setup**
-  - [x] Repo and build setup
+- [x] **Milestone 0: Repo and Build Setup**
+  
 - [x] **Milestone 1: Persistence Layer**
   - [x] External service setup via gRPC
   - [ ] Establish persistence layer, should support locally atomic/isolated operations
@@ -66,6 +129,7 @@ of implementation. _Italics indicate that this component is in progress_
   - [x] Logging that should work in Akka actor contexts and non-actor contexts
   - [x] Multi-subproject setup for common components
   - [x] Basic testing of core functionality
+  
 - [ ] **Milestone 2: Cluster Membership**
   - [x] _Membership table of other nodes' IPs and liveness states_
   - [ ] _Node state tracking and broadcasting, following the SWIM protocol_
@@ -78,17 +142,20 @@ of implementation. _Italics indicate that this component is in progress_
   - [x] Failure detection through direct + indirect check mechanism
   - [ ] _Local kubernetes cluster setup and integration_
     - [x] Service containerization  
+    
 - [ ] **Milestone 3: Partitioning Layer**
   - [ ] Partitioning via virtual nodes
     - [ ] Partition ring data structure
     - [ ] Dynamic repartition dividing/merges on node join/failure
     - [ ] Data shuffling on node membership changes
   - [ ] Better testing, should be able to do some failure case handling
+  
 - [ ] **Milestone 4: Replication Layer**
   - [ ] Replication scheme, quorum handling
   - [ ] Anti-entropy process (anti-entropy or read repair or ideally both)
   - [ ] Cluster-level concurrent write handling, vector versioning
   - [ ] Consistency/node failure testing
+  
 - [ ] **Milestone 5: Transaction Layer**
   - [ ] Distributed transactions (2PC?)
   - [ ] _TODO_

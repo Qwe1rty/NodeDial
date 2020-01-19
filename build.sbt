@@ -44,7 +44,7 @@ lazy val grpcLibraryGroup = Seq(
   dependencies.ipAddresses
 )
 
-lazy val coreLibraryGroup = Seq(
+lazy val loggingLibraryGroup = Seq(
   dependencies.akkaSLF4j,
   dependencies.logback
 )
@@ -79,7 +79,7 @@ lazy val client = (project in file("client"))
     name := "ChordialClient",
     assemblySettings,
     javaAgents += jettyAgent,
-    libraryDependencies ++= coreLibraryGroup ++ Seq(
+    libraryDependencies ++= Seq(
       dependencies.scopt
     )
   )
@@ -95,7 +95,7 @@ lazy val server = (project in file("server"))
     name := "ChordialServer",
     assemblySettings,
     javaAgents += jettyAgent,
-    libraryDependencies ++= coreLibraryGroup ++ Seq(
+    libraryDependencies ++= loggingLibraryGroup ++ Seq(
       dependencies.betterFiles,
       dependencies.hasher
     )

@@ -8,6 +8,9 @@ GENERAL:
 - Convert usages of the "String" type for hashes into "Digest"
 - Add cluster names support
 
+CLIENT:
+- Enumerate the exit codes
+
 SERVICE:
 - Replace the ActorMaterializer instance with the system wide one
 - Reorganize service layer so its initialization in Chordial.class matches the others

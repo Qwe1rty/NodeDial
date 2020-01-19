@@ -18,6 +18,9 @@ clean:
 build: clean
 	@sbt assembly
 
+build-client: clean
+	@sbt "project client" assembly
+
 .PHONY: docker
 docker:
 	@docker build \
@@ -28,7 +31,7 @@ docker:
 		--tag $(DOCKER_SERVER):$(CHORDIAL_VERSION) \
 		.
 
-all: compile docker
+all: build docker
 
 
 ##################
@@ -36,7 +39,11 @@ all: compile docker
 ##################
 
 run-server:
-	@docker logs -f $(shell docker run -d -p 8080:8080 $(DOCKER_SERVER):latest)
+	@docker logs -f $(shell docker run \
+		-d \
+		-e SELF_IP='0.0.0.0' \
+		-p 8080:8080 $(DOCKER_SERVER):latest \
+		)
 
 log-server:
 	@docker logs -f $(shell docker ps -q --filter ancestor="$(DOCKER_SERVER):latest")

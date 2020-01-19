@@ -1,3 +1,3 @@
 #!/usr/bin/env sh
 
-java "$@" -jar "ChordialServer-assembly-*.jar"
+java "$@" -jar ChordialServer-assembly-*.jar
