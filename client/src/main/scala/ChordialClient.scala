@@ -86,12 +86,15 @@ private object ChordialClient extends App {
       if (handler.operation.equals(POST) && handler.value.isEmpty) {
         failure("Value field cannot be empty")
       }
-
-      handler.operation match {
-        case _ @ (GET | POST | DELETE) => failure("Key field cannot be empty")
+      else handler.operation match {
+        case _ @ (GET | POST | DELETE) =>  {
+          if (handler.key.isEmpty) failure("Key field cannot be empty")
+          else success
+        }
         case _ => success
       }
     })
+
   }
 
 
@@ -172,7 +175,7 @@ private object ChordialClient extends App {
         }
 
       case _ =>
-        println("UNKNOWN ERROR")
+        println("Command not specified, please use the --help flag for more info")
         sys.exit(100)
     }
 

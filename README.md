@@ -78,14 +78,28 @@ Perform a readiness check - readiness indicates the node is ready to receive req
 ```
 
 Before sending read or write requests, you will need to wait until the database has fully
-initialized first. You can check readiness through the `chordial ready` command
+initialized first. You can check readiness through the `chordial ready` command, and will
+reply with this if the server is ready:
 
-Once the server is ready, you can start hitting it with read/write requests 
+```
+Readiness response received with status: true
+```
 
-**SECTION IN PROGRESS**
+Once ready, you can start hitting it with read/write requests. Here's an example of a write followed
+by a read:
+
+```
+> chordial post -k some_key -v 'Hello World!'
+POST request successful: PostResponse()
+
+> chordial get -k some_key
+GET request successful: Hello World!
+``` 
+
+And if it works, then congrats! Everything is all good and running. Now you're ready to set up a 
+cluster (if you'd like to)
 
 #### Build Setup Notes
-
 
 For further information about various aspects of how the project build system works, here are some various
 resources that help elaborate on certain build topics used in this project:
@@ -128,13 +142,19 @@ nodes will need to resolve the seed node's hostname
 (A DNS service is actually not strictly necessary, but it can help to automate and simplify cluster 
 scaling. This topic will be further discussed in the scaling subchapter)
 
+When the prerequities are all good, you should first create the chordial namespace using the command:
+`kubectl create namespace chordial-ns`. Everything related to Chordial has been configured to run in that
+namespace
 
+Next, 
 
 #### Cluster Scaling
 
+**Section under construction! Please come back another time**
+
 #### Cloud Environment Provisioning
 
-**SECTION IN CONSTRUCTION. PLEASE COME BACK LATER!**
+**Section under construction! Please come back another time**
 
 
 ---

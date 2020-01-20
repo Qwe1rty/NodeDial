@@ -82,6 +82,13 @@ spec:
         volumeMounts:
         - name: chordial-storage
           mountPath: /var/lib/chordial
+        readinessProbe:
+          exec:
+            command:
+            - chordial
+            - ready
+          initialDelaySeconds: 25
+          periodSeconds: 15
 
 ---
 

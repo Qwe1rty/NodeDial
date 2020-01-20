@@ -40,5 +40,5 @@ case class ClientHandler(
   timeout:    Duration       = Duration(10, TimeUnit.SECONDS),
   host:       String         = "0.0.0.0",
 
-  operation: ClientOperation = INVALID
+  operation: ClientOperation = UNSPECIFIED
 )

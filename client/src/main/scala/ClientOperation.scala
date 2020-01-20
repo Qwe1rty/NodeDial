@@ -7,7 +7,7 @@
 sealed trait ClientOperation
 
 
-case object INVALID extends ClientOperation
+case object UNSPECIFIED extends ClientOperation
 
 case object GET extends ClientOperation
 case object POST extends ClientOperation

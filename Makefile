@@ -61,6 +61,7 @@ kill-server:
 ## NOTE: sudo permissions required to install global client.
 install-client:
 	@sudo mkdir -p $(CLIENT_LOCATION)
+	@sudo rm -f $(CLIENT_LOCATION)/*
 	@sudo cp -f $(shell find . -name "ChordialClient-assembly-*.jar") $(CLIENT_LOCATION)
 	@sudo cp -f docker/run-client.sh /usr/local/bin/chordial
 
