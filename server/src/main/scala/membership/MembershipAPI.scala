@@ -74,7 +74,7 @@ object MembershipAPI {
 
   /**
    * Requests multiple random nodes of the specified node state.
-   * Returns a `Seq[Membership]` object, which will contain a max of `number` elements.
+   * Returns a `Set[Membership]` object, which will contain a max of `number` elements.
    *
    * (Unless there are fewer other nodes in the cluster, then the `Seq[Membership]` object
    * may contain less elements)

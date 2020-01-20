@@ -47,20 +47,24 @@ private[membership] class MembershipTable private(
   def state(nodeID: String): NodeState =
     self(nodeID).state
 
+  def membership(nodeID: String): Membership =
+    Membership(nodeID, address(nodeID))
+
 
   // Getters (Aggregated)
   def states(nodeState: NodeState): Set[String] =
     stateGroups(nodeState)
 
-  def random(nodeState: NodeState, quantity: Int = 1): Set[String] = stateGroups.get(nodeState) match {
-    case Some(stateGroup) => quantity match {
-      case 1 => {
-        val index = Random.nextInt(stateGroup.size)
-        Set(stateGroup.view(index, index + 1).last)
+  def random(nodeState: NodeState, quantity: Int = 1): Set[Membership] = stateGroups.get(nodeState) match {
+    case Some(stateGroup) =>
+      quantity match {
+        case 1 => {
+          val index = Random.nextInt(stateGroup.size)
+          Set(stateGroup.view(index, index + 1).last).map(membership)
+        }
+        case n => Random.shuffle(stateGroup).take(n).map(membership)
       }
-      case n => Random.shuffle(stateGroup).take(n)
-    }
-    case None => Set[String]()
+    case None => Set[Membership]()
   }
 
 

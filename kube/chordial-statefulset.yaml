@@ -52,7 +52,7 @@ spec:
     spec:
       containers:
       - name: chordial-container
-        image: chordial/server:1.2.3
+        image: chordial/server:1.2.4
         imagePullPolicy: IfNotPresent
         resources:
           limits:

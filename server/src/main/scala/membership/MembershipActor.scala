@@ -184,23 +184,27 @@ class MembershipActor private
       log.info("Membership readiness signal received")
       initializationCount -= 1
 
-      if (initializationCount <= 0) addressRetriever.seedIP.foreach { seedIP =>
+      if (initializationCount <= 0 && !readiness) {
 
-        if (seedIP != addressRetriever.selfIP) {
-          log.info("Contacting seed node for membership listing")
+        // Only if the seed node is defined will there be any synchronization calls
+        addressRetriever.seedIP.foreach { seedIP =>
 
-          implicit val ec: ExecutionContext = actorSystem.dispatcher
+          if (seedIP != addressRetriever.selfIP) {
+            log.info("Contacting seed node for membership listing")
 
-          val grpcClientSettings = GrpcClientSettings.connectToServiceAt(
-            seedIP,
-            MEMBERSHIP_PORT
-          )
+            implicit val ec: ExecutionContext = actorSystem.dispatcher
 
-          MembershipServiceClient(grpcClientSettings)(ActorMaterializer()(context), ec)
-            .fullSync(FullSyncRequest(nodeID, addressRetriever.selfIP))
-            .onComplete(self ! SeedResponse(_))
+            val grpcClientSettings = GrpcClientSettings.connectToServiceAt(
+              seedIP,
+              MEMBERSHIP_PORT
+            )
+
+            MembershipServiceClient(grpcClientSettings)(ActorMaterializer()(context), ec)
+              .fullSync(FullSyncRequest(nodeID, addressRetriever.selfIP))
+              .onComplete(self ! SeedResponse(_))
+          }
+          else log.info("Seed IP was the same as this current node's IP, no full sync necessary")
         }
-        else log.info("Seed IP was the same as this current node's IP, no full sync necessary")
 
         readiness = true
       }
@@ -252,7 +256,7 @@ class MembershipActor private
 
 
     case MembershipAPI.GetRandomNode(nodeState) =>
-      sender ! membershipTable.random(nodeState)
+      sender ! membershipTable.random(nodeState).lastOption
 
     case MembershipAPI.GetRandomNodes(nodeState, number) =>
       sender ! membershipTable.random(nodeState, number)

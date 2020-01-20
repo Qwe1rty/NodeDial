@@ -1,4 +1,4 @@
-CHORDIAL_VERSION = 1.2.3
+CHORDIAL_VERSION = 1.2.4
 
 DOCKER_SERVER = chordial/server
 DOCKER_CLIENT = chordial/client
@@ -18,8 +18,11 @@ clean:
 build: clean
 	@sbt assembly
 
-build-client: clean
-	@sbt "project client" assembly
+build-client:
+	@sbt "project client" clean assembly
+
+build-server:
+	@sbt "project server" clean assembly
 
 .PHONY: docker
 docker:

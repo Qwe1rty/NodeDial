@@ -3,8 +3,8 @@
 
 A distributed, scalable key-value database system! Modeled around existing NoSQL databases such 
 as Redis, Cassandra, and Dynamo, it is built with horizontal scalability and cloud deployments in
-mind - check out the [build walkthrough](#project-setup-and-walkthrough) and deployment guide for 
-more info
+mind - check out the [build walkthrough](#project-setup-and-walkthrough) and deployment guide to get
+started!
 
 **Project development is currently ongoing! Check out the [project plan](#project-development-plan)
 for a development overview**
@@ -84,16 +84,11 @@ Once the server is ready, you can start hitting it with read/write requests
 
 **SECTION IN PROGRESS**
 
-#### Kubernetes Cluster Setup
-
-If everything seems to work okay, you can now set up a Kubernetes cluster! Note that this section may
-skip over details about setting up non-Chordial related Kubernetes components (such as the DNS 
-service), so some familiarity with Kubernetes would be really helpful 
-  
 #### Build Setup Notes
 
-Here are some various resources that elaborate on various aspects of the build setup used in this
-project:
+
+For further information about various aspects of how the project build system works, here are some various
+resources that help elaborate on certain build topics used in this project:
 
 * gRPC and ScalaPB
   * Importing Google common protobuf files: <https://github.com/googleapis/common-protos-java>
@@ -108,6 +103,38 @@ project:
   * Example StatefulSet deployment (ZooKeeper): <https://kubernetes.io/docs/tasks/run-application/scale-stateful-set/>
   * Example StatefulSet deployment (Cassandra): <https://kubernetes.io/docs/tutorials/stateful-application/cassandra/>
   * Cassandra deployment walkthrough/breakdown: <https://convit.de/blog/blog-cassandra-kubernetes-it-good-fit-convit.html>
+
+
+---
+
+## Kubernetes Cluster Setup
+
+**Disclaimer: This has currently only been tested using version 1.14.x of the Kubernetes server. Please 
+be on the lookout for potential issues if using other versions of Kubernetes**
+
+If everything seems to work okay, you can now set up a Kubernetes cluster! Note that this section may
+skip over details about setting up non-Chordial related Kubernetes components (such as the DNS 
+service), so some familiarity with Kubernetes would be really helpful
+
+The rest of this section assumes you are using the provided configuration files in the `kube` directory,
+and are just running the Kubernetes cluster on your local machine. 
+
+#### Single-Node Cluster Setup
+
+Firstly, before you can run the Chordial service, you will need to already have a prerequisite cluster up
+and running with some DNS service - this is required especially when scaling up the cluster, as new
+nodes will need to resolve the seed node's hostname
+
+(A DNS service is actually not strictly necessary, but it can help to automate and simplify cluster 
+scaling. This topic will be further discussed in the scaling subchapter)
+
+
+
+#### Cluster Scaling
+
+#### Cloud Environment Provisioning
+
+**SECTION IN CONSTRUCTION. PLEASE COME BACK LATER!**
 
 
 ---

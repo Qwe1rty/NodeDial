@@ -1,7 +1,7 @@
 import com.lightbend.sbt.javaagent.JavaAgent.JavaAgentKeys.javaAgents
 import sbt.project
 
-ThisBuild / version := "1.2.3"
+ThisBuild / version := "1.2.4"
 ThisBuild / scalaVersion := "2.12.0"
 
 
@@ -22,7 +22,7 @@ lazy val dependencies =
     val scoptV = "3.7.1"
 
 
-    val protoCommon =  "com.google.api.grpc"  % "proto-google-common-protos" % protoCommonV % "protobuf"
+    val protoCommon = "com.google.api.grpc"   % "proto-google-common-protos" % protoCommonV % "protobuf"
     val grpcCommon  = "com.google.api.grpc"   % "grpc-google-common-protos"  % grpcCommonV  % "protobuf"
     val scalaProto  = "com.thesamet.scalapb" %% "scalapb-runtime"            % scalaProtoV  % "protobuf"
     val ipAddresses = "com.risksense"         % "ipaddr_2.12"                % ipAddressesV

@@ -12,7 +12,7 @@ private[failureDetection] object FailureDetectorSignal {
   case class DirectResponse(target: Membership, directResult: Try[Confirmation])
 
   case class FollowupTrigger(target: Membership)
-  case class FollowupRequest(target: Membership, followupTeam: Try[Seq[Membership]])
+  case class FollowupRequest(target: Membership, followupTeam: Try[Set[Membership]])
   case class FollowupResponse(target: Membership, followupResult: Try[Confirmation])
 
 

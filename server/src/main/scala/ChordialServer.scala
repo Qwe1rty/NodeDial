@@ -1,4 +1,5 @@
 import akka.actor.ActorSystem
+import ch.qos.logback.classic.{Level, Logger}
 import com.typesafe.config.ConfigFactory
 import common.ServerConstants._
 import common.membership.types.NodeState
@@ -14,6 +15,12 @@ import service.{RequestServiceActor, RequestServiceImpl}
 private object ChordialServer extends App {
 
   val config = ConfigFactory.load()
+
+  // Needed as the the netty I/O logs on DEBUG mode are excessive
+  LoggerFactory
+    .getLogger("io.grpc.netty")
+    .asInstanceOf[Logger]
+    .setLevel(Level.INFO)
 
   val log = LoggerFactory.getLogger(ChordialServer.getClass)
   log.info("Server config loaded")

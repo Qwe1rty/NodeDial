@@ -8,7 +8,7 @@ import common.membership.failureDetection.{DirectMessage, FailureDetectorService
 import common.membership.types.NodeState
 import common.utils.ActorTimers.Tick
 import common.utils.{ActorDefaults, ActorTimers}
-import membership.Membership
+import membership.{Membership, MembershipActor}
 import membership.MembershipAPI.{DeclareEvent, GetRandomNode, GetRandomNodes}
 import membership.failureDetection.FailureDetectorConstants._
 import membership.failureDetection.FailureDetectorSignal._
@@ -62,12 +62,17 @@ class FailureDetectorActor private
     case DirectRequest(potentialTarget) => potentialTarget match {
 
       case Success(requestResult) => requestResult.foreach { target =>
-        val grpcClient = FailureDetectorServiceClient(createGrpcSettings(target.ipAddress, SUSPICION_DEADLINE))
-        pendingDirectChecks += target
 
-        log.debug(s"Attempting to check failure for node ${target}")
-        grpcClient.directCheck(DirectMessage()).onComplete {
-          self ! DirectResponse(target, _)
+        // Make the check if there's not one pending already and it's not calling itself
+        if (!pendingDirectChecks.contains(target) && target.nodeID != MembershipActor.nodeID) {
+
+          val grpcClient = FailureDetectorServiceClient(createGrpcSettings(target.ipAddress, SUSPICION_DEADLINE))
+          pendingDirectChecks += target
+
+          log.debug(s"Attempting to check failure for node ${target}")
+          grpcClient.directCheck(DirectMessage()).onComplete {
+            self ! DirectResponse(target, _)
+          }
         }
       }
 
@@ -91,7 +96,7 @@ class FailureDetectorActor private
     case FollowupTrigger(target) => {
 
       (membershipActor ? GetRandomNodes(NodeState.ALIVE, FOLLOWUP_TEAM_SIZE))
-        .mapTo[Seq[Membership]]
+        .mapTo[Set[Membership]]
         .onComplete(self ! FollowupRequest(target, _))
     }
 
@@ -116,6 +121,8 @@ class FailureDetectorActor private
     case FollowupResponse(target, followupResult) => followupResult match {
 
       case Success(_) =>
+        scheduledDirectChecks -= 1
+        pendingDirectChecks -= target
         pendingFollowupChecks -= target
         log.debug(s"Followup on target ${target} successful, removing suspicion status")
 
@@ -124,6 +131,8 @@ class FailureDetectorActor private
         log.debug(s"Followup failure on target ${target}, ")
 
         if (pendingFollowupChecks(target) <= 0) {
+          scheduledDirectChecks -= 1
+          pendingDirectChecks -= target
           pendingFollowupChecks -= target
           membershipActor ! DeclareEvent(NodeState.SUSPECT, target)
           log.info(s"Target ${target} seen as suspect, verifying with membership service")

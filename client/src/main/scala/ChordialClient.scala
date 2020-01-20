@@ -1,3 +1,5 @@
+import ch.qos.logback.classic.{Level, Logger}
+import org.slf4j.LoggerFactory
 import schema.ImplicitGrpcConversions._
 import schema.service.{GetRequest, PostRequest, ReadinessCheck}
 import scopt.OptionParser
@@ -18,6 +20,12 @@ private object ChordialClient extends App {
   import ClientHandler._
 
   lazy val separator = sys.props("line.separator")
+
+  // Needed as the the netty I/O logs on DEBUG mode are excessive
+  LoggerFactory
+    .getLogger("io.grpc.netty")
+    .asInstanceOf[Logger]
+    .setLevel(Level.INFO)
 
 
   val parser: OptionParser[ClientHandler] = new OptionParser[ClientHandler]("chordial") {

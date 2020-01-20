@@ -15,6 +15,5 @@ COPY docker/run-client.sh /usr/local/bin/chordial
 
 RUN mkdir -p /var/lib/chordial/server
 WORKDIR /var/lib/chordial/server
-
 COPY $SERVER_JAR_FILE docker/run-server.sh ./
 ENTRYPOINT ["./run-server.sh"]
