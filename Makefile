@@ -52,7 +52,7 @@ log-server:
 	@docker logs -f $(shell docker ps -q --filter ancestor="$(DOCKER_SERVER):latest")
 
 exec-server:
-	@docker exec -it $(shell docker ps -q --filter ancestor="$(DOCKER_SERVER):latest") sh
+	@docker exec -it $(shell docker ps -q --filter ancestor="$(DOCKER_SERVER):latest") /bin/sh
 
 kill-server:
 	@docker stop $(shell docker ps -q --filter ancestor="$(DOCKER_SERVER):latest")
@@ -67,3 +67,20 @@ install-client:
 
 #local-client:
 #	@java -jar $(shell find . -name "ChordialClient-assembly-*.jar")
+
+
+######################
+## Cluster Commands ##
+######################
+
+kube-headless:
+	@kubectl create -f kube/chordial-headless.yaml
+
+kube-statefulset:
+	@kubectl create -f kube/chordial-statefulset.yaml
+
+kube-clear:
+	@kubectl delete statefulset cdb -n chordial-ns
+	@kubectl delete pvc chordial-volume-claim-cdb-0 -n chordial-ns
+	@kubectl delete service chs -n chordial-ns
+

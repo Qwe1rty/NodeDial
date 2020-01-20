@@ -10,13 +10,14 @@ GENERAL:
 
 BUILD SETUP:
 - Keep the ports configured in a central place (currently in code, makefile, & docker build)
-- Move over to Minikube from Docker Desktop, to ensure most recent K8s version (v1.17.0)
+- Move over to Minikube from Docker Desktop, to ensure the most recent K8s version (v1.17.0)
 
 DOCUMENTATION:
 - Move everything to its own wiki section
 - Expand on the Kubernetes cluster setup section, with more details, examples, and a walkthrough
   for prerequisite cluster setup
 - Document the high-level architecture and modules of the program
+- Document the directory structure of the program, including the build-related stuff
 
 
 CLIENT:

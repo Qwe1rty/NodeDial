@@ -1,3 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 
 java "$@" -jar ChordialServer-assembly-*.jar
+

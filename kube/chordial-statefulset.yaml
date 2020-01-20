@@ -2,7 +2,7 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: cdb
+  name: cdb  # cdb = chordial database
   namespace: chordial-ns
   labels:
     app: chordial
@@ -14,14 +14,14 @@ spec:
       app: chordial
   volumeClaimTemplates:
   - metadata:
-      name: data
+      name: chordial-volume-claim
     spec:
       accessModes:
       - ReadWriteOnce
       resources:
         requests:
           storage: 20Mi
-      storageClassName: chordial-storage
+#      storageClassName: chordial-storage
   template:
 
     ## Pod definition
@@ -61,23 +61,23 @@ spec:
         - name: replication
           containerPort: 22202
         volumeMounts:
-        - name: chordial-storage
+        - name: chordial-volume-claim
           mountPath: /var/lib/chordial
         readinessProbe:
           exec:
             command:
             - chordial
             - ready
-          initialDelaySeconds: 25
+          initialDelaySeconds: 30
           periodSeconds: 15
 
 ---
 
 ## StorageClass definition
-kind: StorageClass
-apiVersion: storage.k8s.io/v1
-metadata:
-  name: chordial-storage
-provisioner: kubernetes.io/no-provisioner
-volumeBindingMode: WaitForFirstConsumer
+#kind: StorageClass
+#apiVersion: storage.k8s.io/v1
+#metadata:
+#  name: chordial-storage
+#provisioner: kubernetes.io/no-provisioner
+#volumeBindingMode: WaitForFirstConsumer
 

@@ -2,7 +2,7 @@
 apiVersion: apps/v1
 kind: Service
 metadata:
-  name: chordial-service
+  name: chordial
   namespace: chordial-ns
   labels:
     app: chordial

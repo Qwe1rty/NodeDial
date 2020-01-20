@@ -13,7 +13,7 @@ for a development overview**
 ---
 ## Project Setup and Walkthrough
 
-#### Dependency Installation
+### Dependency Installation
 
 First, the project build requires that you have some prerequisites installed on your system.
 
@@ -27,7 +27,7 @@ Here are some reference links that may be helpful for installing dependencies:
 * Install Docker: <https://nickjanetakis.com/blog/setting-up-docker-for-windows-and-wsl-to-work-flawlessly> (Windows/WSL specific link)
 * Install Kubernetes: <https://itnext.io/setting-up-the-kubernetes-tooling-on-windows-10-wsl-d852ddc6699c> (Windows/WSL specific link)
 
-#### Compilation and Local Server Setup
+### Compilation and Local Server Setup
 
 Afterwards, run `make all` at project root, which will build the fat JARs and create the server
 docker image on your local environment. Then, run `make run-server` to start it up
@@ -38,7 +38,7 @@ command
 
 To reattach the terminal to the server instance, run `make log-server`
 
-#### Using the CLI Tool
+### Using the CLI Tool
 
 When building the server instance, you'll also build the CLI tool that allows you to conveniently 
 make requests to your server
@@ -99,7 +99,7 @@ GET request successful: Hello World!
 And if it works, then congrats! Everything is all good and running. Now you're ready to set up a 
 cluster (if you'd like to)
 
-#### Build Setup Notes
+### Build Setup Notes
 
 For further information about various aspects of how the project build system works, here are some various
 resources that help elaborate on certain build topics used in this project:
@@ -124,7 +124,7 @@ resources that help elaborate on certain build topics used in this project:
 ## Kubernetes Cluster Setup
 
 **Disclaimer: This has currently only been tested using version 1.14.x of the Kubernetes server. Please 
-be on the lookout for potential issues if using other versions of Kubernetes**
+be on the lookout for potential issues when using other versions of Kubernetes**
 
 If everything seems to work okay, you can now set up a Kubernetes cluster! Note that this section may
 skip over details about setting up non-Chordial related Kubernetes components (such as the DNS 
@@ -133,7 +133,7 @@ service), so some familiarity with Kubernetes would be really helpful
 The rest of this section assumes you are using the provided configuration files in the `kube` directory,
 and are just running the Kubernetes cluster on your local machine. 
 
-#### Single-Node Cluster Setup
+### Single-Node Cluster Setup
 
 Firstly, before you can run the Chordial service, you will need to already have a prerequisite cluster up
 and running with some DNS service - this is required especially when scaling up the cluster, as new
@@ -146,15 +146,21 @@ When the prerequities are all good, you should first create the chordial namespa
 `kubectl create namespace chordial-ns`. Everything related to Chordial has been configured to run in that
 namespace
 
-Next, 
+Since Chordial by its nature requires persistent storage (it's a database, after all), the canonical
+Kubernetes object used will be the `StatefulSet`, along with its prerequisite `Headless Service` object
 
-#### Cluster Scaling
+So to create the headless service, run `kubectl create -f kube/chordial-headless.yaml`, followed by the
+`StatefulSet` itself: `kube create -f kube/chordial-statefulset.yaml`
 
-**Section under construction! Please come back another time**
+You should now,
 
-#### Cloud Environment Provisioning
+### Cluster Scaling
 
-**Section under construction! Please come back another time**
+_**Section under construction! Please come back another time**_
+
+### Cloud Environment Provisioning
+
+_**Section under construction! Please come back another time**_
 
 
 ---
