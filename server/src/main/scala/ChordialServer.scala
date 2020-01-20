@@ -9,6 +9,7 @@ import membership.{Membership, MembershipAPI, MembershipActor}
 import org.slf4j.LoggerFactory
 import persistence.PersistenceActor
 import persistence.threading.ThreadPartitionActor
+import schema.LoggingConfiguration
 import service.{RequestServiceActor, RequestServiceImpl}
 
 
@@ -16,12 +17,10 @@ private object ChordialServer extends App {
 
   val config = ConfigFactory.load()
 
-  // Needed as the the netty I/O logs on DEBUG mode are excessive
-  LoggerFactory
-    .getLogger("io.grpc.netty")
-    .asInstanceOf[Logger]
-    .setLevel(Level.INFO)
-
+  LoggingConfiguration.setPackageLevel(Level.INFO,
+    "io.grpc.netty",
+    "akka.http.impl.engine.http2"
+  )
   val log = LoggerFactory.getLogger(ChordialServer.getClass)
   log.info("Server config loaded")
 

@@ -21,7 +21,6 @@ DOCUMENTATION:
 
 CLIENT:
 - Add a executable program wrapper around the client JAR to simplify deployment
-- Enumerate the exit codes
 
 MEMBERSHIP:
 - Possibly allow for different seed node and self IP addresser methods

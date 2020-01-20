@@ -1,0 +1,20 @@
+## Headless Service definition
+apiVersion: v1
+kind: Service
+metadata:
+  name: chordial
+  namespace: chordial-ns
+  labels:
+    app: chordial
+spec:
+  clusterIP: None
+  ports:
+    - name: membership
+      port: 22200
+    - name: partitioning
+      port: 22201
+    - name: replication
+      port: 22202
+  selector:
+    app: chordial
+

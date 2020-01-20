@@ -187,26 +187,28 @@ class MembershipActor private
       if (initializationCount <= 0 && !readiness) {
 
         // Only if the seed node is defined will there be any synchronization calls
-        addressRetriever.seedIP.foreach { seedIP =>
+        addressRetriever.seedIP match {
 
-          if (seedIP != addressRetriever.selfIP) {
-            log.info("Contacting seed node for membership listing")
+          case Some(seedIP) =>
+            if (seedIP != addressRetriever.selfIP) {
+              log.info("Contacting seed node for membership listing")
 
-            implicit val ec: ExecutionContext = actorSystem.dispatcher
+              implicit val ec: ExecutionContext = actorSystem.dispatcher
 
-            val grpcClientSettings = GrpcClientSettings.connectToServiceAt(
-              seedIP,
-              MEMBERSHIP_PORT
-            )
+              val grpcClientSettings = GrpcClientSettings.connectToServiceAt(
+                seedIP,
+                MEMBERSHIP_PORT
+              )
 
-            MembershipServiceClient(grpcClientSettings)(ActorMaterializer()(context), ec)
-              .fullSync(FullSyncRequest(nodeID, addressRetriever.selfIP))
-              .onComplete(self ! SeedResponse(_))
-          }
-          else log.info("Seed IP was the same as this current node's IP, no full sync necessary")
+              MembershipServiceClient(grpcClientSettings)(ActorMaterializer()(context), ec)
+                .fullSync(FullSyncRequest(nodeID, addressRetriever.selfIP))
+                .onComplete(self ! SeedResponse(_))
+            }
+            else log.info("Seed IP was the same as this current node's IP, no full sync necessary")
+
+          case None =>
+            readiness = true
         }
-
-        readiness = true
       }
 
     }
@@ -219,6 +221,8 @@ class MembershipActor private
       case Success(response) => {
         log.info("Successful full sync response received from seed node")
         membershipTable ++= response.syncInfo.map(_.nodeInfo)
+
+        readiness = true
       }
 
       case scala.util.Failure(e) => {

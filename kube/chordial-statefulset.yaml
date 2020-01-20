@@ -1,25 +1,3 @@
-## Headless Service definition
-apiVersion: v1
-kind: Service
-metadata:
-  name: chordial
-  namespace: chordial-ns
-  labels:
-    app: chordial
-spec:
-  clusterIP: None
-  ports:
-  - name: membership
-    port: 22200
-  - name: partitioning
-    port: 22201
-  - name: replication
-    port: 22202
-  selector:
-    app: chordial
-
----
-
 ## StatefulSet definition
 apiVersion: apps/v1
 kind: StatefulSet
@@ -31,6 +9,9 @@ metadata:
 spec:
   serviceName: chordial
   replicas: 1
+  selector:
+    matchLabels:
+      app: chordial
   volumeClaimTemplates:
   - metadata:
       name: data
@@ -52,7 +33,7 @@ spec:
     spec:
       containers:
       - name: chordial-container
-        image: chordial/server:1.2.4
+        image: chordial/server:1.2.5
         imagePullPolicy: IfNotPresent
         resources:
           limits:
@@ -99,3 +80,4 @@ metadata:
   name: chordial-storage
 provisioner: kubernetes.io/no-provisioner
 volumeBindingMode: WaitForFirstConsumer
+

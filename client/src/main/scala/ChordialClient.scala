@@ -1,6 +1,6 @@
-import ch.qos.logback.classic.{Level, Logger}
-import org.slf4j.LoggerFactory
+import ch.qos.logback.classic.Level
 import schema.ImplicitGrpcConversions._
+import schema.LoggingConfiguration
 import schema.service.{GetRequest, PostRequest, ReadinessCheck}
 import scopt.OptionParser
 
@@ -22,10 +22,7 @@ private object ChordialClient extends App {
   lazy val separator = sys.props("line.separator")
 
   // Needed as the the netty I/O logs on DEBUG mode are excessive
-  LoggerFactory
-    .getLogger("io.grpc.netty")
-    .asInstanceOf[Logger]
-    .setLevel(Level.INFO)
+  LoggingConfiguration.setPackageLevel(Level.INFO, "io.grpc.netty")
 
 
   val parser: OptionParser[ClientHandler] = new OptionParser[ClientHandler]("chordial") {
@@ -114,14 +111,14 @@ private object ChordialClient extends App {
             case Success(getResponse) =>
               val stringValue: String = getResponse.value // Convert ByteString to String
               println(s"GET request successful: ${stringValue}")
-              sys.exit(0)
+              sys.exit(STATUS_OK)
             case Failure(requestError) =>
               println(s"GET request failed: ${requestError}")
-              sys.exit(3)
+              sys.exit(GRPC_RESPONSE_ERROR)
           }
           case Failure(timeout) =>
             println(s"Internal client error during GET: ${timeout}")
-            sys.exit(2)
+            sys.exit(CLIENT_INTERNAL_ERROR)
         }
 
       case POST =>
@@ -136,19 +133,19 @@ private object ChordialClient extends App {
           case Success(future) => future.value.get match {
             case Success(postResponse) =>
               println(s"POST request successful: ${postResponse}")
-              sys.exit(0)
+              sys.exit(STATUS_OK)
             case Failure(requestError) =>
               println(s"POST request failed: ${requestError}")
-              sys.exit(4)
+              sys.exit(GRPC_RESPONSE_ERROR)
           }
           case Failure(timeout) =>
             println(s"Internal client error during POST: ${timeout}")
-            sys.exit(3)
+            sys.exit(CLIENT_INTERNAL_ERROR)
         }
 
       case DELETE =>
         println("Deletes are currently not implemented")
-        sys.exit(2)
+        sys.exit(UNIMPLEMENTED_ERROR)
 
       case READY =>
         Try(Await.ready(
@@ -161,25 +158,25 @@ private object ChordialClient extends App {
               println(s"Readiness response received with status: ${readinessResponse.isReady}")
               if (!readinessResponse.isReady) {
                 println("Node is not ready - reporting exit code as failure")
-                sys.exit(5)
+                sys.exit(SERVER_INTERNAL_ERROR)
               }
-              else sys.exit(0)
+              else sys.exit(STATUS_OK)
 
             case Failure(requestError) =>
               println(s"Readiness check failed: ${requestError}")
-              sys.exit(4)
+              sys.exit(GRPC_RESPONSE_ERROR)
           }
           case Failure(timeout) =>
             println(s"Internal client error during readiness check: ${timeout}")
-            sys.exit(3)
+            sys.exit(CLIENT_INTERNAL_ERROR)
         }
 
       case _ =>
         println("Command not specified, please use the --help flag for more info")
-        sys.exit(100)
+        sys.exit(PARSE_ERROR)
     }
 
-    case None => sys.exit(1)
+    case None => sys.exit(PARSE_ERROR)
   }
 
 }
