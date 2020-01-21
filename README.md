@@ -172,6 +172,17 @@ If it looks something like that, you're all set to start adding new nodes to the
 
 ### Cluster Scaling
 
+To scale the number of replicas in the `StatefulSet`, you will need to run the command:
+`kubectl scale statefulset cdb --replicas=${REPLICA_COUNT}`. This will add new pods one-by-one into the
+cluster, giving them a chance to synchronize with each other without overwhelming them
+
+However, this is a good time to point out that this fully automatic scaling process can only be achieved
+if there is a DNS server present, as the nodes will perform a DNS lookup to retrieve the IP address of the
+cluster seed node (the node `cdb-0`). 
+
+Without a DNS server, it is still possible to have future nodes be scaled automatically but it will require
+you to manually specify the seed node IP address into the Kubernetes `StatefulSet` configuration. _**TODO elaborate on this more**_ 
+
 _**Section under construction! Please come back another time**_
 
 
@@ -205,13 +216,13 @@ of implementation. _Italics indicate that this component is in progress!_
     - [x] Push mechanism for join/leave broadcasting
     - [ ] Pull mechanism for anti-entropy
   - [x] Failure detection through direct + indirect check mechanism
-  - [ ] _Local kubernetes cluster setup and integration_
+  - [x] Local kubernetes cluster setup and integration
     - [x] Service containerization  
     
 - [ ] **Milestone 3: Partitioning Layer**
   - [ ] Partitioning via virtual nodes
-    - [ ] Partition ring data structure
-    - [ ] Dynamic repartition dividing/merges on node join/failure
+    - [ ] _Partition ring data structure_
+    - [ ] _Dynamic repartition dividing/merges on node join/failure_
     - [ ] Data shuffling on node membership changes
   - [ ] Better testing, should be able to do some failure case handling
   

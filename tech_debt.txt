@@ -18,6 +18,7 @@ DOCUMENTATION:
   for prerequisite cluster setup
 - Document the high-level architecture and modules of the program
 - Document the directory structure of the program, including the build-related stuff
+- Include links to references (within itself to other sections, the wiki, or external docs)
 
 
 CLIENT:
