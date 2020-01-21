@@ -152,7 +152,20 @@ Kubernetes object used will be the `StatefulSet`, along with its prerequisite `H
 So to create the headless service, run `kubectl create -f kube/chordial-headless.yaml`, followed by the
 `StatefulSet` itself: `kube create -f kube/chordial-statefulset.yaml`
 
-You should now,
+If all goes well, you'll see three healthy objects running if you check everything in the namespace:
+
+```
+> kubectl get all -n chordial-ns
+NAME        READY   STATUS    RESTARTS   AGE
+pod/cdb-0   0/1     Running   0          59s
+
+NAME          TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)                         AGE
+service/chs   ClusterIP   None         <none>        22200/TCP,22201/TCP,22202/TCP   62s
+
+NAME                   READY   AGE
+statefulset.apps/cdb   0/1     59s
+```
+
 
 ### Cluster Scaling
 

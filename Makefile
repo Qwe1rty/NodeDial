@@ -4,8 +4,7 @@ DOCKER_SERVER = chordial/server
 DOCKER_CLIENT = chordial/client
 
 ROOT_LOCATION = /var/lib/chordial
-SERVER_LOCATION = $(ROOT_LOCATION)/server
-CLIENT_LOCATION = $(ROOT_LOCATION)/client
+JAR_LOCATION  = $(ROOT_LOCATION)-jars
 
 
 ####################
@@ -60,10 +59,15 @@ kill-server:
 
 ## NOTE: sudo permissions required to install global client.
 install-client:
-	@sudo mkdir -p $(CLIENT_LOCATION)
-	@sudo rm -f $(CLIENT_LOCATION)/*
-	@sudo cp -f $(shell find . -name "ChordialClient-assembly-*.jar") $(CLIENT_LOCATION)
+	@sudo mkdir -p $(JAR_LOCATION)
+
+	@sudo rm -f $(JAR_LOCATION)/chordial-client.jar
+	@sudo cp -f $(shell find . -name "ChordialClient-assembly-*.jar") $(JAR_LOCATION)/chordial-client.jar
 	@sudo cp -f docker/run-client.sh /usr/local/bin/chordial
+
+	@sudo rm -f $(JAR_LOCATION)/chordial-server.jar
+	@sudo cp -f $(shell find . -name "ChordialServer-assembly-*.jar") $(JAR_LOCATION)/chordial-server.jar
+	@sudo cp -f docker/run-server.sh /usr/local/bin/chordial-app
 
 #local-client:
 #	@java -jar $(shell find . -name "ChordialClient-assembly-*.jar")

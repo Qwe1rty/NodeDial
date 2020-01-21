@@ -8,22 +8,24 @@ EXPOSE 22200
 EXPOSE 22201
 EXPOSE 22202
 
+RUN mkdir -p /var/lib/chordial-jars
+
 
 ##
 ## Client stub setup
 ##
-RUN mkdir -p /var/lib/chordial/client
-COPY $CLIENT_JAR_FILE /var/lib/chordial/client
+COPY $CLIENT_JAR_FILE /var/lib/chordial-jars/chordial-client.jar
 COPY docker/run-client.sh /usr/local/bin/chordial
+
+RUN chmod +x /var/lib/chordial-jars/chordial-client.jar
 
 
 ##
 ## Server setup
 ##
-RUN mkdir -p /var/lib/chordial/server
-WORKDIR /var/lib/chordial/server
-COPY $SERVER_JAR_FILE docker/run-server.sh ./
+COPY $SERVER_JAR_FILE /var/lib/chordial-jars/chordial-server.jar
+COPY docker/run-server.sh /usr/local/bin/chordial-app
 
-#RUN dos2unix run-server.sh
-ENTRYPOINT ["sh", "/var/lib/chordial/server/run-server.sh"]
+RUN chmod +x /var/lib/chordial-jars/chordial-server.jar
+ENTRYPOINT chordial-app
 
