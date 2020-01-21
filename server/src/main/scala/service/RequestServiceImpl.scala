@@ -77,6 +77,10 @@ class RequestServiceImpl
 
     (membershipActor ? MembershipAPI.CheckReadiness)
       .mapTo[Boolean]
+      .map { readiness =>
+        log.debug(s"Readiness check response with: ${readiness}")
+        readiness
+      }
       .map(ReadinessConfirmation(_))
   }
 }

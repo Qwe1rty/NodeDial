@@ -43,7 +43,7 @@ To reattach the terminal to the server instance, run `make log-server`
 When building the server instance, you'll also build the CLI tool that allows you to conveniently 
 make requests to your server
 
-Once the project is successfully built and the server is running, run the `make install-client`
+Once the project is successfully built and the server is running, run the `make install`
 command to install the client `JAR` and wrapper script into to your `$PATH` space. 
 **Note that this will require `sudo` privileges, as it is copying them to `/var/lib/` and `/usr/local/bin`
  respectively**  
@@ -99,28 +99,8 @@ GET request successful: Hello World!
 And if it works, then congrats! Everything is all good and running. Now you're ready to set up a 
 cluster (if you'd like to)
 
-### Build Setup Notes
-
-For further information about various aspects of how the project build system works, here are some various
-resources that help elaborate on certain build topics used in this project:
-
-* gRPC and ScalaPB
-  * Importing Google common protobuf files: <https://github.com/googleapis/common-protos-java>
-  * Additional fix regarding above link for SBT build: <https://discuss.lightbend.com/t/use-googles-annotations-proto/3302>
-* SBT Multi-project
-  * Example `build.sbt`: <https://github.com/pbassiner/sbt-multi-project-example/blob/master/build.sbt>
-  * SBT assembly + Docker: <https://hackernoon.com/akka-io-sbt-assembly-and-docker-a88b649f63cf>
-* Dockerizing Scala apps
-  * Walkthrough: https://blog.elegantmonkeys.com/dockerizing-your-scala-application-6590385fd501
-* Java downgrading: <https://askubuntu.com/questions/1133216/downgrading-java-11-to-java-8>
-* Kubernetes Cluster Setup:
-  * Example StatefulSet deployment (ZooKeeper): <https://kubernetes.io/docs/tasks/run-application/scale-stateful-set/>
-  * Example StatefulSet deployment (Cassandra): <https://kubernetes.io/docs/tutorials/stateful-application/cassandra/>
-  * Cassandra deployment walkthrough/breakdown: <https://convit.de/blog/blog-cassandra-kubernetes-it-good-fit-convit.html>
-
 
 ---
-
 ## Kubernetes Cluster Setup
 
 **Disclaimer: This has currently only been tested using version 1.14.x of the Kubernetes server. Please 
@@ -152,26 +132,45 @@ Kubernetes object used will be the `StatefulSet`, along with its prerequisite `H
 So to create the headless service, run `kubectl create -f kube/chordial-headless.yaml`, followed by the
 `StatefulSet` itself: `kube create -f kube/chordial-statefulset.yaml`
 
-If all goes well, you'll see three healthy objects running if you check everything in the namespace:
+If all goes well, you'll see three healthy objects running if you check everything in the namespace (it may
+take a while for it to reach a ready state):
 
 ```
 > kubectl get all -n chordial-ns
 NAME        READY   STATUS    RESTARTS   AGE
-pod/cdb-0   0/1     Running   0          59s
+pod/cdb-0   1/1     Running   0          66s
 
 NAME          TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)                         AGE
-service/chs   ClusterIP   None         <none>        22200/TCP,22201/TCP,22202/TCP   62s
+service/chs   ClusterIP   None         <none>        22200/TCP,22201/TCP,22202/TCP   71s
 
 NAME                   READY   AGE
-statefulset.apps/cdb   0/1     59s
+statefulset.apps/cdb   1/1     66s
 ```
 
+You can also check out the logs and see how it's interacting with the cluster. Tailing the pod, you'll
+get this sort of log output:
+
+```
+> kube logs cdb-0 -n chordial-ns -f
+04:43:19.931 [main] INFO ChordialServer$ - Server config loaded
+04:43:19.932 [main] INFO ChordialServer$ - Initializing actor system
+04:43:20.350 [Chordial-akka.actor.default-dispatcher-6] INFO akka.event.slf4j.Slf4jLogger - Slf4jLogger started
+04:43:20.356 [Chordial-akka.actor.default-dispatcher-6] DEBUG akka.event.EventStream - logger log1-Slf4jLogger started
+04:43:20.359 [Chordial-akka.actor.default-dispatcher-6] DEBUG akka.event.EventStream - Default Loggers started
+04:43:20.394 [Chordial-akka.actor.default-dispatcher-7] DEBUG akka.serialization.Serialization(akka://Chordial) - Replacing JavaSerializer with DisabledJavaSerializer, due to `akka.actor.allow-java-serialization = off`.
+04:43:20.416 [main] INFO ChordialServer$ - Initializing membership module components
+04:43:20.451 [main] INFO membership.MembershipActor$ - Node ID not found - generating new ID
+...
+04:43:21.196 [Chordial-akka.actor.default-dispatcher-10] DEBUG akka.io.TcpListener - Successfully bound to /0.0.0.0:8080
+04:43:21.196 [Chordial-akka.actor.default-dispatcher-10] INFO service.RequestServiceImpl$ - gRPC request service bound to /0.0.0.0:8080
+04:44:00.913 [Chordial-akka.actor.default-dispatcher-14] DEBUG akka.io.TcpListener - New connection accepted
+04:44:01.097 [Chordial-akka.actor.default-dispatcher-10] DEBUG service.RequestServiceImpl$ - Readiness check received
+04:44:01.099 [Chordial-akka.actor.default-dispatcher-10] DEBUG service.RequestServiceImpl$ - Readiness check response with: true
+``` 
+
+If it looks something like that, you're all set to start adding new nodes to the cluster!
 
 ### Cluster Scaling
-
-_**Section under construction! Please come back another time**_
-
-### Cloud Environment Provisioning
 
 _**Section under construction! Please come back another time**_
 
@@ -225,4 +224,23 @@ of implementation. _Italics indicate that this component is in progress!_
 - [ ] **Milestone 5: Transaction Layer**
   - [ ] Distributed transactions (2PC?)
   - [ ] _TODO_
+
+## Additional Build Setup Notes
+
+For further information about various aspects of how the project build system works, here are some various
+resources that help elaborate on certain build topics used in this project:
+
+* gRPC and ScalaPB
+  * Importing Google common protobuf files: <https://github.com/googleapis/common-protos-java>
+  * Additional fix regarding above link for SBT build: <https://discuss.lightbend.com/t/use-googles-annotations-proto/3302>
+* SBT Multi-project
+  * Example `build.sbt`: <https://github.com/pbassiner/sbt-multi-project-example/blob/master/build.sbt>
+  * SBT assembly + Docker: <https://hackernoon.com/akka-io-sbt-assembly-and-docker-a88b649f63cf>
+* Dockerizing Scala apps
+  * Walkthrough: https://blog.elegantmonkeys.com/dockerizing-your-scala-application-6590385fd501
+* Java downgrading: <https://askubuntu.com/questions/1133216/downgrading-java-11-to-java-8>
+* Kubernetes Cluster Setup:
+  * Example StatefulSet deployment (ZooKeeper): <https://kubernetes.io/docs/tasks/run-application/scale-stateful-set/>
+  * Example StatefulSet deployment (Cassandra): <https://kubernetes.io/docs/tutorials/stateful-application/cassandra/>
+  * Cassandra deployment walkthrough/breakdown: <https://convit.de/blog/blog-cassandra-kubernetes-it-good-fit-convit.html>
 

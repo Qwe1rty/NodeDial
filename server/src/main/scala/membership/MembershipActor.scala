@@ -49,10 +49,10 @@ object MembershipActor {
       MEMBERSHIP_DIR.createDirectoryIfNotExists()
       MEMBERSHIP_FILE.writeByteArray(newID)
 
-      (newID, true)
+      (newID, false)
     }
 
-    else (MEMBERSHIP_FILE.loadBytes, false)
+    else (MEMBERSHIP_FILE.loadBytes, true)
   }
   log.info(s"Membership has determined node ID: ${nodeID}, with rejoin flag: ${rejoin}")
 
@@ -125,28 +125,37 @@ class MembershipActor private
 
           if (!membershipTable.contains(event.nodeId)) {
             membershipTable += NodeInfo(event.nodeId, joinInfo.ipAddress, 0, ALIVE)
+            log.info(s"New node ${event.nodeId} added to membership table with IP address ${joinInfo.ipAddress}")
           }
+          else log.debug(s"Node ${event.nodeId} join event ignored, entry already in table")
+
           publishExternally(event)
 
         case EventType.Suspect(suspectInfo) =>
           log.debug(s"Suspect event - ${event.nodeId} - ${suspectInfo}")
 
-          if (event.nodeId != nodeID) {
+          if (event.nodeId != nodeID && membershipTable.state(event.nodeId) == NodeState.ALIVE) {
             membershipTable = membershipTable.updated(event.nodeId, SUSPECT)
+            log.debug(s"Node ${event.nodeId} will be marked as suspect")
           }
           else if (suspectInfo.version == membershipTable.version(nodeID)) {
             membershipTable = membershipTable.increment(nodeID)
+            log.debug(s"Received suspect message about self, will increment version and refute")
+
             publishExternally(Event(nodeID).withRefute(Refute(membershipTable.version(nodeID))))
           }
 
         case EventType.Failure(failureInfo) =>
           log.debug(s"Failure event - ${event.nodeId} - ${failureInfo}")
 
-          if (event.nodeId != nodeID) {
+          if (event.nodeId != nodeID && membershipTable.state(event.nodeId) != NodeState.DEAD) {
             membershipTable = membershipTable.updated(event.nodeId, DEAD)
+            log.debug(s"Node ${event.nodeId} will be marked as dead")
           }
           else if (failureInfo.version == membershipTable.version(nodeID)) { // TODO merge duplicates
             membershipTable = membershipTable.increment(nodeID)
+            log.debug(s"Received death message about self, will increment version and refute")
+
             publishExternally(Event(nodeID).withRefute(Refute(membershipTable.version(nodeID))))
           }
 
@@ -168,7 +177,10 @@ class MembershipActor private
         case EventType.Leave(_) => {
           log.debug(s"Leave event - ${event.nodeId}")
 
-          membershipTable -= event.nodeId
+          if (membershipTable.contains(event.nodeId)) {
+            membershipTable -= event.nodeId
+            log.info(s"Node ${event.nodeId} declared intent to leave, removing from membership table")
+          }
           publishExternally(event)
         }
 
@@ -185,6 +197,7 @@ class MembershipActor private
       initializationCount -= 1
 
       if (initializationCount <= 0 && !readiness) {
+        log.debug("Starting initialization sequence to establish readiness")
 
         // Only if the seed node is defined will there be any synchronization calls
         addressRetriever.seedIP match {
@@ -204,10 +217,14 @@ class MembershipActor private
                 .fullSync(FullSyncRequest(nodeID, addressRetriever.selfIP))
                 .onComplete(self ! SeedResponse(_))
             }
-            else log.info("Seed IP was the same as this current node's IP, no full sync necessary")
+            else {
+              readiness = true
+              log.info("Seed IP was the same as this current node's IP, no full sync necessary")
+            }
 
           case None =>
             readiness = true
+            log.info("No seed node specified, will assume single-node cluster readiness")
         }
       }
 
@@ -219,10 +236,10 @@ class MembershipActor private
     case SeedResponse(syncResponse) => syncResponse match {
 
       case Success(response) => {
-        log.info("Successful full sync response received from seed node")
         membershipTable ++= response.syncInfo.map(_.nodeInfo)
 
         readiness = true
+        log.info("Successful full sync response received from seed node")
       }
 
       case scala.util.Failure(e) => {
