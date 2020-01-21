@@ -17,7 +17,7 @@ private object ChordialServer extends App {
 
   val config = ConfigFactory.load()
 
-  LoggingConfiguration.setPackageLevel(Level.INFO,
+  LoggingConfiguration.setPackageLevel(Level.WARN,
     "io.grpc.netty",
     "akka.http.impl.engine.http2"
   )
@@ -25,7 +25,7 @@ private object ChordialServer extends App {
   log.info("Server config loaded")
 
   log.info("Initializing actor system")
-  implicit val actorSystem: ActorSystem = ActorSystem("Chordial", config)
+  implicit val actorSystem: ActorSystem = ActorSystem("ChordialServer", config)
 
 
   // Membership module components

@@ -80,7 +80,7 @@ private object ChordialClient extends App {
 
 
     checkConfig(handler => {
-      if (handler.operation.equals(POST) && handler.value.isEmpty) {
+      if (handler.operation == POST && handler.value.isEmpty) {
         failure("Value field cannot be empty")
       }
       else handler.operation match {

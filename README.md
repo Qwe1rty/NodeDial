@@ -130,7 +130,7 @@ Since Chordial by its nature requires persistent storage (it's a database, after
 Kubernetes object used will be the `StatefulSet`, along with its prerequisite `Headless Service` object
 
 So to create the headless service, run `kubectl create -f kube/chordial-headless.yaml`, followed by the
-`StatefulSet` itself: `kube create -f kube/chordial-statefulset.yaml`
+`StatefulSet` itself: `kubectl create -f kube/chordial-statefulset.yaml`
 
 If all goes well, you'll see three healthy objects running if you check everything in the namespace (it may
 take a while for it to reach a ready state):
@@ -151,7 +151,7 @@ You can also check out the logs and see how it's interacting with the cluster. T
 get this sort of log output:
 
 ```
-> kube logs cdb-0 -n chordial-ns -f
+> kubectl logs cdb-0 -n chordial-ns -f
 04:43:19.931 [main] INFO ChordialServer$ - Server config loaded
 04:43:19.932 [main] INFO ChordialServer$ - Initializing actor system
 04:43:20.350 [Chordial-akka.actor.default-dispatcher-6] INFO akka.event.slf4j.Slf4jLogger - Slf4jLogger started
@@ -173,12 +173,16 @@ If it looks something like that, you're all set to start adding new nodes to the
 ### Cluster Scaling
 
 To scale the number of replicas in the `StatefulSet`, you will need to run the command:
-`kubectl scale statefulset cdb --replicas=${REPLICA_COUNT}`. This will add new pods one-by-one into the
-cluster, giving them a chance to synchronize with each other without overwhelming them
+`kubectl scale statefulset cdb -n chordial-ns --replicas=${REPLICA_COUNT}`. This will add new pods one-by-one 
+into the cluster, giving them a chance to synchronize with each other without overwhelming them
+
+Let's try adding one by setting the replica count to 2, which creates a node labelled `cdb-1`. Upon starting
+up the second node, it will attempt to contact the first node and synchronize the membership information
+with it
 
 However, this is a good time to point out that this fully automatic scaling process can only be achieved
 if there is a DNS server present, as the nodes will perform a DNS lookup to retrieve the IP address of the
-cluster seed node (the node `cdb-0`). 
+cluster seed node (the node `cdb-0`)
 
 Without a DNS server, it is still possible to have future nodes be scaled automatically but it will require
 you to manually specify the seed node IP address into the Kubernetes `StatefulSet` configuration. _**TODO elaborate on this more**_ 

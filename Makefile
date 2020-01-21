@@ -1,4 +1,4 @@
-CHORDIAL_VERSION = 1.2.5
+CHORDIAL_VERSION = 1.2.6
 
 DOCKER_SERVER = chordial/server
 DOCKER_CLIENT = chordial/client
@@ -78,6 +78,9 @@ kube-headless:
 
 kube-statefulset:
 	@kubectl create -f kube/chordial-statefulset.yaml
+
+kube-ns:
+	@kubectl get all -n chordial-ns
 
 kube-clear:
 	@kubectl delete statefulset cdb -n chordial-ns
