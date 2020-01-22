@@ -66,7 +66,7 @@ object KubernetesAddresser extends AddressRetriever {
 
         Try(IpAddress(InetAddress.getByName(seedHostname).getHostAddress)) match {
           case Success(ipAddress) =>
-            log.info(s"IP addressed resolved to: ${ipAddress}")
+            log.info(s"Seed node IP address resolved to: ${ipAddress}")
             Some(ipAddress)
           case Failure(e) =>
             log.warn(s"Could not resolve hostname due to error: ${e}")

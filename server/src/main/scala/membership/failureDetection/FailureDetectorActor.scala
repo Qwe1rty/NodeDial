@@ -51,7 +51,7 @@ class FailureDetectorActor private
 
   override def receive: Receive = {
 
-    case Tick => if (scheduledDirectChecks < DIRECT_CONNECTIONS_LIMIT) {
+    case Tick => if (scheduledDirectChecks <= DIRECT_CONNECTIONS_LIMIT) {
       scheduledDirectChecks += 1
 
       (membershipActor ? GetRandomNode(NodeState.ALIVE))
@@ -85,6 +85,7 @@ class FailureDetectorActor private
     case DirectResponse(target, directResult) => directResult match {
 
       case Success(_) =>
+        log.debug(s"Target ${target} successfully passed initial direct failure check")
         scheduledDirectChecks -= 1
         pendingDirectChecks -= target
 
@@ -103,15 +104,24 @@ class FailureDetectorActor private
     case FollowupRequest(target, followupTeam) => followupTeam match {
 
       case Success(requestResult) =>
-        log.debug(s"Attempting to followup on suspected dead node ${target}")
+        log.debug(s"Attempting to followup on suspected dead node ${target} with team size ${requestResult.size}")
+        pendingFollowupChecks += target -> requestResult.size
+
         requestResult.foreach { member =>
 
-          val grpcClient = FailureDetectorServiceClient(createGrpcSettings(member.ipAddress, DEATH_DEADLINE))
-          pendingFollowupChecks = pendingFollowupChecks + (member -> requestResult.size)
+          if (member.nodeID != MembershipActor.nodeID) {
+            val grpcClient = FailureDetectorServiceClient(createGrpcSettings(member.ipAddress, DEATH_DEADLINE))
 
-          log.debug(s"Calling ${member} for indirect check on ${target}")
-          grpcClient.followupCheck(FollowupMessage(target.ipAddress)).onComplete {
-            self ! FollowupResponse(member, _)
+            log.debug(s"Calling ${member} for indirect check on ${target}")
+            grpcClient.followupCheck(FollowupMessage(target.ipAddress)).onComplete {
+              self ! FollowupResponse(member, _)
+            }
+          }
+          else {
+            // TODO remove this condition when MembershipTable can be selective on non-self
+
+            log.debug(s"Self detected in followup team for ${target}")
+            pendingFollowupChecks += target -> (pendingFollowupChecks(target) - 1)
           }
         }
 

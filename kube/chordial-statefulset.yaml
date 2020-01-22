@@ -56,10 +56,12 @@ spec:
           containerPort: 8080
         - name: membership
           containerPort: 22200
-        - name: partitioning
+        - name: failure-det
           containerPort: 22201
-        - name: replication
+        - name: partitioning
           containerPort: 22202
+        - name: replication
+          containerPort: 22203
         volumeMounts:
         - name: chordial-volume-claim
           mountPath: /var/lib/chordial

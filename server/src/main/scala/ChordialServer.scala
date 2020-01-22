@@ -5,7 +5,7 @@ import common.ServerConstants._
 import common.membership.types.NodeState
 import membership.addresser.KubernetesAddresser
 import membership.failureDetection.{FailureDetectorActor, FailureDetectorServiceImpl}
-import membership.{Membership, MembershipAPI, MembershipActor}
+import membership.{Membership, MembershipAPI, MembershipActor, MembershipServiceImpl}
 import org.slf4j.LoggerFactory
 import persistence.PersistenceActor
 import persistence.threading.ThreadPartitionActor
@@ -34,7 +34,9 @@ private object ChordialServer extends App {
   log.info("Initializing membership module components")
 
   val addressRetriever = KubernetesAddresser
+
   val membershipActor = MembershipActor(addressRetriever, REQUIRED_TRIGGERS)
+  MembershipServiceImpl(membershipActor)
 
   val failureDetectorActor = FailureDetectorActor(membershipActor)
   FailureDetectorServiceImpl()

@@ -116,11 +116,11 @@ and are just running the Kubernetes cluster on your local machine.
 ### Single-Node Cluster Setup
 
 Firstly, before you can run the Chordial service, you will need to already have a prerequisite cluster up
-and running with some DNS service - this is required especially when scaling up the cluster, as new
-nodes will need to resolve the seed node's hostname
+and running with some DNS service
 
-(A DNS service is actually not strictly necessary, but it can help to automate and simplify cluster 
-scaling. This topic will be further discussed in the scaling subchapter)
+(A DNS service is actually not strictly necessary, but it can help to automate cluster operations. In 
+particular, this is especially helpful when scaling up the cluster, as new nodes will need to resolve the 
+seed node's hostname. This topic will be further discussed in the scaling subchapter)
 
 When the prerequities are all good, you should first create the chordial namespace using the command:
 `kubectl create namespace chordial-ns`. Everything related to Chordial has been configured to run in that
@@ -138,13 +138,13 @@ take a while for it to reach a ready state):
 ```
 > kubectl get all -n chordial-ns
 NAME        READY   STATUS    RESTARTS   AGE
-pod/cdb-0   1/1     Running   0          66s
+pod/cdb-0   1/1     Running   0          58s
 
-NAME          TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)                         AGE
-service/chs   ClusterIP   None         <none>        22200/TCP,22201/TCP,22202/TCP   71s
+NAME          TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)                                   AGE
+service/chs   ClusterIP   None         <none>        22200/TCP,22201/TCP,22202/TCP,22203/TCP   63s
 
 NAME                   READY   AGE
-statefulset.apps/cdb   1/1     66s
+statefulset.apps/cdb   1/1     58s
 ```
 
 You can also check out the logs and see how it's interacting with the cluster. Tailing the pod, you'll
@@ -154,17 +154,17 @@ get this sort of log output:
 > kubectl logs cdb-0 -n chordial-ns -f
 04:43:19.931 [main] INFO ChordialServer$ - Server config loaded
 04:43:19.932 [main] INFO ChordialServer$ - Initializing actor system
-04:43:20.350 [Chordial-akka.actor.default-dispatcher-6] INFO akka.event.slf4j.Slf4jLogger - Slf4jLogger started
-04:43:20.356 [Chordial-akka.actor.default-dispatcher-6] DEBUG akka.event.EventStream - logger log1-Slf4jLogger started
-04:43:20.359 [Chordial-akka.actor.default-dispatcher-6] DEBUG akka.event.EventStream - Default Loggers started
-04:43:20.394 [Chordial-akka.actor.default-dispatcher-7] DEBUG akka.serialization.Serialization(akka://Chordial) - Replacing JavaSerializer with DisabledJavaSerializer, due to `akka.actor.allow-java-serialization = off`.
+04:43:20.350 [ChordialServer.akka.actor.default-dispatcher-6] INFO akka.event.slf4j.Slf4jLogger - Slf4jLogger started
+04:43:20.356 [ChordialServer.akka.actor.default-dispatcher-6] DEBUG akka.event.EventStream - logger log1-Slf4jLogger started
+04:43:20.359 [ChordialServer.akka.actor.default-dispatcher-6] DEBUG akka.event.EventStream - Default Loggers started
+04:43:20.394 [ChordialServer.akka.actor.default-dispatcher-7] DEBUG akka.serialization.Serialization(akka://Chordial) - Replacing JavaSerializer with DisabledJavaSerializer, due to `akka.actor.allow-java-serialization = off`.
 04:43:20.416 [main] INFO ChordialServer$ - Initializing membership module components
 04:43:20.451 [main] INFO membership.MembershipActor$ - Node ID not found - generating new ID
 ...
-04:43:21.196 [Chordial-akka.actor.default-dispatcher-10] DEBUG akka.io.TcpListener - Successfully bound to /0.0.0.0:8080
-04:43:21.196 [Chordial-akka.actor.default-dispatcher-10] INFO service.RequestServiceImpl$ - gRPC request service bound to /0.0.0.0:8080
-04:44:00.913 [Chordial-akka.actor.default-dispatcher-14] DEBUG akka.io.TcpListener - New connection accepted
-04:44:01.097 [Chordial-akka.actor.default-dispatcher-10] DEBUG service.RequestServiceImpl$ - Readiness check received
+04:43:21.196 [ChordialServer.akka.actor.default-dispatcher-10] DEBUG akka.io.TcpListener - Successfully bound to /0.0.0.0:8080
+04:43:21.196 [ChordialServer.akka.actor.default-dispatcher-10] INFO service.RequestServiceImpl$ - gRPC request service bound to /0.0.0.0:8080
+04:44:00.913 [ChordialServer.akka.actor.default-dispatcher-14] DEBUG akka.io.TcpListener - New connection accepted
+04:44:01.097 [ChordialServer.akka.actor.default-dispatcher-10] DEBUG service.RequestServiceImpl$ - Readiness check received
 04:44:01.099 [Chordial-akka.actor.default-dispatcher-10] DEBUG service.RequestServiceImpl$ - Readiness check response with: true
 ``` 
 
@@ -178,7 +178,32 @@ into the cluster, giving them a chance to synchronize with each other without ov
 
 Let's try adding one by setting the replica count to 2, which creates a node labelled `cdb-1`. Upon starting
 up the second node, it will attempt to contact the first node and synchronize the membership information
-with it
+with it. 
+
+To better illustrate the joining process, a sample log output of the new node would look like this:
+
+```
+06:58:23.359 [ChordialServer-akka.actor.default-dispatcher-11] DEBUG membership.MembershipActor - Starting initialization sequence to establish readiness
+06:58:23.360 [ChordialServer-akka.actor.default-dispatcher-6] INFO membership.MembershipActor$ - Seed node IP address resolved to: 10.1.0.75
+06:58:23.361 [ChordialServer-akka.actor.default-dispatcher-11] INFO membership.MembershipActor - Contacting seed node for membership listing
+...
+06:58:24.504 [ChordialServer-akka.actor.default-dispatcher-6] INFO membership.MembershipActor - Successful full sync response received from seed node
+06:58:26.355 [ChordialServer-akka.actor.default-dispatcher-7] DEBUG membership.failureDetection.FailureDetectorActor - Attempting to check failure for node [f48e807736036f2cb3a9a25c4372fbefbcb088c345f5398df8315057a89679b6, 10.1.0.75]
+```
+
+What's occurring here is that the new node will try to first resolve the seed node's hostname, and then
+contact it to request a complete synchronization of the membership table
+
+Once complete, the node has full status knowledge of the all other nodes in the cluster and the failure 
+detection module kicks in. In this example, it will immediately try to check failure on the seed node
+since it's the only other node that's in the cluster
+
+On the seed node side, it'll receive the full sync request and happily serve it to the new node:
+
+```
+06:58:24.353 [ChordialServer-akka.actor.default-dispatcher-6] DEBUG akka.io.TcpListener - New connection accepted
+06:58:24.441 [ChordialServer-akka.actor.default-dispatcher-11] INFO membership.MembershipServiceImpl$ - Full sync requested from node 6db686b7163f60ef25273dde56438a7a7b7e85c7b49b8048ab96b05aac997885 with IP 10.1.0.76
+```
 
 However, this is a good time to point out that this fully automatic scaling process can only be achieved
 if there is a DNS server present, as the nodes will perform a DNS lookup to retrieve the IP address of the
@@ -214,12 +239,12 @@ essential and is skipped for now to allow the establishment the high-level archi
   - [x] Basic testing of core functionality
   
 - [x] **Milestone 2: Cluster Membership**
-  - [x] _Membership table of other nodes' IPs and liveness states_
-  - [x] _Node state tracking and broadcasting, following the SWIM protocol_
+  - [x] Membership table of other nodes' IPs and liveness states
+  - [x] Node state tracking and broadcasting, following the SWIM protocol
     - [x] Cluster joins/leaves
     - [x] Suspicion/death refutation
     - [ ] _Cluster rejoins and recovery, including dynamic IP recognition_
-  - [x] _Gossip component_
+  - [x] Gossip component
     - [x] Push mechanism for join/leave broadcasting
     - [ ] Pull mechanism for anti-entropy
   - [x] Failure detection through direct + indirect check mechanism

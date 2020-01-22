@@ -41,7 +41,7 @@ install:
 
 	@sudo rm -f $(JAR_LOCATION)/chordial-client.jar
 	@sudo cp -f $(shell find . -name "ChordialClient-assembly-*.jar") $(JAR_LOCATION)/chordial-client.jar
-	@sudo cp -f docker/run-client.sh /usr/local/bin/chordial
+	@sudo cp -f docker/run-client-local.sh /usr/local/bin/chordial
 
 	@sudo rm -f $(JAR_LOCATION)/chordial-server.jar
 	@sudo cp -f $(shell find . -name "ChordialServer-assembly-*.jar") $(JAR_LOCATION)/chordial-server.jar
@@ -84,6 +84,7 @@ kube-ns:
 
 kube-clear:
 	@kubectl delete statefulset cdb -n chordial-ns
-	@kubectl delete pvc chordial-volume-claim-cdb-0 -n chordial-ns
 	@kubectl delete service chs -n chordial-ns
+	@kubectl delete pvc chordial-volume-claim-cdb-0 -n chordial-ns
+	@kubectl delete pvc chordial-volume-claim-cdb-1 -n chordial-ns
 

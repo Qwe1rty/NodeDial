@@ -8,13 +8,14 @@ import common.ServerConstants
 import common.gossip.GossipAPI.PublishRequest
 import common.gossip.{GossipActor, GossipKey, GossipPayload}
 import common.membership.Event.EventType.Empty
-import common.membership.Event.{EventType, Failure, Refute, Suspect}
+import common.membership.Event.{EventType, Failure, Join, Refute, Suspect}
 import common.membership._
 import common.membership.types.NodeState.{ALIVE, DEAD, SUSPECT}
 import common.membership.types.{NodeInfo, NodeState}
 import common.utils.ActorDefaults
 import membership.addresser.AddressRetriever
 import org.slf4j.LoggerFactory
+import partitioning.PartitionHashes
 import schema.ImplicitDataConversions._
 import schema.ImplicitGrpcConversions._
 import schema.PortConfiguration.MEMBERSHIP_PORT
@@ -88,6 +89,8 @@ class MembershipActor private
     0,
     NodeState.ALIVE
   )
+
+  log.info(s"Self IP has been detected to be ${addressRetriever.selfIP}")
 
 
   /**
@@ -240,6 +243,9 @@ class MembershipActor private
 
         readiness = true
         log.info("Successful full sync response received from seed node")
+
+        publishExternally(Event(nodeID).withJoin(Join(addressRetriever.selfIP, PartitionHashes(Nil))))
+        log.info("Broadcasting join event to other nodes")
       }
 
       case scala.util.Failure(e) => {

@@ -11,7 +11,7 @@ import common.membership.types.NodeState
  * @param nodeID the node ID
  * @param ipAddress the IP address
  */
-case class Membership private(nodeID: String, ipAddress: IpAddress) {
+case class Membership(nodeID: String, ipAddress: IpAddress) {
 
   override def toString: String = s"[${nodeID}, ${ipAddress}]"
 }

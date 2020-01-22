@@ -5,7 +5,7 @@ import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.http.scaladsl.{Http, HttpConnectionContext}
 import akka.stream.ActorMaterializer
 import com.risksense.ipaddr.IpAddress
-import schema.PortConfiguration.MEMBERSHIP_PORT
+import schema.PortConfiguration.FAILURE_DETECTOR_PORT
 import common.membership.failureDetection._
 import membership.failureDetection.FailureDetectorConstants._
 import org.slf4j.LoggerFactory
@@ -34,7 +34,7 @@ class FailureDetectorServiceImpl(implicit actorSystem: ActorSystem) extends Fail
     .bindAndHandleAsync(
       service,
       interface = "0.0.0.0",
-      port = MEMBERSHIP_PORT,
+      port = FAILURE_DETECTOR_PORT,
       connectionContext = HttpConnectionContext())
     .foreach(
       binding => log.info(s"Failure detector service bound to ${binding.localAddress}")
