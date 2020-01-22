@@ -17,7 +17,7 @@ private object ChordialServer extends App {
 
   val config = ConfigFactory.load()
 
-  LoggingConfiguration.setPackageLevel(Level.WARN,
+  LoggingConfiguration.setPackageLevel(Level.INFO,
     "io.grpc.netty",
     "akka.http.impl.engine.http2"
   )

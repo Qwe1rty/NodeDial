@@ -35,8 +35,6 @@ spec:
       - name: chordial-container
         image: chordial/server:1.2.6
         imagePullPolicy: IfNotPresent
-        command:
-        - chordial-app
         resources:
           limits:
             memory: "500Mi"

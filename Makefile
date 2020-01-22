@@ -63,7 +63,7 @@ log-server:
 	@docker logs -f $(shell docker ps -q --filter ancestor="$(DOCKER_SERVER):latest")
 
 exec-server:
-	@docker exec -it $(shell docker ps -q --filter ancestor="$(DOCKER_SERVER):latest") /bin/sh
+	@docker exec -it $(shell docker ps -q --filter ancestor="$(DOCKER_SERVER):latest") sh
 
 kill-server:
 	@docker stop $(shell docker ps -q --filter ancestor="$(DOCKER_SERVER):latest")

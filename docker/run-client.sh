@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/busybox/sh
 
-java -jar "$(find /var/lib -name "chordial-client.jar" 2> /dev/null)" "$@"
+java -jar /var/lib/chordial-jars/chordial-client.jar "$@"
 
