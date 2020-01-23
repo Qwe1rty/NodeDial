@@ -1,4 +1,4 @@
-CHORDIAL_VERSION = 1.2.6
+CHORDIAL_VERSION = 1.2.7
 
 DOCKER_SERVER = chordial/server
 DOCKER_CLIENT = chordial/client
@@ -25,7 +25,7 @@ build-server:
 
 .PHONY: docker
 docker:
-	@docker build \
+	@DOCKER_BUILDKIT=1 docker build \
 		--build-arg SERVER_JAR_FILE=$(shell find . -name "ChordialServer-assembly-*.jar") \
 		--build-arg CLIENT_JAR_FILE=$(shell find . -name "ChordialClient-assembly-*.jar") \
 		--file docker/Dockerfile \

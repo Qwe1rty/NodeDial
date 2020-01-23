@@ -46,6 +46,7 @@ class FailureDetectorServiceImpl(implicit actorSystem: ActorSystem) extends Fail
    * confirmation cannot be returned
    */
   override def directCheck(in: DirectMessage): Future[Confirmation] = {
+
     log.info("Health check request has been received, attempting to send confirmation")
     Future.successful(Confirmation())
   }

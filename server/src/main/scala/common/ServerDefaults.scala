@@ -16,5 +16,5 @@ object ServerDefaults {
 
   // Used to determine how large a buffer of any container of nodes is
   def bufferCapacity(clusterSize: Int): Int =
-    (2.5 * Math.log(clusterSize) + 0.5).toInt
+    Math.max(5, (2.5 * Math.log(clusterSize) + 2).toInt)
 }

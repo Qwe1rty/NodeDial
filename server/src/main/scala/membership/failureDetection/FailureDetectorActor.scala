@@ -74,6 +74,7 @@ class FailureDetectorActor private
             self ! DirectResponse(target, _)
           }
         }
+        else scheduledDirectChecks -= 1
       }
 
       case Failure(e) => {

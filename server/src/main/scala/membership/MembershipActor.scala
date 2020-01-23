@@ -91,6 +91,7 @@ class MembershipActor private
   )
 
   log.info(s"Self IP has been detected to be ${addressRetriever.selfIP}")
+  log.info("Membership actor initialized")
 
 
   /**
@@ -108,7 +109,7 @@ class MembershipActor private
    */
   private def publishExternally(event: Event): Unit = {
 
-    gossipActor ! PublishRequest(
+    gossipActor ! PublishRequest[Event](
       GossipKey(event),
       GossipPayload(grpcClientSettings => (materializer, executionContext) =>
         MembershipServiceClient(grpcClientSettings)(materializer, executionContext)

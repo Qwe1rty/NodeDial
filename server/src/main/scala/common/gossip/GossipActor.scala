@@ -27,7 +27,7 @@ object GossipActor extends GrpcSettingsFactory {
   private case class PayloadTracker(payload: GossipPayload, var count: Int, cooldown: Int) {
 
     def apply(grpcClientSettings: GrpcClientSettings)(implicit mat: Materializer, ec: ExecutionContext): Unit = {
-      payload.rpc(grpcClientSettings)
+      payload.rpc(grpcClientSettings)(mat, ec)
       count -= 1
     }
   }
@@ -38,7 +38,7 @@ object GossipActor extends GrpcSettingsFactory {
       (implicit actorSystem: ActorSystem): ActorRef = {
 
     actorSystem.actorOf(
-      Props(new GossipActor[KeyType](membershipActor, delay)),
+      Props(new GossipActor[KeyType](membershipActor, delay, affiliation)),
       s"gossipActor-${affiliation}"
     )
   }
@@ -58,7 +58,7 @@ object GossipActor extends GrpcSettingsFactory {
 
 
 class GossipActor[KeyType: ClassTag] private
-    (membershipActor: ActorRef, delay: FiniteDuration)
+    (membershipActor: ActorRef, delay: FiniteDuration, affiliation: String)
     (implicit actorSystem: ActorSystem)
   extends Actor
   with ActorLogging
@@ -74,6 +74,8 @@ class GossipActor[KeyType: ClassTag] private
   private val keyTable = mutable.Map[GossipKey[KeyType], PayloadTracker]()
 
   start(delay)
+
+  log.info(s"Gossip actor affiliated with ${affiliation} initialized")
 
 
   override def receive: Receive = {
@@ -91,8 +93,7 @@ class GossipActor[KeyType: ClassTag] private
         val payload = keyTable(key)
 
         payload.count -= 1
-        payload(createGrpcSettings(member.ipAddress, delay * 2))
-
+        if (payload.count >= 0) payload(createGrpcSettings(member.ipAddress, delay * 2))
         if (payload.count <= payload.cooldown) keyTable -= key
       })
 
@@ -101,6 +102,7 @@ class GossipActor[KeyType: ClassTag] private
 
 
     case GossipAPI.PublishRequest(key: GossipKey[KeyType], payload) => {
+      log.debug(s"Gossip request received with key ${key}")
 
       (membershipActor ? MembershipAPI.GetClusterSize)
         .mapTo[Int]
@@ -111,7 +113,9 @@ class GossipActor[KeyType: ClassTag] private
 
       case Success(clusterSize) => if (!keyTable.contains(key)) {
         val bufferCapacity = ServerDefaults.bufferCapacity(clusterSize)
-        keyTable += key -> PayloadTracker(payload, bufferCapacity, -3 * bufferCapacity)
+
+        log.debug(s"Cluster size detected as ${clusterSize}, setting gossip round buffer to ${bufferCapacity}")
+        keyTable += key -> PayloadTracker(payload, bufferCapacity, -5 * bufferCapacity)
       }
 
       case Failure(e) => log.error(s"Cluster size request could not be completed: ${e}")

@@ -44,6 +44,7 @@ class MembershipServiceImpl(membershipActor: ActorRef)(implicit actorSystem: Act
    * Push-based synchronization RPC
    */
   override def publish(event: Event): Future[EventReply] = {
+    log.debug(s"Event received from ${event.nodeId}, forwarding to membership actor")
 
     membershipActor ! event
     Future.successful(EventReply())
