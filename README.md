@@ -50,7 +50,6 @@ command to install the client `JAR` and wrapper script into to your `$PATH` spac
  
 Now, you should be able to just run the `chordial` command from anywhere. Test your installation by 
 running `chordial --help`, which should print out this lovely menu:
-
 ```
 This Chordial client program is a CLI tool to interact with the database node instances
 For more information, check out: https://github.com/Qwe1rty/Chordial
@@ -87,7 +86,6 @@ Readiness response received with status: true
 
 Once ready, you can start hitting it with read/write requests. Here's an example of a write followed
 by a read:
-
 ```
 > chordial post -k some_key -v 'Hello World!'
 POST request successful: PostResponse()
@@ -134,7 +132,6 @@ So to create the headless service, run `kubectl create -f kube/chordial-headless
 
 If all goes well, you'll see three healthy objects running if you check everything in the namespace (it may
 take a while for it to reach a ready state):
-
 ```
 > kubectl get all -n chordial-ns
 NAME        READY   STATUS    RESTARTS   AGE
@@ -149,23 +146,16 @@ statefulset.apps/cdb   1/1     58s
 
 You can also check out the logs and see how it's interacting with the cluster. Tailing the pod, you'll
 get this sort of log output:
-
 ```
 > kubectl logs cdb-0 -n chordial-ns -f
-04:43:19.931 [main] INFO ChordialServer$ - Server config loaded
-04:43:19.932 [main] INFO ChordialServer$ - Initializing actor system
-04:43:20.350 [ChordialServer.akka.actor.default-dispatcher-6] INFO akka.event.slf4j.Slf4jLogger - Slf4jLogger started
-04:43:20.356 [ChordialServer.akka.actor.default-dispatcher-6] DEBUG akka.event.EventStream - logger log1-Slf4jLogger started
-04:43:20.359 [ChordialServer.akka.actor.default-dispatcher-6] DEBUG akka.event.EventStream - Default Loggers started
-04:43:20.394 [ChordialServer.akka.actor.default-dispatcher-7] DEBUG akka.serialization.Serialization(akka://Chordial) - Replacing JavaSerializer with DisabledJavaSerializer, due to `akka.actor.allow-java-serialization = off`.
-04:43:20.416 [main] INFO ChordialServer$ - Initializing membership module components
-04:43:20.451 [main] INFO membership.MembershipActor$ - Node ID not found - generating new ID
+22:27:10.247 [main] INFO ChordialServer$ - Server config loaded
+22:27:10.250 [main] INFO ChordialServer$ - Initializing actor system
+22:27:10.719 [ChordialServer-akka.actor.default-dispatcher-5] INFO akka.event.slf4j.Slf4jLogger - Slf4jLogger started
+22:27:10.727 [ChordialServer-akka.actor.default-dispatcher-5] DEBUG akka.event.EventStream - logger log1-Slf4jLogger started
 ...
-04:43:21.196 [ChordialServer.akka.actor.default-dispatcher-10] DEBUG akka.io.TcpListener - Successfully bound to /0.0.0.0:8080
-04:43:21.196 [ChordialServer.akka.actor.default-dispatcher-10] INFO service.RequestServiceImpl$ - gRPC request service bound to /0.0.0.0:8080
-04:44:00.913 [ChordialServer.akka.actor.default-dispatcher-14] DEBUG akka.io.TcpListener - New connection accepted
-04:44:01.097 [ChordialServer.akka.actor.default-dispatcher-10] DEBUG service.RequestServiceImpl$ - Readiness check received
-04:44:01.099 [Chordial-akka.actor.default-dispatcher-10] DEBUG service.RequestServiceImpl$ - Readiness check response with: true
+22:27:10.789 [main] INFO ChordialServer$ - Initializing membership module components
+22:27:10.823 [main] INFO membership.MembershipActor$ - Node ID not found - generating new ID
+22:27:10.832 [main] INFO membership.MembershipActor$ - Membership has determined node ID: 2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27, with rejoin flag: false
 ``` 
 
 If it looks something like that, you're all set to start adding new nodes to the cluster!
@@ -181,29 +171,59 @@ up the second node, it will attempt to contact the first node and synchronize th
 with it. 
 
 To better illustrate the joining process, a sample log output of the new node would look like this:
-
 ```
-06:58:23.359 [ChordialServer-akka.actor.default-dispatcher-11] DEBUG membership.MembershipActor - Starting initialization sequence to establish readiness
-06:58:23.360 [ChordialServer-akka.actor.default-dispatcher-6] INFO membership.MembershipActor$ - Seed node IP address resolved to: 10.1.0.75
-06:58:23.361 [ChordialServer-akka.actor.default-dispatcher-11] INFO membership.MembershipActor - Contacting seed node for membership listing
+22:27:11.636 [ChordialServer-akka.actor.default-dispatcher-13] INFO membership.MembershipActor$ - Retrieved seed node environment variable with value: 'cdb-0.chs.chordial-ns.svc.cluster.local'
+22:27:11.646 [ChordialServer-akka.actor.default-dispatcher-11] DEBUG membership.MembershipActor - Starting initialization sequence to establish readiness
+22:27:11.648 [ChordialServer-akka.actor.default-dispatcher-13] INFO membership.MembershipActor$ - Seed node IP address resolved to: 10.1.0.91
+22:27:11.649 [ChordialServer-akka.actor.default-dispatcher-9] INFO membership.MembershipActor - Contacting seed node for membership listing
 ...
-06:58:24.504 [ChordialServer-akka.actor.default-dispatcher-6] INFO membership.MembershipActor - Successful full sync response received from seed node
-06:58:26.355 [ChordialServer-akka.actor.default-dispatcher-7] DEBUG membership.failureDetection.FailureDetectorActor - Attempting to check failure for node [f48e807736036f2cb3a9a25c4372fbefbcb088c345f5398df8315057a89679b6, 10.1.0.75]
+22:27:12.270 [ChordialServer-akka.actor.default-dispatcher-11] INFO membership.MembershipActor - Successful full sync response received from seed node
 ```
 
 What's occurring here is that the new node will try to first resolve the seed node's hostname, and then
 contact it to request a complete synchronization of the membership table
 
-Once complete, the node has full status knowledge of the all other nodes in the cluster and the failure 
-detection module kicks in. In this example, it will immediately try to check failure on the seed node
-since it's the only other node that's in the cluster
-
-On the seed node side, it'll receive the full sync request and happily serve it to the new node:
-
+Once complete, the node has full status knowledge of the all other nodes in the cluster and is ready to
+start broadcasting its new alive status to the rest of the cluster:
 ```
-06:58:24.353 [ChordialServer-akka.actor.default-dispatcher-6] DEBUG akka.io.TcpListener - New connection accepted
-06:58:24.441 [ChordialServer-akka.actor.default-dispatcher-11] INFO membership.MembershipServiceImpl$ - Full sync requested from node 6db686b7163f60ef25273dde56438a7a7b7e85c7b49b8048ab96b05aac997885 with IP 10.1.0.76
+22:27:12.270 [ChordialServer-akka.actor.default-dispatcher-11] INFO membership.MembershipActor - Successful full sync response received from seed node
+22:27:12.277 [ChordialServer-akka.actor.default-dispatcher-9] INFO membership.MembershipActor - Broadcasting join event to other nodes
+22:27:12.279 [ChordialServer-akka.actor.default-dispatcher-13] DEBUG common.gossip.GossipActor - Gossip request received with key GossipKey(Event(2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27,Join(Join(167837788,PartitionHashes(List())))))
+22:27:12.282 [ChordialServer-akka.actor.default-dispatcher-13] DEBUG common.gossip.GossipActor - Cluster size detected as 2, setting gossip round buffer to 5
+``` 
+
+The join event is send to the `GossipActor` instance, which is the component responsible for broadcasting the 
+event through gossip dissemination. You can see that 5 is the number of rounds of gossip that will be 
+spread by this particular node before it goes into cooldown  
+
+On the seed node side, it'll first receive the full sync request, and then receive the join gossip
+message shortly after:
 ```
+22:27:12.187 [ChordialServer-akka.actor.default-dispatcher-14] INFO membership.MembershipServiceImpl$ - Full sync requested from node 2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27 with IP 10.1.0.92
+22:27:13.314 [ChordialServer-akka.actor.default-dispatcher-14] DEBUG membership.MembershipServiceImpl$ - Event received from 2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27, forwarding to membership actor
+22:27:13.315 [ChordialServer-akka.actor.default-dispatcher-7] DEBUG membership.MembershipActor - Join event - 2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27 - Join(167837788,PartitionHashes(Vector()))
+22:27:13.315 [ChordialServer-akka.actor.default-dispatcher-7] INFO membership.MembershipActor - New node 2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27 added to membership table with IP address 167837788
+22:27:13.317 [ChordialServer-akka.actor.default-dispatcher-11] DEBUG common.gossip.GossipActor - Gossip request received with key GossipKey(Event(2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27,Join(Join(167837788,PartitionHashes(Vector())))))
+22:27:13.319 [ChordialServer-akka.actor.default-dispatcher-11] DEBUG common.gossip.GossipActor - Cluster size detected as 2, setting gossip round buffer to 5
+```
+
+Note that from the perspective of the seed node, the new node won't be officially added by the full
+sync request, and instead waits until the join event gossip arrives. While seemingly inefficient
+in this example, a scenario with a large number of nodes would benefit from a decoupled sync/join
+process as it allows the new node to assume full responsibility for broadcasting the join notification 
+- not the seed node
+
+Afterwards, both nodes will stabilize and start to periodically perform failure checks on each other, and 
+reply liveness confirmations to incoming checks:
+```
+22:27:18.556 [ChordialServer-akka.actor.default-dispatcher-13] DEBUG membership.failureDetection.FailureDetectorActor - Target [2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27, 10.1.0.92] successfully passed initial direct failure check
+22:27:20.082 [ChordialServer-akka.actor.default-dispatcher-13] DEBUG membership.failureDetection.FailureDetectorActor - Target [2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27, 10.1.0.92] successfully passed initial direct failure check
+22:27:20.762 [ChordialServer-akka.actor.default-dispatcher-6] INFO service.RequestServiceImpl$ - Health check request has been received, sending confirmation
+22:27:22.265 [ChordialServer-akka.actor.default-dispatcher-13] INFO service.RequestServiceImpl$ - Health check request has been received, sending confirmation
+22:27:23.108 [ChordialServer-akka.actor.default-dispatcher-12] DEBUG membership.failureDetection.FailureDetectorActor - Target [2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27, 10.1.0.92] successfully passed initial direct failure check
+```
+
+Now you have the knowledge to your cluster to any size you want!
 
 However, this is a good time to point out that this fully automatic scaling process can only be achieved
 if there is a DNS server present, as the nodes will perform a DNS lookup to retrieve the IP address of the
@@ -221,8 +241,8 @@ _**Section under construction! Please come back another time**_
 This is a loose outline of all the core features that should be included, and the general order
 of implementation. _Italics indicate that this component is in progress!_
 
-There also may be some elements that are left unticked, which means that the functionality is not strictly 
-essential and is skipped for now to allow the establishment the high-level architecture first
+There also may be some elements that are left unticked, which means that the functionality is not 
+strictly essential and is skipped for now to allow the establishment the high-level architecture first
 
 - [x] **Milestone 0: Repo and Build Setup**
   

@@ -69,7 +69,6 @@ class FailureDetectorActor private
           val grpcClient = FailureDetectorServiceClient(createGrpcSettings(target.ipAddress, SUSPICION_DEADLINE))
           pendingDirectChecks += target
 
-          log.debug(s"Attempting to check failure for node ${target}")
           grpcClient.directCheck(DirectMessage()).onComplete {
             self ! DirectResponse(target, _)
           }

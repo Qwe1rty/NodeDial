@@ -11,7 +11,7 @@ import common.gossip.GossipSignal.{ClusterSizeReceived, SendRPC}
 import common.membership.types.NodeState
 import common.utils.ActorTimers.Tick
 import common.utils.{ActorDefaults, ActorTimers, GrpcSettingsFactory}
-import membership.{Membership, MembershipAPI}
+import membership.{Membership, MembershipAPI, MembershipActor}
 import schema.ImplicitDataConversions._
 import schema.PortConfiguration.MEMBERSHIP_PORT
 
@@ -89,7 +89,7 @@ class GossipActor[KeyType: ClassTag] private
 
     case SendRPC(key: GossipKey[KeyType], randomMemberRequest) => randomMemberRequest match {
 
-      case Success(requestResult) => requestResult.foreach(member => {
+      case Success(requestResult) => requestResult.foreach(member => if (member.nodeID != MembershipActor.nodeID) {
         val payload = keyTable(key)
 
         payload.count -= 1
