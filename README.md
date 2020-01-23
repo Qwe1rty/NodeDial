@@ -210,8 +210,8 @@ message shortly after:
 Note that from the perspective of the seed node, the new node won't be officially added by the full
 sync request, and instead waits until the join event gossip arrives. While seemingly inefficient
 in this example, a scenario with a large number of nodes would benefit from a decoupled sync/join
-process as it allows the new node to assume full responsibility for broadcasting the join notification 
-- not the seed node
+process as it allows the new node to assume full responsibility for broadcasting the join notification - 
+not the seed node
 
 Afterwards, both nodes will stabilize and start to periodically perform failure checks on each other, and 
 reply liveness confirmations to incoming checks:
@@ -223,14 +223,17 @@ reply liveness confirmations to incoming checks:
 22:27:23.108 [ChordialServer-akka.actor.default-dispatcher-12] DEBUG membership.failureDetection.FailureDetectorActor - Target [2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27, 10.1.0.92] successfully passed initial direct failure check
 ```
 
-Now you have the knowledge to your cluster to any size you want!
+Now you have the knowledge to scale your cluster to any size you want!
 
 However, this is a good time to point out that this fully automatic scaling process can only be achieved
 if there is a DNS server present, as the nodes will perform a DNS lookup to retrieve the IP address of the
-cluster seed node (the node `cdb-0`)
+cluster seed node (the hostname `cdb-0.chs.chordial-ns.svc.cluster.local`)
 
 Without a DNS server, it is still possible to have future nodes be scaled automatically but it will require
-you to manually specify the seed node IP address into the Kubernetes `StatefulSet` configuration. _**TODO elaborate on this more**_ 
+you to manually specify the seed node IP address into the Kubernetes `StatefulSet` configuration. The
+program will attempt to read this IP address from the environment variable `SEED_IP` if it fails to
+read the variable `SEED_NODE`.
+_**TODO elaborate on this more**_ 
 
 _**Section under construction! Please come back another time**_
 
