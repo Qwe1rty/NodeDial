@@ -83,12 +83,12 @@ class MembershipActor private
 
   private var readiness = false
   private var subscribers = Set[ActorRef]()
-  private var membershipTable = MembershipTable() + NodeInfo(
+  private var membershipTable: MembershipTable = MembershipTable(NodeInfo(
     nodeID,
     addressRetriever.selfIP,
     0,
     NodeState.ALIVE
-  )
+  ))
 
   log.info(s"Self IP has been detected to be ${addressRetriever.selfIP}")
   log.info("Membership actor initialized")
@@ -138,29 +138,29 @@ class MembershipActor private
         case EventType.Suspect(suspectInfo) =>
           log.debug(s"Suspect event - ${event.nodeId} - ${suspectInfo}")
 
-          if (event.nodeId != nodeID && membershipTable.state(event.nodeId) == NodeState.ALIVE) {
-            membershipTable = membershipTable.updated(event.nodeId, SUSPECT)
+          if (event.nodeId != nodeID && membershipTable.stateOf(event.nodeId) == NodeState.ALIVE) {
+            membershipTable = membershipTable.updateState(event.nodeId, SUSPECT)
             log.debug(s"Node ${event.nodeId} will be marked as suspect")
           }
-          else if (suspectInfo.version == membershipTable.version(nodeID)) {
-            membershipTable = membershipTable.increment(nodeID)
+          else if (suspectInfo.version == membershipTable.versionOf(nodeID)) {
+            membershipTable = membershipTable.incrementVersion(nodeID)
             log.debug(s"Received suspect message about self, will increment version and refute")
 
-            publishExternally(Event(nodeID).withRefute(Refute(membershipTable.version(nodeID))))
+            publishExternally(Event(nodeID).withRefute(Refute(membershipTable.versionOf(nodeID))))
           }
 
         case EventType.Failure(failureInfo) =>
           log.debug(s"Failure event - ${event.nodeId} - ${failureInfo}")
 
-          if (event.nodeId != nodeID && membershipTable.state(event.nodeId) != NodeState.DEAD) {
-            membershipTable = membershipTable.updated(event.nodeId, DEAD)
+          if (event.nodeId != nodeID && membershipTable.stateOf(event.nodeId) != NodeState.DEAD) {
+            membershipTable = membershipTable.updateState(event.nodeId, DEAD)
             log.debug(s"Node ${event.nodeId} will be marked as dead")
           }
-          else if (failureInfo.version == membershipTable.version(nodeID)) { // TODO merge duplicates
-            membershipTable = membershipTable.increment(nodeID)
+          else if (failureInfo.version == membershipTable.versionOf(nodeID)) { // TODO merge duplicates
+            membershipTable = membershipTable.incrementVersion(nodeID)
             log.debug(s"Received death message about self, will increment version and refute")
 
-            publishExternally(Event(nodeID).withRefute(Refute(membershipTable.version(nodeID))))
+            publishExternally(Event(nodeID).withRefute(Refute(membershipTable.versionOf(nodeID))))
           }
 
         case EventType.Refute(refuteInfo) =>
@@ -168,12 +168,12 @@ class MembershipActor private
 
           membershipTable.get(event.nodeId).foreach(currentEntry => {
             if (refuteInfo.version > currentEntry.version) {
-              membershipTable = membershipTable.updated(NodeInfo(
+              membershipTable += NodeInfo(
                 event.nodeId,
-                membershipTable.address(event.nodeId),
+                membershipTable.addressOf(event.nodeId),
                 refuteInfo.version,
                 NodeState.ALIVE
-              ))
+              )
               publishExternally(event)
             }
           })
@@ -182,7 +182,7 @@ class MembershipActor private
           log.debug(s"Leave event - ${event.nodeId}")
 
           if (membershipTable.contains(event.nodeId)) {
-            membershipTable -= event.nodeId
+            membershipTable = membershipTable.unregister(event.nodeId)
             log.info(s"Node ${event.nodeId} declared intent to leave, removing from membership table")
           }
           publishExternally(event)
@@ -260,7 +260,7 @@ class MembershipActor private
     case MembershipAPI.DeclareEvent(nodeState, membershipPair) => {
 
       val targetID = membershipPair.nodeID
-      val version = membershipTable.version(targetID)
+      val version = membershipTable.versionOf(targetID)
       log.info(s"Declaring node ${targetID} according to detected state ${nodeState}")
 
       val eventCandidate: Option[Event] = nodeState match {
@@ -280,7 +280,7 @@ class MembershipActor private
       sender ! membershipTable.size
 
     case MembershipAPI.GetClusterInfo =>
-      sender ! membershipTable.values.toSeq.map(SyncInfo(_, None))
+      sender ! membershipTable.toSeq.map(SyncInfo(_, None))
 
 
     case MembershipAPI.GetRandomNode(nodeState) =>

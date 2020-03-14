@@ -1,8 +1,8 @@
 import com.lightbend.sbt.javaagent.JavaAgent.JavaAgentKeys.javaAgents
 import sbt.project
 
-ThisBuild / version := "1.2.7"
-ThisBuild / scalaVersion := "2.12.0"
+ThisBuild / version := "2.0.0"
+ThisBuild / scalaVersion := "2.13.1"
 
 
 lazy val dependencies =
