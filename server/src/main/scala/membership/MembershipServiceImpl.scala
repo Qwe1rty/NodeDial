@@ -8,6 +8,7 @@ import akka.stream.{ActorMaterializer, Materializer}
 import com.risksense.ipaddr.IpAddress
 import common.ServerDefaults.ACTOR_REQUEST_TIMEOUT
 import common.membership._
+import membership.api.MembershipAPI
 import org.slf4j.LoggerFactory
 import schema.PortConfiguration.MEMBERSHIP_PORT
 

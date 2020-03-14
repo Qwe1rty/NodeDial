@@ -11,7 +11,8 @@ import common.gossip.GossipSignal.{ClusterSizeReceived, SendRPC}
 import common.membership.types.NodeState
 import common.utils.ActorTimers.Tick
 import common.utils.{ActorDefaults, ActorTimers, GrpcSettingsFactory}
-import membership.{Membership, MembershipAPI, MembershipActor}
+import membership.MembershipActor
+import membership.api.{GetClusterSize, GetRandomNode, Membership}
 import schema.ImplicitDataConversions._
 import schema.PortConfiguration.MEMBERSHIP_PORT
 
@@ -82,7 +83,7 @@ class GossipActor[KeyType: ClassTag] private
 
     case Tick => keyTable.foreach { gossipEntry =>
 
-      (membershipActor ? MembershipAPI.GetRandomNode(NodeState.ALIVE))
+      (membershipActor ? GetRandomNode(NodeState.ALIVE))
         .mapTo[Option[Membership]]
         .onComplete(randomMemberRequest => self ! SendRPC(gossipEntry._1, randomMemberRequest))
     }
@@ -104,7 +105,7 @@ class GossipActor[KeyType: ClassTag] private
     case GossipAPI.PublishRequest(key: GossipKey[KeyType], payload) => {
       log.debug(s"Gossip request received with key ${key}")
 
-      (membershipActor ? MembershipAPI.GetClusterSize)
+      (membershipActor ? GetClusterSize)
         .mapTo[Int]
         .onComplete(self ! ClusterSizeReceived(key, payload, _))
     }

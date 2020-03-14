@@ -5,7 +5,7 @@ import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.http.scaladsl.{Http, HttpConnectionContext}
 import akka.pattern.ask
 import akka.stream.{ActorMaterializer, Materializer}
-import membership.MembershipAPI
+import membership.api.MembershipAPI
 import org.slf4j.LoggerFactory
 import schema.PortConfiguration.EXTERNAL_REQUEST_PORT
 import schema.service._
@@ -75,7 +75,7 @@ class RequestServiceImpl
   override def readiness(in: ReadinessCheck): Future[ReadinessConfirmation] = {
     log.debug(s"Readiness check received")
 
-    (membershipActor ? MembershipAPI.CheckReadiness)
+    (membershipActor ? MembershipAPI.GetReadiness)
       .mapTo[Boolean]
       .map { readiness =>
         log.debug(s"Readiness check response with: ${readiness}")

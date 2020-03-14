@@ -2,6 +2,7 @@ package membership
 
 import com.risksense.ipaddr.IpAddress
 import common.membership.types.{NodeInfo, NodeState}
+import membership.api.Membership
 
 import scala.collection.immutable.SetOps
 import scala.collection.{StrictOptimizedSetOps, immutable, mutable}
@@ -81,11 +82,11 @@ final private[membership] class MembershipTable private(
     )
   }
 
-  def unregister(nodeID: String): MembershipTable =
-    if (contains(nodeID)) self - table(nodeID) else self
-
   def -(nodeID: String): MembershipTable =
     unregister(nodeID)
+
+  def unregister(nodeID: String): MembershipTable =
+    if (contains(nodeID)) self - table(nodeID) else self
 
   override def contains(elem: NodeInfo): Boolean =
     contains(elem.nodeId)
@@ -95,6 +96,9 @@ final private[membership] class MembershipTable private(
 
   override def empty: MembershipTable =
     MembershipTable.empty()
+
+  override def concat(other: IterableOnce[NodeInfo]): MembershipTable =
+    fromSpecific(iterator ++ other.iterator)
 
 
   // Derivative set ops
@@ -162,27 +166,3 @@ final private[membership] class MembershipTable private(
     table.valuesIterator
 }
 
-
-//  def ++(that: MembershipTable): MembershipTable = new MembershipTable({
-//      (stateGroups.keySet ++ that.stateGroups.keySet)
-//        .map { state =>
-//          state -> (stateGroups.getOrElse(state, Set()) ++ that.stateGroups.getOrElse(state, Set()))
-//        }
-//        .toMap
-//    },
-//    table ++ that.table
-//  )
-//
-//  def ++(that: Seq[NodeInfo]): MembershipTable = self ++ new MembershipTable({
-//      that
-//        .groupBy(_.state)
-//        .view
-//        .mapValues { nodeInfoSeq =>
-//          nodeInfoSeq
-//            .map(_.nodeId)
-//            .toSet
-//        }
-//        .toMap
-//    },
-//    that.map(nodeInfo => nodeInfo.nodeId -> nodeInfo).toMap
-//  )
