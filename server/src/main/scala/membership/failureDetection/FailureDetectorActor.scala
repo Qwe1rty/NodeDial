@@ -9,8 +9,7 @@ import common.membership.types.NodeState
 import common.utils.ActorTimers.Tick
 import common.utils.{ActorDefaults, ActorTimers}
 import membership.MembershipActor
-import membership.api.Membership
-import membership.api.MembershipAPI.{DeclareEvent, GetRandomNode, GetRandomNodes}
+import membership.api.{DeclareEvent, GetRandomNode, GetRandomNodes, Membership}
 import membership.failureDetection.FailureDetectorConstants._
 import membership.failureDetection.FailureDetectorSignal._
 import schema.ImplicitDataConversions._

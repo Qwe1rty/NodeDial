@@ -4,7 +4,7 @@ import akka.actor.ActorRef
 
 
 // Subscription calls
-sealed trait SubscriptionCall
+private[membership] sealed trait SubscriptionCall extends MembershipAPI
 
 /**
  * Registers an actor to receive incoming event updates from the membership module

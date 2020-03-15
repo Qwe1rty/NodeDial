@@ -14,7 +14,7 @@ import common.membership.types.NodeState.{ALIVE, DEAD, SUSPECT}
 import common.membership.types.{NodeInfo, NodeState}
 import common.utils.ActorDefaults
 import membership.addresser.AddressRetriever
-import membership.api.{DeclarationCall, DeclareEvent, DeclareReadiness, GetClusterInfo, GetClusterSize, GetRandomNode, GetRandomNodes, GetReadiness, InformationCall, MembershipAPI, SeedResponse, Subscribe, SubscriptionCall, Unsubscribe}
+import membership.api._
 import org.slf4j.LoggerFactory
 import partitioning.PartitionHashes
 import schema.ImplicitDataConversions._
@@ -23,7 +23,7 @@ import schema.PortConfiguration.MEMBERSHIP_PORT
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
-import scala.util.{Success, Try}
+import scala.util.Success
 
 
 object MembershipActor {
@@ -300,13 +300,13 @@ class MembershipActor private
   }
 
   override def receive: Receive = {
-    case _: MembershipAPI => {
+    case apiCall: MembershipAPI => apiCall match {
       case declarationCall: DeclarationCall   => receiveDeclarationCall(declarationCall)
       case informationCall: InformationCall   => receiveInformationCall(informationCall)
       case subscriptionCall: SubscriptionCall => receiveSubscriptionCall(subscriptionCall)
     }
     case event: Event => receiveEvent(event)
-    case x => log.error(receivedUnknown(x))
+    case x            => log.error(receivedUnknown(x))
   }
 
 }

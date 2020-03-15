@@ -147,10 +147,10 @@ final private[membership] class MembershipTable private(
     stateGroups.get(nodeState) match {
       case None => Set[Membership]()
       case Some(stateGroup) => quantity match {
-        case n => Random.shuffle(stateGroup).take(n).map(membershipOf)
         case 1 =>
           val index = Random.nextInt(stateGroup.size)
           Set(stateGroup.view.slice(index, index + 1).last).map(membershipOf)
+        case n => Random.shuffle(stateGroup).take(n).map(membershipOf)
       }
     }
 

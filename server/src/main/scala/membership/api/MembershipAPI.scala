@@ -17,5 +17,5 @@ case class Membership(nodeID: String, ipAddress: IpAddress) {
 /**
  * The inheritable trait that defines the set of types that the MembershipActor can receive
  */
-trait MembershipAPI
+private[membership] trait MembershipAPI
 

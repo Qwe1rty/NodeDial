@@ -4,7 +4,7 @@ import common.membership.types.NodeState
 
 
 // Membership information calls
-sealed trait InformationCall
+private[membership] sealed trait InformationCall extends MembershipAPI
 
 /**
  * Asks the membership actor whether or not the node is ready to receive client requests

@@ -8,7 +8,7 @@ import akka.stream.{ActorMaterializer, Materializer}
 import com.risksense.ipaddr.IpAddress
 import common.ServerDefaults.ACTOR_REQUEST_TIMEOUT
 import common.membership._
-import membership.api.MembershipAPI
+import membership.api.{GetClusterInfo, MembershipAPI}
 import org.slf4j.LoggerFactory
 import schema.PortConfiguration.MEMBERSHIP_PORT
 
@@ -57,7 +57,7 @@ class MembershipServiceImpl(membershipActor: ActorRef)(implicit actorSystem: Act
   override def fullSync(in: FullSyncRequest): Future[SyncResponse] = {
     log.info(s"Full sync requested from node ${in.nodeId} with IP ${IpAddress(in.ipAddress).toString}")
 
-    (membershipActor ? MembershipAPI.GetClusterInfo)
+    (membershipActor ? GetClusterInfo)
       .mapTo[Seq[SyncInfo]]
       .map(SyncResponse(_))
   }

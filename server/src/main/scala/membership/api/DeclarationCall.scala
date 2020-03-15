@@ -7,7 +7,7 @@ import scala.util.Try
 
 
 // Event-related calls
-sealed trait DeclarationCall extends MembershipAPI
+private[membership] sealed trait DeclarationCall extends MembershipAPI
 
 /**
  * Signals the membership actor that a prerequisite service is ready (essentially a
@@ -26,5 +26,10 @@ case object DeclareReadiness extends DeclarationCall
  */
 case class DeclareEvent(nodeState: NodeState, membershipPair: Membership) extends DeclarationCall
 
+/**
+ * A struct that represents the response received from the contacted seed node.
+ *
+ * @param syncResponse the seed node contact result
+ */
 private[membership] case class SeedResponse(syncResponse: Try[SyncResponse]) extends DeclarationCall
 

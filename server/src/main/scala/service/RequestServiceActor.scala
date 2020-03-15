@@ -4,7 +4,7 @@ import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import com.google.protobuf.ByteString
 import com.roundeights.hasher.Implicits._
 import common.utils.ActorDefaults
-import membership.api.MembershipAPI
+import membership.api.{DeclareReadiness, MembershipAPI}
 import schema.RequestTrait
 import schema.service._
 
@@ -36,7 +36,7 @@ class RequestServiceActor private(
 
   final private var requestCounter = Map[String, Int]()
 
-  membershipActor ! MembershipAPI.DeclareReadiness
+  membershipActor ! DeclareReadiness
   log.info(s"Request service actor initialized")
 
 
