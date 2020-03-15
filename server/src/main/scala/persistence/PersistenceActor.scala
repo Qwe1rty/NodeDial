@@ -4,7 +4,7 @@ import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import better.files.File
 import common.ServerConstants
 import common.utils.ActorDefaults
-import membership.api.{DeclareReadiness, MembershipAPI}
+import membership.api.DeclareReadiness
 import persistence.io.KeyStateActor
 import service.OperationPackage
 
@@ -23,7 +23,6 @@ object PersistenceActor {
       "persistenceActor"
     )
   }
-
 }
 
 
