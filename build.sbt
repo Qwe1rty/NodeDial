@@ -1,16 +1,19 @@
 import com.lightbend.sbt.javaagent.JavaAgent.JavaAgentKeys.javaAgents
 import sbt.project
 
-ThisBuild / version := "1.2.7"
-ThisBuild / scalaVersion := "2.12.0"
+ThisBuild / version := "2.0.0"
+ThisBuild / scalaVersion := "2.13.1"
 
 
+/**
+ * Dependency definitions
+ */
 lazy val dependencies =
   new {
-    val protoCommonV = "1.16.0"
-    val grpcCommonV = "1.16.0"
+    val protoCommonV = "1.17.0"
+    val grpcCommonV = "1.17.0"
     val scalaProtoV = scalapb.compiler.Version.scalapbVersion
-    val ipAddressesV = "1.0.2"
+    val ipAddressesV = "scala_upgrade"
 
     val akkaActorV = "2.6.0"
     val akkaStreamV = "2.6.0"
@@ -25,7 +28,6 @@ lazy val dependencies =
     val protoCommon = "com.google.api.grpc"   % "proto-google-common-protos" % protoCommonV % "protobuf"
     val grpcCommon  = "com.google.api.grpc"   % "grpc-google-common-protos"  % grpcCommonV  % "protobuf"
     val scalaProto  = "com.thesamet.scalapb" %% "scalapb-runtime"            % scalaProtoV  % "protobuf"
-    val ipAddresses = "com.risksense"         % "ipaddr_2.12"                % ipAddressesV
 
     val akkaActor   = "com.typesafe.akka"    %% "akka-actor"                 % akkaActorV
     val akkaStream  = "com.typesafe.akka"    %% "akka-stream"                % akkaStreamV
@@ -37,11 +39,15 @@ lazy val dependencies =
     val scopt       = "com.github.scopt"     %% "scopt"                      % scoptV
   }
 
+lazy val ipAddresses = /* Temporary solution for now */
+  RootProject(uri(s"git://github.com/Qwe1rty/ipaddr.git#${dependencies.ipAddressesV.toString}"))
+
+lazy val jettyAgent = "org.mortbay.jetty.alpn" % "jetty-alpn-agent" % "2.0.9" % "runtime;test"
+
 lazy val grpcLibraryGroup = Seq(
   dependencies.protoCommon,
   dependencies.grpcCommon,
   dependencies.scalaProto,
-  dependencies.ipAddresses
 )
 
 lazy val loggingLibraryGroup = Seq(
@@ -49,14 +55,16 @@ lazy val loggingLibraryGroup = Seq(
   dependencies.logback
 )
 
-lazy val jettyAgent = "org.mortbay.jetty.alpn" % "jetty-alpn-agent" % "2.0.9" % "runtime;test"
 
-
+/**
+ * Project definitions
+ */
 lazy val root = (project in file("."))
   .aggregate(client, server)
   .disablePlugins(AssemblyPlugin)
 
 lazy val api = (project in file("api"))
+  .dependsOn(ipAddresses)
   .enablePlugins(
     AkkaGrpcPlugin,
     JavaAgent /*ALPN agent*/
@@ -70,6 +78,8 @@ lazy val api = (project in file("api"))
 
 
 lazy val client = (project in file("client"))
+  .dependsOn(ipAddresses)
+  .dependsOn(api)
   .enablePlugins(
     AkkaGrpcPlugin,
     JavaAppPackaging,
@@ -83,9 +93,10 @@ lazy val client = (project in file("client"))
       dependencies.scopt
     )
   )
-  .dependsOn(api)
 
 lazy val server = (project in file("server"))
+  .dependsOn(ipAddresses)
+  .dependsOn(api)
   .enablePlugins(
     AkkaGrpcPlugin,
     JavaAppPackaging,
@@ -100,9 +111,11 @@ lazy val server = (project in file("server"))
       dependencies.hasher
     )
   )
-  .dependsOn(api)
 
 
+/**
+ * SBT Assembly plugin configuration
+ */
 lazy val assemblySettings = assemblyMergeStrategy in assembly := {
   case PathList("META-INF", "MANIFEST.MF") => MergeStrategy.discard
   case n if n.startsWith("application.conf") => MergeStrategy.concat

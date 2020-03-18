@@ -14,6 +14,7 @@ import common.membership.types.NodeState.{ALIVE, DEAD, SUSPECT}
 import common.membership.types.{NodeInfo, NodeState}
 import common.utils.ActorDefaults
 import membership.addresser.AddressRetriever
+import membership.api._
 import org.slf4j.LoggerFactory
 import partitioning.PartitionHashes
 import schema.ImplicitDataConversions._
@@ -22,12 +23,10 @@ import schema.PortConfiguration.MEMBERSHIP_PORT
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
-import scala.util.{Success, Try}
+import scala.util.Success
 
 
 object MembershipActor {
-
-  private case class SeedResponse(syncResponse: Try[SyncResponse])
 
   private val MEMBERSHIP_DIR       = ServerConstants.BASE_DIRECTORY/"membership"
   private val MEMBERSHIP_FILENAME  = "cluster"
@@ -83,12 +82,8 @@ class MembershipActor private
 
   private var readiness = false
   private var subscribers = Set[ActorRef]()
-  private var membershipTable = MembershipTable() + NodeInfo(
-    nodeID,
-    addressRetriever.selfIP,
-    0,
-    NodeState.ALIVE
-  )
+  private var membershipTable: MembershipTable =
+    MembershipTable(NodeInfo(nodeID, addressRetriever.selfIP, 0, NodeState.ALIVE))
 
   log.info(s"Self IP has been detected to be ${addressRetriever.selfIP}")
   log.info("Membership actor initialized")
@@ -107,95 +102,97 @@ class MembershipActor private
    *
    * @param event event to publish
    */
-  private def publishExternally(event: Event): Unit = {
-
+  private def publishExternally(event: Event): Unit =
     gossipActor ! PublishRequest[Event](
       GossipKey(event),
       GossipPayload(grpcClientSettings => (materializer, executionContext) =>
         MembershipServiceClient(grpcClientSettings)(materializer, executionContext)
           .publish(event)
       ))
-  }
 
-  override def receive: Receive = {
+  /**
+   * Event types that arrive from other nodes through the membership gRPC service
+   */
+  private def receiveEvent(event: Event): Unit = {
 
-    // Event types that arrive from other nodes through the membership gRPC service
-    case event: Event => {
+    event.eventType match {
 
-      event.eventType match {
+      case EventType.Join(joinInfo) =>
+        log.debug(s"Join event - ${event.nodeId} - ${joinInfo}")
 
-        case EventType.Join(joinInfo) =>
-          log.debug(s"Join event - ${event.nodeId} - ${joinInfo}")
+        if (!membershipTable.contains(event.nodeId)) {
+          membershipTable += NodeInfo(event.nodeId, joinInfo.ipAddress, 0, ALIVE)
+          log.info(s"New node ${event.nodeId} added to membership table with IP address ${joinInfo.ipAddress}")
+        }
+        else log.debug(s"Node ${event.nodeId} join event ignored, entry already in table")
 
-          if (!membershipTable.contains(event.nodeId)) {
-            membershipTable += NodeInfo(event.nodeId, joinInfo.ipAddress, 0, ALIVE)
-            log.info(s"New node ${event.nodeId} added to membership table with IP address ${joinInfo.ipAddress}")
-          }
-          else log.debug(s"Node ${event.nodeId} join event ignored, entry already in table")
+        publishExternally(event)
 
-          publishExternally(event)
+      case EventType.Suspect(suspectInfo) =>
+        log.debug(s"Suspect event - ${event.nodeId} - ${suspectInfo}")
 
-        case EventType.Suspect(suspectInfo) =>
-          log.debug(s"Suspect event - ${event.nodeId} - ${suspectInfo}")
+        if (event.nodeId != nodeID && membershipTable.stateOf(event.nodeId) == NodeState.ALIVE) {
+          membershipTable = membershipTable.updateState(event.nodeId, SUSPECT)
+          log.debug(s"Node ${event.nodeId} will be marked as suspect")
+        }
+        else if (suspectInfo.version == membershipTable.versionOf(nodeID)) {
+          membershipTable = membershipTable.incrementVersion(nodeID)
+          log.debug(s"Received suspect message about self, will increment version and refute")
 
-          if (event.nodeId != nodeID && membershipTable.state(event.nodeId) == NodeState.ALIVE) {
-            membershipTable = membershipTable.updated(event.nodeId, SUSPECT)
-            log.debug(s"Node ${event.nodeId} will be marked as suspect")
-          }
-          else if (suspectInfo.version == membershipTable.version(nodeID)) {
-            membershipTable = membershipTable.increment(nodeID)
-            log.debug(s"Received suspect message about self, will increment version and refute")
-
-            publishExternally(Event(nodeID).withRefute(Refute(membershipTable.version(nodeID))))
-          }
-
-        case EventType.Failure(failureInfo) =>
-          log.debug(s"Failure event - ${event.nodeId} - ${failureInfo}")
-
-          if (event.nodeId != nodeID && membershipTable.state(event.nodeId) != NodeState.DEAD) {
-            membershipTable = membershipTable.updated(event.nodeId, DEAD)
-            log.debug(s"Node ${event.nodeId} will be marked as dead")
-          }
-          else if (failureInfo.version == membershipTable.version(nodeID)) { // TODO merge duplicates
-            membershipTable = membershipTable.increment(nodeID)
-            log.debug(s"Received death message about self, will increment version and refute")
-
-            publishExternally(Event(nodeID).withRefute(Refute(membershipTable.version(nodeID))))
-          }
-
-        case EventType.Refute(refuteInfo) =>
-          log.debug(s"Refute event - ${event.nodeId} - ${refuteInfo}")
-
-          membershipTable.get(event.nodeId).foreach(currentEntry => {
-            if (refuteInfo.version > currentEntry.version) {
-              membershipTable = membershipTable.updated(NodeInfo(
-                event.nodeId,
-                membershipTable.address(event.nodeId),
-                refuteInfo.version,
-                NodeState.ALIVE
-              ))
-              publishExternally(event)
-            }
-          })
-
-        case EventType.Leave(_) => {
-          log.debug(s"Leave event - ${event.nodeId}")
-
-          if (membershipTable.contains(event.nodeId)) {
-            membershipTable -= event.nodeId
-            log.info(s"Node ${event.nodeId} declared intent to leave, removing from membership table")
-          }
-          publishExternally(event)
+          publishExternally(Event(nodeID).withRefute(Refute(membershipTable.versionOf(nodeID))))
         }
 
-        case Empty => log.error(s"Received invalid Empty event - ${event.nodeId}")
-      }
+      case EventType.Failure(failureInfo) =>
+        log.debug(s"Failure event - ${event.nodeId} - ${failureInfo}")
 
-      publishInternally(event)
+        if (event.nodeId != nodeID && membershipTable.stateOf(event.nodeId) != NodeState.DEAD) {
+          membershipTable = membershipTable.updateState(event.nodeId, DEAD)
+          log.debug(s"Node ${event.nodeId} will be marked as dead")
+        }
+        else if (failureInfo.version == membershipTable.versionOf(nodeID)) { // TODO merge duplicates
+          membershipTable = membershipTable.incrementVersion(nodeID)
+          log.debug(s"Received death message about self, will increment version and refute")
+
+          publishExternally(Event(nodeID).withRefute(Refute(membershipTable.versionOf(nodeID))))
+        }
+
+      case EventType.Refute(refuteInfo) =>
+        log.debug(s"Refute event - ${event.nodeId} - ${refuteInfo}")
+
+        membershipTable.get(event.nodeId).foreach(currentEntry => {
+          if (refuteInfo.version > currentEntry.version) {
+            membershipTable += NodeInfo(
+              event.nodeId,
+              membershipTable.addressOf(event.nodeId),
+              refuteInfo.version,
+              NodeState.ALIVE
+            )
+            publishExternally(event)
+          }
+        })
+
+      case EventType.Leave(_) =>
+        log.debug(s"Leave event - ${event.nodeId}")
+
+        if (membershipTable.contains(event.nodeId)) {
+          membershipTable = membershipTable.unregister(event.nodeId)
+          log.info(s"Node ${event.nodeId} declared intent to leave, removing from membership table")
+        }
+        publishExternally(event)
+
+      case Empty => log.error(s"Received invalid Empty event - ${event.nodeId}")
     }
 
+    publishInternally(event)
+  }
 
-    case MembershipAPI.DeclareReadiness => {
+  /**
+   * Handle membership-altering requests from other components of the local node, that become
+   * broadcasted to the rest of the cluster
+   */
+  private def receiveDeclarationCall: Function[DeclarationCall, Unit] = {
+
+    case DeclareReadiness =>
 
       log.info("Membership readiness signal received")
       initializationCount -= 1
@@ -232,35 +229,10 @@ class MembershipActor private
         }
       }
 
-    }
-
-    case MembershipAPI.CheckReadiness =>
-      sender ! readiness
-
-    case SeedResponse(syncResponse) => syncResponse match {
-
-      case Success(response) => {
-        membershipTable ++= response.syncInfo.map(_.nodeInfo)
-
-        readiness = true
-        log.info("Successful full sync response received from seed node")
-
-        publishExternally(Event(nodeID).withJoin(Join(addressRetriever.selfIP, PartitionHashes(Nil))))
-        log.info("Broadcasting join event to other nodes")
-      }
-
-      case scala.util.Failure(e) => {
-        log.error(s"Was unable to retrieve membership info from seed node: ${e}")
-
-        self ! MembershipAPI.DeclareReadiness
-        log.error("Attempting to reconnect with seed node")
-      }
-    }
-
-    case MembershipAPI.DeclareEvent(nodeState, membershipPair) => {
+    case DeclareEvent(nodeState, membershipPair) => {
 
       val targetID = membershipPair.nodeID
-      val version = membershipTable.version(targetID)
+      val version = membershipTable.versionOf(targetID)
       log.info(s"Declaring node ${targetID} according to detected state ${nodeState}")
 
       val eventCandidate: Option[Event] = nodeState match {
@@ -275,28 +247,66 @@ class MembershipActor private
       })
     }
 
+    case SeedResponse(syncResponse) => syncResponse match {
 
-    case MembershipAPI.GetClusterSize =>
+      case Success(response) =>
+        membershipTable ++= response.syncInfo.map(_.nodeInfo)
+
+        readiness = true
+        log.info("Successful full sync response received from seed node")
+
+        publishExternally(Event(nodeID).withJoin(Join(addressRetriever.selfIP, PartitionHashes(Nil))))
+        log.info("Broadcasting join event to other nodes")
+
+      case scala.util.Failure(e) =>
+        log.error(s"Was unable to retrieve membership info from seed node: ${e}")
+
+        self ! DeclareReadiness
+        log.error("Attempting to reconnect with seed node")
+    }
+  }
+
+  /**
+   * Handle membership info get requests
+   */
+  private def receiveInformationCall: Function[InformationCall, Unit] = {
+
+    case GetReadiness =>
+      sender ! readiness
+
+    case GetClusterSize =>
       sender ! membershipTable.size
 
-    case MembershipAPI.GetClusterInfo =>
-      sender ! membershipTable.values.toSeq.map(SyncInfo(_, None))
+    case GetClusterInfo =>
+      sender ! membershipTable.toSeq.map(SyncInfo(_, None))
 
-
-    case MembershipAPI.GetRandomNode(nodeState) =>
+    case GetRandomNode(nodeState) =>
       sender ! membershipTable.random(nodeState).lastOption
 
-    case MembershipAPI.GetRandomNodes(nodeState, number) =>
+    case GetRandomNodes(nodeState, number) =>
       sender ! membershipTable.random(nodeState, number)
+  }
 
+  /**
+   * Handle subscription requests for observers to be informed of membership changes
+   */
+  private def receiveSubscriptionCall: Function[SubscriptionCall, Unit] = {
 
-    case MembershipAPI.Subscribe(actorRef) =>
+    case Subscribe(actorRef) =>
       subscribers += actorRef
 
-    case MembershipAPI.Unsubscribe(actorRef) =>
+    case Unsubscribe(actorRef) =>
       subscribers -= actorRef
-
-
-    case x => log.error(receivedUnknown(x))
   }
+
+  override def receive: Receive = {
+    case apiCall: MembershipAPI => apiCall match {
+      case declarationCall: DeclarationCall   => receiveDeclarationCall(declarationCall)
+      case informationCall: InformationCall   => receiveInformationCall(informationCall)
+      case subscriptionCall: SubscriptionCall => receiveSubscriptionCall(subscriptionCall)
+    }
+    case event: Event => receiveEvent(event)
+    case x            => log.error(receivedUnknown(x))
+  }
+
 }

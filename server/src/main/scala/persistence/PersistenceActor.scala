@@ -4,7 +4,7 @@ import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import better.files.File
 import common.ServerConstants
 import common.utils.ActorDefaults
-import membership.MembershipAPI
+import membership.api.DeclareReadiness
 import persistence.io.KeyStateActor
 import service.OperationPackage
 
@@ -23,7 +23,6 @@ object PersistenceActor {
       "persistenceActor"
     )
   }
-
 }
 
 
@@ -40,7 +39,7 @@ class PersistenceActor private(
   PersistenceActor.PERSISTENCE_DIRECTORY.createDirectoryIfNotExists()
   log.info(s"Directory ${PersistenceActor.PERSISTENCE_DIRECTORY.toString()} opened")
 
-  membershipActor ! MembershipAPI.DeclareReadiness
+  membershipActor ! DeclareReadiness
   log.info("Persistence actor initialized")
 
 
