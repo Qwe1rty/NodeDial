@@ -120,14 +120,14 @@ and running with some DNS service
 particular, this is especially helpful when scaling up the cluster, as new nodes will need to resolve the 
 seed node's hostname. This topic will be further discussed in the scaling subchapter)
 
-When the prerequities are all good, you should first create the chordial namespace using the command:
+When the prerequities are ready, you should first create the chordial namespace using the command:
 `kubectl create namespace chordial-ns`. Everything related to Chordial has been configured to run in that
 namespace
 
-Since Chordial by its nature requires persistent storage (it's a database, after all), the canonical
-Kubernetes object used will be the `StatefulSet`, along with its prerequisite `Headless Service` object
+Since Chordial requires persistent storage, the canonical Kubernetes object used will be the `StatefulSet`,
+along with its prerequisite `Headless Service` object
 
-So to create the headless service, run `kubectl create -f kube/chordial-headless.yaml`, followed by the
+To create the headless service, run `kubectl create -f kube/chordial-headless.yaml`, followed by the
 `StatefulSet` itself: `kubectl create -f kube/chordial-statefulset.yaml`
 
 If all goes well, you'll see three healthy objects running if you check everything in the namespace (it may
@@ -158,7 +158,7 @@ get this sort of log output:
 22:27:10.832 [main] INFO membership.MembershipActor$ - Membership has determined node ID: 2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27, with rejoin flag: false
 ``` 
 
-If it looks something like that, you're all set to start adding new nodes to the cluster!
+If it looks something like that, you're all set to start adding new nodes to the cluster
 
 ### Cluster Scaling
 
@@ -226,13 +226,13 @@ reply liveness confirmations to incoming checks:
 22:27:23.108 [...] DEBUG membership.failureDetection.FailureDetectorActor - Target [2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27, 10.1.0.92] successfully passed initial direct failure check
 ```
 
-Now you have the knowledge to scale your cluster to any size you want!
+Now you can scale your cluster to any size you want!
 
 However, this is a good time to point out that this fully automatic scaling process can only be achieved
 if there is a DNS server present, as the nodes will perform a DNS lookup to retrieve the IP address of the
 cluster seed node (the hostname `cdb-0.chs.chordial-ns.svc.cluster.local`)
 
-Without a DNS server, it is still possible to have future nodes be scaled automatically but it will require
+Without a DNS server, it is still possible to have future nodes scaled automatically, but it will require
 you to manually specify the seed node IP address into the Kubernetes `StatefulSet` configuration. The
 program will attempt to read this IP address from the environment variable `SEED_IP` if it fails to
 read the variable `SEED_NODE`.
@@ -277,18 +277,25 @@ strictly essential and is skipped for now to allow the establishment the high-le
   - [x] Local kubernetes cluster setup and integration
     - [x] Service containerization  
     
-- [ ] **Milestone 3: Partitioning Layer**
+- [ ] **Milestone 3: Replication Layer**
+  - [ ] Raft implementation
+    - [ ] Leader election
+      - [ ] Follower/candidate/leader state persistence handling
+      - [ ] Voting and election mechanics: RPCs and logic
+    - [ ] Log replication
+      - [ ] Majority commit: includes `AppendEntry` handling and disk persistence 
+      - [ ] Log recovery and replica log backtracking
+    - [ ] Raft membership/configuration changes
+    - [ ] Log compaction (if there's time) 
+  - [ ] Consistency/node failure testing
+  - [ ] Code debt cleanup
+    
+- [ ] **Milestone 4: Partitioning Layer**
   - [ ] Partitioning via virtual nodes
     - [ ] _Partition ring data structure_
-    - [ ] _Dynamic repartition dividing/merges on node join/failure_
+    - [ ] Dynamic repartition dividing/merges on node join/failure
     - [ ] Data shuffling on node membership changes
   - [ ] Better testing, should be able to do some failure case handling
-  
-- [ ] **Milestone 4: Replication Layer**
-  - [ ] Replication scheme, quorum handling
-  - [ ] Anti-entropy process (anti-entropy or read repair or ideally both)
-  - [ ] Cluster-level concurrent write handling, vector versioning
-  - [ ] Consistency/node failure testing
   
 - [ ] **Milestone 5: Transaction Layer**
   - [ ] Distributed transactions (2PC?)

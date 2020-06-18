@@ -40,7 +40,7 @@ install:
 	@sudo mkdir -p $(JAR_LOCATION)
 
 	@sudo rm -f $(JAR_LOCATION)/chordial-client.jar
-	@sudo cp -f $(shell find . -name "ChordialClient-assembly-*.jar") $(JAR_LOCATION)/chordial-client.jar
+	@sudo cp -f $(shell find . -name "ChordialClient-assembly-*.jar") $(JAR_LOCATION)/chordial-client.jar		
 	@sudo cp -f docker/run-client-local.sh /usr/local/bin/chordial
 
 	@sudo rm -f $(JAR_LOCATION)/chordial-server.jar
@@ -81,6 +81,9 @@ kube-statefulset:
 
 kube-ns:
 	@kubectl get all -n chordial-ns
+
+kube-ns-create:
+	@kubectl create namespace chordial-ns
 
 kube-clear:
 	@kubectl delete statefulset cdb -n chordial-ns
