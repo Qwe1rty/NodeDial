@@ -7,35 +7,42 @@ ThisBuild / scalaVersion := "2.12.0"
 
 lazy val dependencies =
   new {
-    val protoCommonV = "1.16.0"
-    val grpcCommonV = "1.16.0"
-    val scalaProtoV = scalapb.compiler.Version.scalapbVersion
-    val ipAddressesV = "1.0.2"
 
-    val akkaActorV = "2.6.0"
-    val akkaStreamV = "2.6.0"
-    val akkaSLF4jV = "2.6.0"
-
-    val logbackV = "1.2.3"
-    val betterFilesV = "3.8.0"
-    val hasherV = "1.2.2"
-    val scoptV = "3.7.1"
-
+    // Networking/RPC libraries
+    val protoCommonV = "1.17.0"
+    val grpcCommonV  = "1.17.0"
+    val scalaProtoV  = scalapb.compiler.Version.scalapbVersion
+    val ipAddressesV = "scala_upgrade"
 
     val protoCommon = "com.google.api.grpc"   % "proto-google-common-protos" % protoCommonV % "protobuf"
     val grpcCommon  = "com.google.api.grpc"   % "grpc-google-common-protos"  % grpcCommonV  % "protobuf"
     val scalaProto  = "com.thesamet.scalapb" %% "scalapb-runtime"            % scalaProtoV  % "protobuf"
     val ipAddresses = "com.risksense"         % "ipaddr_2.12"                % ipAddressesV
 
-    val akkaActor   = "com.typesafe.akka"    %% "akka-actor"                 % akkaActorV
-    val akkaStream  = "com.typesafe.akka"    %% "akka-stream"                % akkaStreamV
-    val akkaSLF4j   = "com.typesafe.akka"    %% "akka-slf4j"                 % akkaSLF4jV
+    // Logging libraries
+    val akkaSLF4jV = "2.6.0"
+    val logbackV   = "1.2.3"
 
-    val logback     = "ch.qos.logback"        % "logback-classic"            % logbackV
-    val betterFiles = "com.github.pathikrit" %% "better-files"               % betterFilesV
-    val hasher      = "com.outr"             %% "hasher"                     % hasherV
-    val scopt       = "com.github.scopt"     %% "scopt"                      % scoptV
+    val akkaSLF4j   = "com.typesafe.akka"    %% "akka-slf4j"      % akkaSLF4jV
+    val logback     = "ch.qos.logback"        % "logback-classic" % logbackV
+
+    // Server-specific libraries
+    val betterFilesV = "3.8.0"
+    val hasherV      = "1.2.2"
+    val raftV        = "0.2.1"
+
+    val betterFiles = "com.github.pathikrit" %% "better-files"  % betterFilesV
+    val hasher      = "com.outr"             %% "hasher"        % hasherV
+
+    // Client-specific libraries
+    val scoptV      = "3.7.1"
+    val scopt       = "com.github.scopt"     %% "scopt" % scoptV
   }
+
+lazy val ipAddresses = /* Temporary solution for now */
+  RootProject(uri(s"git://github.com/Qwe1rty/ipaddr.git#${dependencies.ipAddressesV}"))
+
+lazy val jettyAgent = "org.mortbay.jetty.alpn" % "jetty-alpn-agent" % "2.0.9" % "runtime;test"
 
 lazy val grpcLibraryGroup = Seq(
   dependencies.protoCommon,
@@ -48,8 +55,6 @@ lazy val loggingLibraryGroup = Seq(
   dependencies.akkaSLF4j,
   dependencies.logback
 )
-
-lazy val jettyAgent = "org.mortbay.jetty.alpn" % "jetty-alpn-agent" % "2.0.9" % "runtime;test"
 
 
 lazy val root = (project in file("."))
@@ -97,7 +102,7 @@ lazy val server = (project in file("server"))
     javaAgents += jettyAgent,
     libraryDependencies ++= loggingLibraryGroup ++ Seq(
       dependencies.betterFiles,
-      dependencies.hasher
+      dependencies.hasher,
     )
   )
   .dependsOn(api)

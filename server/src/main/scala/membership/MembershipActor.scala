@@ -41,20 +41,21 @@ object MembershipActor {
    * Allow exception to propagate on nodeID file operations, to kill program and exit with
    * non-0 code. Must be allowed to succeed
    */
-  val (nodeID: String, rejoin: Boolean) = {
-
-    if (MEMBERSHIP_FILE.notExists) {
+  val rejoin: Boolean = !MEMBERSHIP_FILE.notExists
+  val nodeID: String = {
+    if (rejoin) {
+      MEMBERSHIP_FILE.loadBytes
+    } else {
       val newID: String = System.nanoTime().toString.sha256
       log.info("Node ID not found - generating new ID")
 
       MEMBERSHIP_DIR.createDirectoryIfNotExists()
       MEMBERSHIP_FILE.writeByteArray(newID)
 
-      (newID, false)
+      newID
     }
-
-    else (MEMBERSHIP_FILE.loadBytes, true)
   }
+
   log.info(s"Membership has determined node ID: ${nodeID}, with rejoin flag: ${rejoin}")
 
 
@@ -70,9 +71,11 @@ object MembershipActor {
 }
 
 
-class MembershipActor private
-    (addressRetriever: AddressRetriever, private var initializationCount: Int)
-    (implicit actorSystem: ActorSystem)
+class MembershipActor private(
+    addressRetriever:                AddressRetriever,
+    private var initializationCount: Int
+  )
+  (implicit actorSystem: ActorSystem)
   extends Actor
   with ActorLogging
   with ActorDefaults {
