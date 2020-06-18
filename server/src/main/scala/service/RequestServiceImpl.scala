@@ -24,9 +24,11 @@ object RequestServiceImpl {
 }
 
 
-class RequestServiceImpl
-    (requestServiceActor: ActorRef, membershipActor: ActorRef)
-    (implicit actorSystem: ActorSystem)
+class RequestServiceImpl(
+    requestServiceActor: ActorRef,
+    membershipActor: ActorRef
+  )
+  (implicit actorSystem: ActorSystem)
   extends RequestService {
 
   implicit val materializer: Materializer = ActorMaterializer()

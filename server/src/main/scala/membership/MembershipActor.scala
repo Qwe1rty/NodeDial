@@ -1,10 +1,7 @@
 package membership
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
-import com.roundeights.hasher.Implicits._
 import common.ServerConstants
-import common.gossip.GossipAPI.PublishRequest
-import common.gossip.{GossipActor, GossipKey, GossipPayload}
 import common.membership.Event.EventType.Empty
 import common.membership.Event.{EventType, Refute}
 import common.membership._
@@ -13,10 +10,11 @@ import common.membership.types.{NodeInfo, NodeState}
 import common.utils.ActorDefaults
 import membership.addresser.AddressRetriever
 import membership.api._
+import membership.gossip.GossipAPI.PublishRequest
+import membership.gossip.{GossipActor, GossipKey, GossipPayload}
 import membership.impl.InternalRequestDispatcher
 import org.slf4j.LoggerFactory
 import schema.ImplicitDataConversions._
-import schema.ImplicitGrpcConversions._
 
 import scala.concurrent.duration._
 
@@ -36,19 +34,7 @@ object MembershipActor {
    * non-0 code. Must be allowed to succeed
    */
   val rejoin: Boolean = !MEMBERSHIP_FILE.notExists
-  val nodeID: String = {
-    if (rejoin) {
-      MEMBERSHIP_FILE.loadBytes
-    } else {
-      val newID: String = System.nanoTime().toString.sha256
-      log.info("Node ID not found - generating new ID")
-
-      MEMBERSHIP_DIR.createDirectoryIfNotExists()
-      MEMBERSHIP_FILE.writeByteArray(newID)
-
-      newID
-    }
-  }
+  val nodeID: String = NodeIDLoader(MEMBERSHIP_FILE)
 
   log.info(s"Membership has determined node ID: ${nodeID}, with rejoin flag: ${rejoin}")
 

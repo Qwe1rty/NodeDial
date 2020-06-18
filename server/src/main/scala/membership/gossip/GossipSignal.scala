@@ -1,4 +1,4 @@
-package common.gossip
+package membership.gossip
 
 import membership.api.Membership
 

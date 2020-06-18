@@ -1,4 +1,4 @@
-package common.gossip
+package membership.gossip
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import akka.grpc.GrpcClientSettings
@@ -7,7 +7,7 @@ import akka.stream.{ActorMaterializer, Materializer}
 import akka.util.Timeout
 import com.risksense.ipaddr.IpAddress
 import common.ServerDefaults
-import common.gossip.GossipSignal.{ClusterSizeReceived, SendRPC}
+import GossipSignal.{ClusterSizeReceived, SendRPC}
 import common.membership.types.NodeState
 import common.utils.ActorTimers.Tick
 import common.utils.{ActorDefaults, ActorTimers, GrpcSettingsFactory}
@@ -58,9 +58,12 @@ object GossipActor extends GrpcSettingsFactory {
 }
 
 
-class GossipActor[KeyType: ClassTag] private
-    (membershipActor: ActorRef, delay: FiniteDuration, affiliation: String)
-    (implicit actorSystem: ActorSystem)
+class GossipActor[KeyType: ClassTag] private(
+    membershipActor: ActorRef,
+    delay:           FiniteDuration,
+    affiliation:     String
+  )
+  (implicit actorSystem: ActorSystem)
   extends Actor
   with ActorLogging
   with ActorDefaults
