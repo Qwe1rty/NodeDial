@@ -11,6 +11,7 @@ GENERAL:
 BUILD SETUP:
 - Keep the ports configured in a central place (currently in code, makefile, & docker build)
 - Move over to Minikube from Docker Desktop, to ensure the most recent K8s version (v1.17.0)
+- Move the IpAddress repo to Maven + actually port it to Scala 2.13.1 properly
 
 DOCUMENTATION:
 - Move everything to its own wiki section
@@ -25,10 +26,8 @@ CLIENT:
 - Add a executable program wrapper around the client JAR to simplify deployment
 
 MEMBERSHIP:
-- Possibly allow for different seed node and self IP addresser methods
 - Make sure the "random" call doesn't return the local node ID
 - Allow some way for Kubernetes to make a readiness probe
-- Change membership table operations to take advantage of the case class .copy(...) method
 
 GOSSIP:
 - If the membership actor random call returns None, don't place it on cooldown

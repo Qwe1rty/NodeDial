@@ -1,10 +1,13 @@
 import com.lightbend.sbt.javaagent.JavaAgent.JavaAgentKeys.javaAgents
 import sbt.project
 
-ThisBuild / version := "1.2.7"
-ThisBuild / scalaVersion := "2.12.0"
+ThisBuild / version := "2.0.0"
+ThisBuild / scalaVersion := "2.13.1"
 
 
+/**
+ * Dependency definitions
+ */
 lazy val dependencies =
   new {
 
@@ -17,7 +20,6 @@ lazy val dependencies =
     val protoCommon = "com.google.api.grpc"   % "proto-google-common-protos" % protoCommonV % "protobuf"
     val grpcCommon  = "com.google.api.grpc"   % "grpc-google-common-protos"  % grpcCommonV  % "protobuf"
     val scalaProto  = "com.thesamet.scalapb" %% "scalapb-runtime"            % scalaProtoV  % "protobuf"
-    val ipAddresses = "com.risksense"         % "ipaddr_2.12"                % ipAddressesV
 
     // Logging libraries
     val akkaSLF4jV = "2.6.0"
@@ -48,7 +50,6 @@ lazy val grpcLibraryGroup = Seq(
   dependencies.protoCommon,
   dependencies.grpcCommon,
   dependencies.scalaProto,
-  dependencies.ipAddresses
 )
 
 lazy val loggingLibraryGroup = Seq(
@@ -57,11 +58,15 @@ lazy val loggingLibraryGroup = Seq(
 )
 
 
+/**
+ * Project definitions
+ */
 lazy val root = (project in file("."))
   .aggregate(client, server)
   .disablePlugins(AssemblyPlugin)
 
 lazy val api = (project in file("api"))
+  .dependsOn(ipAddresses)
   .enablePlugins(
     AkkaGrpcPlugin,
     JavaAgent /*ALPN agent*/
@@ -75,6 +80,8 @@ lazy val api = (project in file("api"))
 
 
 lazy val client = (project in file("client"))
+  .dependsOn(ipAddresses)
+  .dependsOn(api)
   .enablePlugins(
     AkkaGrpcPlugin,
     JavaAppPackaging,
@@ -88,9 +95,10 @@ lazy val client = (project in file("client"))
       dependencies.scopt
     )
   )
-  .dependsOn(api)
 
 lazy val server = (project in file("server"))
+  .dependsOn(ipAddresses)
+  .dependsOn(api)
   .enablePlugins(
     AkkaGrpcPlugin,
     JavaAppPackaging,
@@ -105,9 +113,11 @@ lazy val server = (project in file("server"))
       dependencies.hasher,
     )
   )
-  .dependsOn(api)
 
 
+/**
+ * SBT Assembly plugin configuration
+ */
 lazy val assemblySettings = assemblyMergeStrategy in assembly := {
   case PathList("META-INF", "MANIFEST.MF") => MergeStrategy.discard
   case n if n.startsWith("application.conf") => MergeStrategy.concat

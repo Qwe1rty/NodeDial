@@ -2,9 +2,12 @@ package membership
 
 import com.risksense.ipaddr.IpAddress
 import common.membership.types.{NodeInfo, NodeState}
+import membership.api.Membership
+
+import scala.collection.immutable.SetOps
+import scala.collection.{StrictOptimizedSetOps, immutable, mutable}
 import schema.ImplicitDataConversions._
 
-import scala.collection.immutable.MapLike
 import scala.util.Random
 
 
@@ -13,153 +16,153 @@ import scala.util.Random
  * by any given node.
  */
 
-
 private[membership] object MembershipTable {
 
-  def apply(): MembershipTable = new MembershipTable(
-    Map[NodeState, Set[String]](),
-    Map[String, NodeInfo]()
+  final class NodeNotRegisteredException(nodeID: String) extends IllegalArgumentException(
+    s"Node ID ${nodeID} is not registered"
   )
+
+  def empty(): MembershipTable =
+    new MembershipTable(Map[String, NodeInfo](), Map[NodeState, Set[String]]())
+
+  def apply(entries: NodeInfo*): MembershipTable =
+    fromSeq(entries)
+
+  def apply(entries: Set[NodeInfo]): MembershipTable =
+    fromSet(entries)
+
+  def fromSet(entries: collection.Set[NodeInfo]): MembershipTable =
+    fromSeq(entries.toSeq)
+
+  def fromSeq(entries: collection.Seq[NodeInfo]): MembershipTable = {
+    val table = entries
+      .map(entry => (entry.nodeId, entry))
+      .toMap
+    val stateGroups = entries
+      .groupBy(_.state)
+      .view
+      .mapValues(nodeInfoSeq => nodeInfoSeq.map(_.nodeId).toSet)
+      .toMap
+    new MembershipTable(table, stateGroups)
+  }
+
 }
 
 
-private[membership] class MembershipTable private(
-    val stateGroups: Map[NodeState, Set[String]],
-    val table: Map[String, NodeInfo]
+final private[membership] class MembershipTable private(
+    private val table:       Map[String, NodeInfo],
+    private val stateGroups: Map[NodeState, Set[String]],
   )
-  extends Map[String, NodeInfo]
-  with MapLike[String, NodeInfo, MembershipTable] { self =>
+  extends Set[NodeInfo]
+  with SetOps[NodeInfo, immutable.Set, MembershipTable]
+  with StrictOptimizedSetOps[NodeInfo, immutable.Set, MembershipTable] { self =>
+
+  import MembershipTable._
 
 
-  // Getters (Individual)
-  override def apply(nodeID: String): NodeInfo =
-    table.apply(nodeID)
+  // Base set ops
+  override def incl(nodeInfo: NodeInfo): MembershipTable = {
+    val stateGroup = stateGroups.getOrElse(nodeInfo.state, Set[String]())
 
-  override def get(nodeID: String): Option[NodeInfo] =
+    new MembershipTable(
+      table + (nodeInfo.nodeId -> nodeInfo),
+      stateGroups + (nodeInfo.state -> (stateGroup + nodeInfo.nodeId))
+    )
+  }
+
+  def register(nodeID: String): MembershipTable =
+    if (contains(nodeID)) self + table(nodeID) else self
+
+  override def excl(nodeInfo: NodeInfo): MembershipTable = {
+    val stateGroup = stateGroups(nodeInfo.state)
+
+    new MembershipTable(
+      table - nodeInfo.nodeId,
+      stateGroups + (nodeInfo.state -> (stateGroup - nodeInfo.nodeId)),
+    )
+  }
+
+  def -(nodeID: String): MembershipTable =
+    unregister(nodeID)
+
+  def unregister(nodeID: String): MembershipTable =
+    if (contains(nodeID)) self - table(nodeID) else self
+
+  override def contains(elem: NodeInfo): Boolean =
+    contains(elem.nodeId)
+
+  def contains(nodeID: String): Boolean =
+    table.contains(nodeID)
+
+  override def empty: MembershipTable =
+    MembershipTable.empty()
+
+  override def concat(other: IterableOnce[NodeInfo]): MembershipTable =
+    fromSpecific(iterator ++ other.iterator)
+
+
+  // Derivative set ops
+  def apply(nodeID: String): NodeInfo =
+    table(nodeID)
+
+  def get(nodeID: String): Option[NodeInfo] =
     table.get(nodeID)
 
-  def address(nodeID: String): IpAddress =
-    self(nodeID).ipAddress
+  def addressOf(nodeID: String): IpAddress =
+    table(nodeID).ipAddress
 
-  def version(nodeID: String): Int =
-    self(nodeID).version
+  def versionOf(nodeID: String): Int =
+    table(nodeID).version
 
-  def state(nodeID: String): NodeState =
-    self(nodeID).state
+  def stateOf(nodeID: String): NodeState =
+    table(nodeID).state
 
-  def membership(nodeID: String): Membership =
-    Membership(nodeID, address(nodeID))
+  def membershipOf(nodeID: String): Membership =
+    Membership(nodeID, addressOf(nodeID))
+
+  def incrementVersion(nodeID: String): MembershipTable =
+    table.get(nodeID) match {
+      case None => throw new NodeNotRegisteredException(nodeID)
+      case Some(nodeInfo) =>
+        new MembershipTable(
+          table.updated(nodeID, nodeInfo.copy(version = nodeInfo.version + 1)),
+          stateGroups
+        )
+    }
+
+  def updateState(nodeID: String, newState: NodeState): MembershipTable =
+    table.get(nodeID) match {
+      case None => throw new NodeNotRegisteredException(nodeID)
+      case Some(nodeInfo) =>
+        self - nodeID
+        self + nodeInfo.copy(state = newState)
+    }
 
 
-  // Getters (Aggregated)
+  // Aggregate ops
   def states(nodeState: NodeState): Set[String] =
     stateGroups(nodeState)
 
-  def random(nodeState: NodeState, quantity: Int = 1): Set[Membership] = stateGroups.get(nodeState) match {
-    case Some(stateGroup) =>
-      quantity match {
-        case 1 => {
+  def random(nodeState: NodeState, quantity: Int = 1): Set[Membership] =
+    stateGroups.get(nodeState) match {
+      case None => Set[Membership]()
+      case Some(stateGroup) => quantity match {
+        case 1 =>
           val index = Random.nextInt(stateGroup.size)
-          Set(stateGroup.view(index, index + 1).last).map(membership)
-        }
-        case n => Random.shuffle(stateGroup).take(n).map(membership)
+          Set(stateGroup.view.slice(index, index + 1).last).map(membershipOf)
+        case n => Random.shuffle(stateGroup).take(n).map(membershipOf)
       }
-    case None => Set[Membership]()
-  }
+    }
 
 
-  // Modifiers
-  def ++(that: MembershipTable): MembershipTable = new MembershipTable({
-      (stateGroups.keySet ++ that.stateGroups.keySet)
-        .map { state =>
-          state -> (stateGroups.getOrElse(state, Set()) ++ that.stateGroups.getOrElse(state, Set()))
-        }
-        .toMap
-    },
-    table ++ that.table
-  )
+  // Iteration ops
+  override protected def fromSpecific(coll: IterableOnce[NodeInfo]): MembershipTable =
+    fromSeq(coll.iterator.toSeq)
 
-  def ++(that: Seq[NodeInfo]): MembershipTable = self ++ new MembershipTable({
-      that
-        .groupBy(_.state)
-        .mapValues { nodeInfoSeq =>
-          nodeInfoSeq
-            .map(_.nodeId)
-            .toSet
-        }
-    },
-    that.map(nodeInfo => nodeInfo.nodeId -> nodeInfo).toMap
-  )
+  override protected def newSpecificBuilder: mutable.Builder[NodeInfo, MembershipTable] =
+    iterableFactory.newBuilder[NodeInfo].mapResult(fromSet)
 
-  @deprecated
-  override def +[V1 >: NodeInfo](entry: (String, V1)): Map[String, V1] =
-    throw new UnsupportedOperationException("Cannot add upper bounded object to NodeInfo table")
-
-  def +(entry: (String, NodeInfo)): MembershipTable =
-    self + entry._2
-
-  def +(nodeInfo: NodeInfo): MembershipTable = new MembershipTable({
-      val nodeState = nodeInfo.state
-      stateGroups + (nodeState -> (stateGroups.getOrElse(nodeState, Set[String]()) + nodeInfo.nodeId))
-    },
-    table + (nodeInfo.nodeId -> nodeInfo)
-  )
-
-  override def -(nodeID: String): MembershipTable = {
-    if (self.contains(nodeID)) new MembershipTable({
-        val nodeState = self.state(nodeID)
-        stateGroups + (nodeState -> (stateGroups(nodeState) - nodeID))
-      },
-      table - nodeID
-    )
-    else self
-  }
-
-  def updated(nodeInfo: NodeInfo): MembershipTable =
-    self + nodeInfo
-
-  @deprecated
-  override def updated[V1 >: NodeInfo](nodeID: String, nodeInfo: V1): Map[String, V1] =
-    self + (nodeID -> nodeInfo)
-
-  def updated(nodeID: String, nodeState: NodeState): MembershipTable = {
-    if (self.contains(nodeID)) self.updated(NodeInfo(
-      nodeID,
-      self.address(nodeID),
-      self.version(nodeID),
-      nodeState
-    ))
-    else self
-  }
-
-  def updated(nodeID: String, version: Int): MembershipTable = {
-    if (self.contains(nodeID)) self.updated(NodeInfo(
-      nodeID,
-      self.address(nodeID),
-      version,
-      self.state(nodeID)
-    ))
-    else self
-  }
-
-  def increment(nodeID: String): MembershipTable = {
-    self.updated(
-      nodeID,
-      self
-        .get(nodeID)
-        .map(_.version)
-        .getOrElse(1)
-    )
-  }
-
-
-  // Other
-  override def contains(nodeID: String): Boolean =
-    table.contains(nodeID)
-
-  override def iterator: Iterator[(String, NodeInfo)] =
-    table.iterator
-
-  override def empty: MembershipTable =
-    MembershipTable()
+  override def iterator: Iterator[NodeInfo] =
+    table.valuesIterator
 }
+
