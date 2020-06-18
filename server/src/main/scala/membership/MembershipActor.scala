@@ -1,29 +1,24 @@
 package membership
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
-import akka.grpc.GrpcClientSettings
-import akka.stream.ActorMaterializer
 import com.roundeights.hasher.Implicits._
 import common.ServerConstants
 import common.gossip.GossipAPI.PublishRequest
 import common.gossip.{GossipActor, GossipKey, GossipPayload}
 import common.membership.Event.EventType.Empty
-import common.membership.Event.{EventType, Failure, Join, Refute, Suspect}
+import common.membership.Event.{EventType, Refute}
 import common.membership._
 import common.membership.types.NodeState.{ALIVE, DEAD, SUSPECT}
 import common.membership.types.{NodeInfo, NodeState}
 import common.utils.ActorDefaults
 import membership.addresser.AddressRetriever
 import membership.api._
+import membership.impl.InternalRequestDispatcher
 import org.slf4j.LoggerFactory
-import partitioning.PartitionHashes
 import schema.ImplicitDataConversions._
 import schema.ImplicitGrpcConversions._
-import schema.PortConfiguration.MEMBERSHIP_PORT
 
-import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
-import scala.util.Success
 
 
 object MembershipActor {
@@ -71,24 +66,25 @@ object MembershipActor {
 
 
 class MembershipActor private(
-    addressRetriever:                AddressRetriever,
-    private var initializationCount: Int
+    protected val clusterAddresses:    AddressRetriever,
+    protected var initializationCount: Int
   )
-  (implicit actorSystem: ActorSystem)
+  (implicit protected val actorSystem: ActorSystem)
   extends Actor
   with ActorLogging
-  with ActorDefaults {
+  with ActorDefaults
+  with InternalRequestDispatcher {
 
   import MembershipActor._
 
   private val gossipActor = GossipActor[Event](self, 200.millisecond, "membership")
 
-  private var readiness = false
-  private var subscribers = Set[ActorRef]()
-  private var membershipTable: MembershipTable =
-    MembershipTable(NodeInfo(nodeID, addressRetriever.selfIP, 0, NodeState.ALIVE))
+  protected var readiness: Boolean = false
+  protected var subscribers: Set[ActorRef] = Set[ActorRef]()
+  protected var membershipTable: MembershipTable =
+    MembershipTable(NodeInfo(nodeID, clusterAddresses.selfIP, 0, NodeState.ALIVE))
 
-  log.info(s"Self IP has been detected to be ${addressRetriever.selfIP}")
+  log.info(s"Self IP has been detected to be ${clusterAddresses.selfIP}")
   log.info("Membership actor initialized")
 
 
@@ -97,7 +93,7 @@ class MembershipActor private(
    *
    * @param event event to publish
    */
-  private def publishInternally(event: Event): Unit =
+  protected def publishInternally(event: Event): Unit =
     subscribers.foreach(_ ! event)
 
   /**
@@ -105,7 +101,7 @@ class MembershipActor private(
    *
    * @param event event to publish
    */
-  private def publishExternally(event: Event): Unit =
+  protected def publishExternally(event: Event): Unit =
     gossipActor ! PublishRequest[Event](
       GossipKey(event),
       GossipPayload(grpcClientSettings => (materializer, executionContext) =>
@@ -162,7 +158,7 @@ class MembershipActor private(
       case EventType.Refute(refuteInfo) =>
         log.debug(s"Refute event - ${event.nodeId} - ${refuteInfo}")
 
-        membershipTable.get(event.nodeId).foreach(currentEntry => {
+        membershipTable.get(event.nodeId).foreach(currentEntry =>
           if (refuteInfo.version > currentEntry.version) {
             membershipTable += NodeInfo(
               event.nodeId,
@@ -171,8 +167,7 @@ class MembershipActor private(
               NodeState.ALIVE
             )
             publishExternally(event)
-          }
-        })
+          })
 
       case EventType.Leave(_) =>
         log.debug(s"Leave event - ${event.nodeId}")
@@ -189,127 +184,10 @@ class MembershipActor private(
     publishInternally(event)
   }
 
-  /**
-   * Handle membership-altering requests from other components of the local node, that become
-   * broadcasted to the rest of the cluster
-   */
-  private def receiveDeclarationCall: Function[DeclarationCall, Unit] = {
-
-    case DeclareReadiness =>
-
-      log.info("Membership readiness signal received")
-      initializationCount -= 1
-
-      if (initializationCount <= 0 && !readiness) {
-        log.debug("Starting initialization sequence to establish readiness")
-
-        // Only if the seed node is defined will there be any synchronization calls
-        addressRetriever.seedIP match {
-
-          case Some(seedIP) =>
-            if (seedIP != addressRetriever.selfIP) {
-              log.info("Contacting seed node for membership listing")
-
-              implicit val ec: ExecutionContext = actorSystem.dispatcher
-
-              val grpcClientSettings = GrpcClientSettings.connectToServiceAt(
-                seedIP,
-                MEMBERSHIP_PORT
-              )
-
-              MembershipServiceClient(grpcClientSettings)(ActorMaterializer()(context), ec)
-                .fullSync(FullSyncRequest(nodeID, addressRetriever.selfIP))
-                .onComplete(self ! SeedResponse(_))
-            }
-            else {
-              readiness = true
-              log.info("Seed IP was the same as this current node's IP, no full sync necessary")
-            }
-
-          case None =>
-            readiness = true
-            log.info("No seed node specified, will assume single-node cluster readiness")
-        }
-      }
-
-    case DeclareEvent(nodeState, membershipPair) => {
-
-      val targetID = membershipPair.nodeID
-      val version = membershipTable.versionOf(targetID)
-      log.info(s"Declaring node ${targetID} according to detected state ${nodeState}")
-
-      val eventCandidate: Option[Event] = nodeState match {
-        case NodeState.SUSPECT => Some(Event(targetID).withSuspect(Suspect(version)))
-        case NodeState.DEAD =>    Some(Event(targetID).withFailure(Failure(version)))
-        case _ =>                 None
-      }
-
-      eventCandidate.foreach(event => {
-        publishExternally(event)
-        publishInternally(event)
-      })
-    }
-
-    case SeedResponse(syncResponse) => syncResponse match {
-
-      case Success(response) =>
-        membershipTable ++= response.syncInfo.map(_.nodeInfo)
-
-        readiness = true
-        log.info("Successful full sync response received from seed node")
-
-        publishExternally(Event(nodeID).withJoin(Join(addressRetriever.selfIP, PartitionHashes(Nil))))
-        log.info("Broadcasting join event to other nodes")
-
-      case scala.util.Failure(e) =>
-        log.error(s"Was unable to retrieve membership info from seed node: ${e}")
-
-        self ! DeclareReadiness
-        log.error("Attempting to reconnect with seed node")
-    }
-  }
-
-  /**
-   * Handle membership info get requests
-   */
-  private def receiveInformationCall: Function[InformationCall, Unit] = {
-
-    case GetReadiness =>
-      sender ! readiness
-
-    case GetClusterSize =>
-      sender ! membershipTable.size
-
-    case GetClusterInfo =>
-      sender ! membershipTable.toSeq.map(SyncInfo(_, None))
-
-    case GetRandomNode(nodeState) =>
-      sender ! membershipTable.random(nodeState).lastOption
-
-    case GetRandomNodes(nodeState, number) =>
-      sender ! membershipTable.random(nodeState, number)
-  }
-
-  /**
-   * Handle subscription requests for observers to be informed of membership changes
-   */
-  private def receiveSubscriptionCall: Function[SubscriptionCall, Unit] = {
-
-    case Subscribe(actorRef) =>
-      subscribers += actorRef
-
-    case Unsubscribe(actorRef) =>
-      subscribers -= actorRef
-  }
-
   override def receive: Receive = {
-    case apiCall: MembershipAPI => apiCall match {
-      case declarationCall: DeclarationCall   => receiveDeclarationCall(declarationCall)
-      case informationCall: InformationCall   => receiveInformationCall(informationCall)
-      case subscriptionCall: SubscriptionCall => receiveSubscriptionCall(subscriptionCall)
-    }
-    case event: Event => receiveEvent(event)
-    case x            => log.error(receivedUnknown(x))
+    case apiCall: MembershipAPI => receiveAPICall(apiCall)
+    case event: Event           => receiveEvent(event)
+    case x                      => log.error(receivedUnknown(x))
   }
 
 }
