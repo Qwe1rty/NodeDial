@@ -17,10 +17,24 @@ package chordial.membership;
  */
 message Event {
 
+    required string node_id = 1;
+
+    oneof event_type {
+        Join join = 2;
+        Suspect suspect = 3;
+        Failure failure = 4;
+        Refute refute = 5;
+        Leave leave = 6;
+    }
+
+    // The multiple types are events are defined below as subtypes of Event.
+    // Allows for easier pattern matching in Scala
+
     message Join {
-        // NOTE: version is implicitly 0
         required fixed32 ip_address = 1;
         required partitioning.PartitionHashes partition_hashes = 2;
+
+        // NOTE: version is implicitly set to 0 for join events
     }
 
     message Suspect {
@@ -36,19 +50,10 @@ message Event {
     }
 
     message Leave {}
-
-    required string node_id = 1;
-    oneof event_type {
-        Join join = 2;
-        Suspect suspect = 3;
-        Failure failure = 4;
-        Refute refute = 5;
-        Leave leave = 6;
-    }
 }
 
 message EventReply {
-    optional NodeInfo node_info = 1; // Currently unused
+    optional NodeInfo node_info = 1;
 }
 
 
