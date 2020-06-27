@@ -1,7 +1,7 @@
 syntax = "proto2";
 
 option java_multiple_files = true;
-option java_package = "schema.service";
+option java_package = "schema";
 option java_outer_classname = "ChordialRequestMessages";
 
 import "scalapb/scalapb.proto";
@@ -9,37 +9,55 @@ import "scalapb/scalapb.proto";
 package chordial.server;
 
 
-message GetRequest {
-    option (scalapb.message).extends = "schema.RequestTrait";
+message Request {
 
-    required string key = 1;
+    oneof request_type {
+        GetRequest get = 1;
+        PostRequest post = 2;
+        DeleteRequest delete = 3;
+    }
+
+    message GetRequest {
+        option (scalapb.message).extends = "schema.RequestTrait";
+
+        required string key = 1;
+    }
+
+    message PostRequest {
+        option (scalapb.message).extends = "schema.RequestTrait";
+
+        required string key = 1;
+        required bytes value = 2;
+    }
+
+    message DeleteRequest {
+        option (scalapb.message).extends = "schema.RequestTrait";
+
+        required string key = 1;
+    }
 }
 
-message GetResponse {
-    option (scalapb.message).extends = "schema.ResponseTrait";
+message Response {
 
-    required bytes value = 1;
-}
+    oneof response_type {
+        GetResponse get = 1;
+        PostResponse post = 2;
+        DeleteResponse delete = 3;
+    }
 
-message PostRequest {
-    option (scalapb.message).extends = "schema.RequestTrait";
+    message GetResponse {
+        option (scalapb.message).extends = "schema.ResponseTrait";
 
-    required string key = 1;
-    required bytes value = 2;
-}
+        required bytes value = 1;
+    }
 
-message PostResponse {
-    option (scalapb.message).extends = "schema.ResponseTrait";
-}
+    message PostResponse {
+        option (scalapb.message).extends = "schema.ResponseTrait";
+    }
 
-message DeleteRequest {
-    option (scalapb.message).extends = "schema.RequestTrait";
-
-    required string key = 1;
-}
-
-message DeleteResponse {
-    option (scalapb.message).extends = "schema.ResponseTrait";
+    message DeleteResponse {
+        option (scalapb.message).extends = "schema.ResponseTrait";
+    }
 }
 
 

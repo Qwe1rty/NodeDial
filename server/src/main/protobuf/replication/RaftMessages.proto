@@ -1,0 +1,48 @@
+syntax = "proto2";
+
+option java_multiple_files = true;
+option java_package = "replication";
+option java_outer_classname = "ChordialRaftMessages";
+
+import "replication/LogEntry.proto";
+
+package chordial.replication;
+
+
+message AppendEntriesRequest {
+
+    // Leader sends it's term and ID information for administrative purposes:
+    // * the leader term so follower knows if leadership is valid
+    // * the ID for write request routing
+    required uint64 leader_term = 1;
+    required string leader_id = 2;
+
+    // Used to determine discrepancies from the leader's logs
+    required uint64 prev_log_index = 3;
+    required uint64 prev_log_term = 4;
+
+    // Log entries to replicate. Left empty for heartbeats
+    repeated LogEntry entries = 5;
+
+    // The index that specifies the entries that have been successfully
+    // committed by a majority
+    required uint64 leader_commit_index = 6;
+}
+
+message AppendEntriesResult {
+
+    // Returns the follower's current term
+    required uint64 current_term = 1;
+
+    // Indicates whether entries have been accepted for commits by this
+    // follower
+    required bool success = 2;
+}
+
+message RequestVoteRequest {
+
+}
+
+message RequestVoteResult {
+
+}
