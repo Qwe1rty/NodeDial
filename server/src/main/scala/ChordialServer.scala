@@ -10,6 +10,7 @@ import membership.{MembershipActor, MembershipServiceImpl}
 import org.slf4j.LoggerFactory
 import persistence.PersistenceActor
 import persistence.threading.ThreadPartitionActor
+import replication.{RaftActor, ReplicationActor}
 import schema.LoggingConfiguration
 import service.{RequestServiceActor, RequestServiceImpl}
 
@@ -57,6 +58,14 @@ private object ChordialServer extends App {
   val persistenceActor = PersistenceActor(threadPartitionActor, membershipActor)
 
   log.info("Persistence layer top-level actors created")
+
+
+  /**
+   * Replication layer components
+   */
+  log.info("Initializing raft and replication layer components")
+
+  val replicationActor = ReplicationActor(persistenceActor)
 
 
   /**

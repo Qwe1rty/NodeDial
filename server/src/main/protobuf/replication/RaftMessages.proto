@@ -61,3 +61,4 @@ message RequestVoteResult {
     // Indicates whether the candidate has received the follower's vote
     required bool vote_given = 2;
 }
+
