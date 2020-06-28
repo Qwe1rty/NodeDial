@@ -12,7 +12,7 @@ package chordial.replication;
 message AppendEntriesRequest {
 
     // Leader sends it's term and ID information for administrative purposes:
-    // * the leader term so follower knows if leadership is valid
+    // * the term so follower knows if leadership is valid
     // * the ID for write request routing
     required uint64 leader_term = 1;
     required string leader_id = 2;
@@ -41,8 +41,23 @@ message AppendEntriesResult {
 
 message RequestVoteRequest {
 
+    // Candidate sends it's term and ID information for administrative purposes:
+    // * the term so other nodes can figure whether candidate deserves vote
+    // * the ID so candidate can be disambiguated
+    required uint64 candidate_term = 1;
+    required string candidate_id = 2;
+
+    // Candidate's last log index + term is used as a unique compound identifier
+    // for determining the candidate's up-to-dateness
+    required uint64 last_log_index = 3;
+    required uint64 last_log_term = 4;
 }
 
 message RequestVoteResult {
 
+    // Returns the follower's current term
+    required uint64 current_term = 1;
+
+    // Indicates whether the candidate has received the follower's vote
+    required bool vote_given = 2;
 }
