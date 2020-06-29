@@ -10,7 +10,7 @@ import membership.{MembershipActor, MembershipServiceImpl}
 import org.slf4j.LoggerFactory
 import persistence.PersistenceActor
 import persistence.threading.ThreadPartitionActor
-import replication.{RaftActor, ReplicationActor}
+import replication.{RaftServiceImpl, ReplicationActor}
 import schema.LoggingConfiguration
 import service.{RequestServiceActor, RequestServiceImpl}
 
@@ -57,7 +57,7 @@ private object ChordialServer extends App {
   val threadPartitionActor = ThreadPartitionActor()
   val persistenceActor = PersistenceActor(threadPartitionActor, membershipActor)
 
-  log.info("Persistence layer top-level actors created")
+  log.info("Persistence layer components created")
 
 
   /**
@@ -66,6 +66,9 @@ private object ChordialServer extends App {
   log.info("Initializing raft and replication layer components")
 
   val replicationActor = ReplicationActor(persistenceActor)
+  RaftServiceImpl(replicationActor)
+
+  log.info("Replication layer components created")
 
 
   /**
@@ -76,7 +79,7 @@ private object ChordialServer extends App {
   val requestServiceActor = RequestServiceActor(persistenceActor, membershipActor)
   RequestServiceImpl(requestServiceActor, membershipActor)
 
-  log.info("Service layer initialized")
+  log.info("Service layer components created")
 
 
   scala.sys.addShutdownHook(membershipActor ! DeclareEvent(

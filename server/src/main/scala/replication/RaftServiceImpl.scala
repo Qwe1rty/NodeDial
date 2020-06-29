@@ -42,23 +42,27 @@ class RaftServiceImpl(raftActor: ActorRef)(implicit actorSystem: ActorSystem) ex
 
 
   /**
-   * AppendEntries is called by the leader to replicate log entries,
-   * and as a heartbeat to prevent elections from happening
-   */
-  override def appendEntries(in: Source[AppendEntriesRequest, NotUsed]): Future[AppendEntriesResult] = {
-    ???
-  }
-
-  /**
    * RequestVote is called by candidates to try and get a majority vote,
    * to become leader
    */
   override def requestVote(in: RequestVoteRequest): Future[RequestVoteResult] = {
     log.debug(s"Vote requested from candidate ${in.candidateId} with term ${in.candidateTerm}")
 
-    // TODO check first if it matches basic recency requirements before sending request to actor
-
     (raftActor ? in)
       .mapTo[RequestVoteResult]
+  }
+
+  /**
+   * AppendEntries is called by the leader to replicate log entries,
+   * and as a heartbeat to prevent elections from happening
+   */
+  override def appendEntries(in: AppendEntriesRequest): Future[AppendEntriesResult] = {
+    log.debug(
+      s"Append entries request from leader ${in.leaderId} with latest log entry: " +
+      s"(${in.prevLogTerm}, ${in.prevLogIndex})"
+    )
+
+    (raftActor ? in)
+      .mapTo[AppendEntriesResult]
   }
 }

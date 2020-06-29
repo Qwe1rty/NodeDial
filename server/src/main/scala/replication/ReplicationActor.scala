@@ -1,12 +1,18 @@
 package replication
 
-import akka.actor.{ActorRef, ActorSystem}
+import akka.actor.{ActorRef, ActorSystem, Props}
 
 
 object ReplicationActor {
 
-  def apply(persistenceActor: ActorRef)(implicit actorSystem: ActorSystem): ReplicationActor = {
-    new ReplicationActor(persistenceActor)
+  def apply
+      (persistenceActor: ActorRef)
+      (implicit actorSystem: ActorSystem): ActorRef = {
+
+    actorSystem.actorOf(
+      Props(new ReplicationActor(persistenceActor)),
+      "replicationActor"
+    )
   }
 }
 

@@ -13,7 +13,7 @@ service RaftService {
 
     // AppendEntries is called by the leader to replicate log entries,
     // and as a heartbeat to prevent elections from happening
-    rpc AppendEntries (stream AppendEntriesRequest) returns (AppendEntriesResult) {}
+    rpc AppendEntries (AppendEntriesRequest) returns (AppendEntriesResult) {}
 
     // RequestVote is called by candidates to try and get a majority vote,
     // to become leader

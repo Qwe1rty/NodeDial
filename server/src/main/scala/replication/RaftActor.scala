@@ -10,7 +10,7 @@ abstract class RaftActor(implicit actorSystem: ActorSystem)
 
   type LogEntryType
 
-  abstract def commit: Function[LogEntryType, Unit]
+  def commit: Function[LogEntryType, Unit]
 
 
   override final def receive: Receive = ???
