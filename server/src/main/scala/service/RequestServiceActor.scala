@@ -3,7 +3,7 @@ package service
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import com.google.protobuf.ByteString
 import com.roundeights.hasher.Implicits._
-import common.utils.ActorDefaults
+import common.utils.DefaultActor
 import membership.api.{DeclareReadiness, MembershipAPI}
 import schema.RequestTrait
 import schema.service._
@@ -30,9 +30,9 @@ class RequestServiceActor private(
     requestProcessorActor: ActorRef,
     membershipActor: ActorRef
   )
-  extends Actor
+  extends DefaultActor
   with ActorLogging
-  with ActorDefaults {
+  with DefaultActor {
 
   final private var requestCounter = Map[String, Int]()
 

@@ -6,8 +6,10 @@ as Redis, Cassandra, and Dynamo, it is built with horizontal scalability and clo
 mind - check out the [build walkthrough](#project-setup-and-walkthrough) and deployment guide to get
 started!
 
-**Project development is currently ongoing! Check out the [project plan](#project-development-plan)
-for a development overview**
+**Project development is currently ongoing! Note that this database is not production ready,
+and is currently being built for educational purposes**
+
+**Check out the [project plan](#project-development-plan) for a development overview**
 
 
 ---
@@ -258,7 +260,7 @@ strictly essential and is skipped for now to allow the establishment the high-le
     - [x] Key isolation
       - [x] Serial execution for single keys 
       - [x] Thread partitioning
-    - [ ] Key atomicity/durability via write-ahead strategy
+    - [ ] Key durability via write-ahead strategy
     - [x] ~~Non-blocking async disk I/O~~ Thread-pool backed I/O
   - [x] Logging that should work in Akka actor contexts and non-actor contexts
   - [x] Multi-subproject setup for common components
@@ -278,12 +280,12 @@ strictly essential and is skipped for now to allow the establishment the high-le
     - [x] Service containerization  
     
 - [ ] **Milestone 3: Replication Layer**
-  - [ ] Raft implementation
-    - [ ] Leader election
-      - [ ] Follower/candidate/leader state persistence handling
-      - [ ] Voting and election mechanics: RPCs and logic
-    - [ ] Log replication
-      - [ ] Majority commit: includes `AppendEntry` handling and disk persistence 
+  - [ ] *Raft implementation*
+    - [ ] *Leader election*
+      - [ ] *Follower/candidate/leader state persistence handling*
+      - [ ] *Voting and election mechanics: RPCs and logic*
+    - [ ] *Log replication*
+      - [ ] *Majority commit: includes `AppendEntry` handling and disk persistence* 
       - [ ] Log recovery and replica log backtracking
     - [ ] Raft membership/configuration changes
     - [ ] Log compaction (if there's time) 

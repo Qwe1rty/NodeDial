@@ -7,7 +7,7 @@ import common.membership.Event.{EventType, Refute}
 import common.membership._
 import common.membership.types.NodeState.{ALIVE, DEAD, SUSPECT}
 import common.membership.types.{NodeInfo, NodeState}
-import common.utils.ActorDefaults
+import common.utils.DefaultActor
 import membership.addresser.AddressRetriever
 import membership.api._
 import membership.gossip.GossipAPI.PublishRequest
@@ -56,9 +56,8 @@ class MembershipActor private(
     protected var initializationCount: Int
   )
   (implicit protected val actorSystem: ActorSystem)
-  extends Actor
+  extends DefaultActor
   with ActorLogging
-  with ActorDefaults
   with InternalRequestDispatcher {
 
   import MembershipActor._

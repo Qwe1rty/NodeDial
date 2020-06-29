@@ -10,7 +10,7 @@ import common.ServerDefaults
 import GossipSignal.{ClusterSizeReceived, SendRPC}
 import common.membership.types.NodeState
 import common.utils.ActorTimers.Tick
-import common.utils.{ActorDefaults, ActorTimers, GrpcSettingsFactory}
+import common.utils.{DefaultActor, ActorTimers, GrpcSettingsFactory}
 import membership.MembershipActor
 import membership.api.{GetClusterSize, GetRandomNode, Membership}
 import schema.ImplicitDataConversions._
@@ -64,9 +64,8 @@ class GossipActor[KeyType: ClassTag] private(
     affiliation:     String
   )
   (implicit actorSystem: ActorSystem)
-  extends Actor
+  extends DefaultActor
   with ActorLogging
-  with ActorDefaults
   with ActorTimers {
 
   import GossipActor._
