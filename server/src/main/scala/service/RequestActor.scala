@@ -1,7 +1,7 @@
 package service
 
 import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, Props}
-import common.utils.ActorDefaults
+import common.utils.DefaultActor
 import schema.ResponseTrait
 
 import scala.concurrent.Promise
@@ -27,9 +27,8 @@ object RequestActor {
 class RequestActor[A <: ResponseTrait: ClassTag] private
     (requestPromise: Promise[A])
     (callback: Option[Array[Byte]] => A)
-  extends Actor
-  with ActorLogging
-  with ActorDefaults {
+  extends DefaultActor
+  with ActorLogging {
 
   // NOTE: objects/type classes + actor concurrency is a bad idea, so a callback is used instead
   //  https://docs.scala-lang.org/overviews/reflection/thread-safety.html

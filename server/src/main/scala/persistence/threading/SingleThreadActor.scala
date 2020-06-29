@@ -1,7 +1,7 @@
 package persistence.threading
 
 import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, Props}
-import common.utils.ActorDefaults
+import common.utils.DefaultActor
 import persistence.io.IOTask
 
 import scala.concurrent.ExecutionContext
@@ -17,9 +17,11 @@ object SingleThreadActor {
 }
 
 
-class SingleThreadActor(id: Int) extends Actor
-                                 with ActorLogging
-                                 with ActorDefaults {
+class SingleThreadActor(
+    id: Int
+  )
+  extends DefaultActor
+  with ActorLogging {
 
   implicit final private val ec: ExecutionContext = SingleThreadExecutor(id)
 

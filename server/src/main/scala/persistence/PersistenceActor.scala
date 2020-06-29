@@ -3,7 +3,7 @@ package persistence
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import better.files.File
 import common.ServerConstants
-import common.utils.ActorDefaults
+import common.utils.DefaultActor
 import membership.api.DeclareReadiness
 import persistence.io.KeyStateActor
 import service.OperationPackage
@@ -30,9 +30,8 @@ class PersistenceActor private(
     executorActor: ActorRef,
     membershipActor: ActorRef
   )
-  extends Actor
-  with ActorLogging
-  with ActorDefaults {
+  extends DefaultActor
+  with ActorLogging {
 
   private var keyMapping = Map[String, ActorRef]()
 
