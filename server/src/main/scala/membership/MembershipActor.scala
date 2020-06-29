@@ -1,6 +1,6 @@
 package membership
 
-import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
+import akka.actor.{ActorLogging, ActorRef, ActorSystem, Props}
 import common.ServerConstants
 import common.membership.Event.EventType.Empty
 import common.membership.Event.{EventType, Refute}
