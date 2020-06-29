@@ -1,6 +1,7 @@
 package partitioning
 
 import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, Props}
+import common.utils.DefaultActor
 
 
 object PartitionActor {
@@ -13,8 +14,12 @@ object PartitionActor {
 }
 
 
-class PartitionActor private(persistenceActor: ActorRef) extends Actor
-                                                         with ActorLogging {
+class PartitionActor private(
+    persistenceActor: ActorRef
+  )
+  extends DefaultActor
+  with ActorLogging {
+
   private val shardRing = ShardRing()
 
   // TODO subscribe to membership service

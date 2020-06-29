@@ -7,7 +7,7 @@ import common.ServerDefaults.ACTOR_REQUEST_TIMEOUT
 import common.membership.failureDetection.{DirectMessage, FailureDetectorServiceClient, FollowupMessage}
 import common.membership.types.NodeState
 import common.utils.ActorTimers.Tick
-import common.utils.{ActorDefaults, ActorTimers}
+import common.utils.{DefaultActor, ActorTimers}
 import membership.MembershipActor
 import membership.api.{DeclareEvent, GetRandomNode, GetRandomNodes, Membership}
 import membership.failureDetection.FailureDetectorConstants._
@@ -33,9 +33,8 @@ object FailureDetectorActor {
 class FailureDetectorActor private
     (membershipActor: ActorRef)
     (implicit actorSystem: ActorSystem)
-  extends Actor
+  extends DefaultActor
   with ActorLogging
-  with ActorDefaults
   with ActorTimers {
 
   implicit private val materializer: ActorMaterializer = ActorMaterializer()(context)

@@ -2,7 +2,7 @@ package persistence.io
 
 import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, Props}
 import better.files.File
-import common.utils.ActorDefaults
+import common.utils.DefaultActor
 import persistence.PersistenceActor
 import schema.service.{DeleteRequest, GetRequest, PostRequest}
 import service.OperationPackage
@@ -30,9 +30,8 @@ class KeyStateActor private(
     executorActor: ActorRef,
     hash: String
   )
-  extends Actor
-  with ActorLogging
-  with ActorDefaults {
+  extends DefaultActor
+  with ActorLogging {
 
   import KeyStateActor._
 

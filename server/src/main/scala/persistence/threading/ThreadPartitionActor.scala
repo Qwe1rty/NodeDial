@@ -1,7 +1,7 @@
 package persistence.threading
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
-import common.utils.ActorDefaults
+import common.utils.DefaultActor
 import persistence.io.IOTask
 
 
@@ -19,9 +19,9 @@ object ThreadPartitionActor {
 }
 
 
-class ThreadPartitionActor private() extends Actor
-                                     with ActorLogging
-                                     with ActorDefaults {
+class ThreadPartitionActor private()
+  extends DefaultActor
+  with ActorLogging {
 
   final private val threadCount: Int = Runtime.getRuntime.availableProcessors * 4
   final private val threads: Vector[ActorRef] = Vector.tabulate(threadCount)(SingleThreadActor(_))
