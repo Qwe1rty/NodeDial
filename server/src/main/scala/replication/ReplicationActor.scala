@@ -2,6 +2,8 @@ package replication
 
 import akka.actor.{ActorRef, ActorSystem, Props}
 
+import scala.concurrent.Future
+
 
 object ReplicationActor {
 
@@ -23,4 +25,11 @@ class ReplicationActor(persistenceActor: ActorRef)(implicit actorSystem: ActorSy
   override type LogEntryType = LogEntry
 
   override def commit: Function[LogEntry, Unit] = ???
+
+  /**
+   * Broadcast a new RequestVotes or AppendEntries request to all nodes in the Raft group.
+   *
+   * @param request the request
+   */
+  override protected def publishRequest(request: RaftRequest): Set[Future[RaftEvent]] = ???
 }

@@ -1,13 +1,11 @@
 package replication
 
-import akka.actor.{Actor, ActorSystem}
-import common.utils.DefaultActor
+import akka.actor.ActorSystem
 import replication.roles.RaftRoleFSM
 
 
 abstract class RaftActor(implicit actorSystem: ActorSystem)
-  extends DefaultActor
-  with RaftRoleFSM {
+  extends RaftRoleFSM {
 
   type LogEntryType
 

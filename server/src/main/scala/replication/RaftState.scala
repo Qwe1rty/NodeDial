@@ -9,7 +9,7 @@ import common.persistence.PersistentString
  * like election status, log entries, etc.
  *
  * Since some variables need to be persisted to disk, the class is inherently non-immutable
- * and therefore the RaftState class is defined as a mutable object
+ * and therefore the RaftState class is defined as a partially mutable object
  */
 object RaftState {
 
@@ -20,7 +20,7 @@ object RaftState {
 }
 
 
-case class RaftState() {
+class RaftState() {
 
   import RaftState._
 

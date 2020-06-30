@@ -8,12 +8,12 @@ import replication._
  */
 trait RaftRole {
 
-  final def processRaftEvent(event: RaftRequest, state: RaftState): Option[RaftResult] = event match {
+  final def processRaftEvent(event: RaftEvent, state: RaftState): (Option[RaftResult], RaftRole) = event.message match {
     case appendEntry: AppendEntriesRequest => processAppendEntry(appendEntry, state)
     case requestVote: RequestVoteRequest   => processRequestVote(requestVote, state)
   }
 
-  def processAppendEntry(appendEntry: AppendEntriesRequest, state: RaftState): Option[AppendEntriesResult]
+  def processAppendEntry(appendEntry: AppendEntriesRequest, state: RaftState): (Option[AppendEntriesResult], RaftRole)
 
-  def processRequestVote(requestVote: RequestVoteRequest, state: RaftState): Option[RequestVoteResult]
+  def processRequestVote(requestVote: RequestVoteRequest, state: RaftState): (Option[RequestVoteResult], RaftRole)
 }
