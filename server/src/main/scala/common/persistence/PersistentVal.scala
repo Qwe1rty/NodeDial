@@ -43,6 +43,14 @@ abstract class PersistentVal[A] private[persistence](
       a
   }
 
+  /**
+   * Deletes the value from disk (and memory)
+   */
+  final def delete(): Unit = {
+    file.delete()
+    value = None
+  }
+
 
   /**
    * The function for serializing value to bytes

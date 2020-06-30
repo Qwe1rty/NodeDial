@@ -5,11 +5,14 @@ option java_package = "replication";
 option java_outer_classname = "ChordialRaftMessages";
 
 import "replication/LogEntry.proto";
+import "scalapb/scalapb.proto";
 
 package chordial.replication;
 
 
 message AppendEntriesRequest {
+
+    option (scalapb.message).extends = "replication.RaftRequest";
 
     // Leader sends it's term and ID information for administrative purposes:
     // * the term so follower knows if leadership is valid
@@ -31,6 +34,8 @@ message AppendEntriesRequest {
 
 message AppendEntriesResult {
 
+    option (scalapb.message).extends = "replication.RaftResult";
+
     // Returns the follower's current term
     required uint64 current_term = 1;
 
@@ -40,6 +45,8 @@ message AppendEntriesResult {
 }
 
 message RequestVoteRequest {
+
+    option (scalapb.message).extends = "replication.RaftRequest";
 
     // Candidate sends it's term and ID information for administrative purposes:
     // * the term so other nodes can figure whether candidate deserves vote
@@ -54,6 +61,8 @@ message RequestVoteRequest {
 }
 
 message RequestVoteResult {
+
+    option (scalapb.message).extends = "replication.RaftResult";
 
     // Returns the follower's current term
     required uint64 current_term = 1;

@@ -4,6 +4,14 @@ import better.files.File
 import schema.ImplicitGrpcConversions._
 
 
+object PersistentString {
+
+  def apply(file: File): PersistentString = {
+    new PersistentString(file)
+  }
+}
+
+
 class PersistentString(file: File) extends PersistentVal[String](file) {
 
   /**

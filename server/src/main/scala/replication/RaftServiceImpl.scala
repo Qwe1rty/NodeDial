@@ -1,11 +1,9 @@
 package replication
 
-import akka.NotUsed
 import akka.actor.{ActorRef, ActorSystem}
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.http.scaladsl.{Http, HttpConnectionContext}
 import akka.pattern.ask
-import akka.stream.scaladsl.Source
 import akka.stream.{ActorMaterializer, Materializer}
 import common.ServerDefaults.ACTOR_REQUEST_TIMEOUT
 import org.slf4j.LoggerFactory
