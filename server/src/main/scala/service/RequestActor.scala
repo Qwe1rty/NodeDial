@@ -4,7 +4,7 @@ import akka.actor.{ActorContext, ActorLogging, ActorRef, Props}
 import common.utils.DefaultActor
 import io.jvm.uuid._
 import schema.ResponseTrait
-import service.RequestActor.RequestCallback
+import service.RequestActor.{RequestCallback, ResultType}
 
 import scala.concurrent.Promise
 import scala.reflect.ClassTag
@@ -14,6 +14,7 @@ import scala.util.{Failure, Success, Try}
 object RequestActor {
 
   type RequestCallback[A <: ResponseTrait] = Function[Option[Array[Byte]], A]
+  type ResultType = Try[Option[Array[Byte]]]
 
 
   def apply[A <: ResponseTrait: ClassTag](
@@ -42,17 +43,15 @@ class RequestActor[A <: ResponseTrait: ClassTag] private(
 
   override def receive: Receive = {
 
-    case ioResult: Try[Option[Array[Byte]]] => {
+    case ioResult: ResultType =>
       ioResult match {
         case Success(result) => requestPromise.complete(Try(callback(result)))
         case Failure(e) => requestPromise.failure(e)
       }
       context.stop(self)
-    }
 
-    case x => {
+    case x =>
       log.error(receivedUnknown(x))
       context.stop(self)
-    }
   }
 }

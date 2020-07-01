@@ -13,10 +13,10 @@ import schema.RequestTrait
  * @param requestHash the hashed request key
  * @param requestBody the request body
  */
-class OperationPackage(
-  val requestActor: ActorPath,
-  val requestHash:  String,
-  val requestBody:  RequestTrait
+case class OperationPackage(
+  requestActor: ActorPath,
+  requestHash:  String,
+  requestBody:  RequestTrait
 )
 
 

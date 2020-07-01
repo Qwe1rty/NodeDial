@@ -44,18 +44,17 @@ class PersistenceActor private(
 
   override def receive: Receive = {
 
-    case operation: OperationPackage => {
+    case task: PersistenceTask =>
+      log.info(s"Persistence task with hash ${task.keyHash} and request actor path ${task.requestActor} received")
 
-      log.info(s"Operation with hash ${operation.requestHash} received by persistence")
-
-      if (!(keyMapping isDefinedAt operation.requestHash)) {
-        keyMapping += operation.requestHash -> KeyStateActor(executorActor, operation.requestHash)
-        log.debug(s"No existing state actor found for hash ${operation.requestHash} - creating new state actor")
+      if (!(keyMapping isDefinedAt task.keyHash)) {
+        keyMapping += task.keyHash -> KeyStateActor(executorActor, task.keyHash)
+        log.debug(s"No existing state actor found for hash ${task.keyHash} - creating new state actor")
       }
-      keyMapping(operation.requestHash) ! operation
-    }
+
+      keyMapping(task.keyHash) ! task
 
     case x => log.error(receivedUnknown(x))
-
   }
+
 }
