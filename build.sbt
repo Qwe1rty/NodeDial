@@ -31,13 +31,15 @@ lazy val dependencies =
     // Server-specific libraries
     val betterFilesV = "3.8.0"
     val hasherV      = "1.2.2"
-    val raftV        = "0.2.1"
+    val uuidV        = "0.3.1"
 
     val betterFiles = "com.github.pathikrit" %% "better-files"  % betterFilesV
     val hasher      = "com.outr"             %% "hasher"        % hasherV
+    val uuid        = "io.jvm.uuid"          %% "scala-uuid"    % uuidV
 
     // Client-specific libraries
     val scoptV      = "3.7.1"
+
     val scopt       = "com.github.scopt"     %% "scopt" % scoptV
   }
 
@@ -111,6 +113,7 @@ lazy val server = (project in file("server"))
     libraryDependencies ++= loggingLibraryGroup ++ Seq(
       dependencies.betterFiles,
       dependencies.hasher,
+      dependencies.uuid,
     )
   )
 
