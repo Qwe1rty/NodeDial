@@ -56,11 +56,12 @@ abstract class RaftRoleFSM(implicit actorSystem: ActorSystem) extends FSM[RaftRo
 
     case Event(event: RaftEvent, state: RaftState) =>
       val (response, newRole) = currentRole.processRaftEvent(event, state)
-      response.foreach(sender ! _) // TODO determine non-sending case
 
-      // TODO differentiate between single-reply and broadcast RPC tasks
-      (if (newRole == currentRole) stay else goto(newRole))
-        .using(state)
+      response match {
+        case ReplyTask(reply) => sender ! reply
+      }
+
+      goto(newRole).using(state)
   }
 
   private def broadcast(request: RaftRequest): Unit = {

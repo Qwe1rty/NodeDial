@@ -1,7 +1,8 @@
 package replication
 
+import better.files.File
 import common.ServerConstants
-import common.persistence.PersistentString
+import common.persistence.{PersistentLong, PersistentString}
 
 
 /**
@@ -16,7 +17,10 @@ object RaftState {
   private val RAFT_DIR             = ServerConstants.BASE_DIRECTORY/"raft"
   private val RAFT_STATE_EXTENSION = ".state"
 
+
   def apply(): RaftState = new RaftState
+
+  private def createRaftFile(filename: String): File = RAFT_DIR/filename/RAFT_STATE_EXTENSION
 }
 
 
@@ -24,7 +28,8 @@ class RaftState() {
 
   import RaftState._
 
-  val votedFor: PersistentString = PersistentString(RAFT_DIR/"votedFor"/RAFT_STATE_EXTENSION)
+  val currentTerm: PersistentLong = PersistentLong(createRaftFile("currentTerm"))
+  val votedFor: PersistentString = PersistentString(createRaftFile("votedFor"))
 
   val commitIndex: Long = 0
   val lastApplied: Long = 0

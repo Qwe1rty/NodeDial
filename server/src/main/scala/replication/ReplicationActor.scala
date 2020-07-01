@@ -26,10 +26,4 @@ class ReplicationActor(persistenceActor: ActorRef)(implicit actorSystem: ActorSy
 
   override def commit: Function[LogEntry, Unit] = ???
 
-  /**
-   * Broadcast a new RequestVotes or AppendEntries request to all nodes in the Raft group.
-   *
-   * @param request the request
-   */
-  override protected def publishRequest(request: RaftRequest): Set[Future[RaftEvent]] = ???
 }
