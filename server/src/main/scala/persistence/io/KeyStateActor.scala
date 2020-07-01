@@ -5,7 +5,7 @@ import better.files.File
 import common.utils.DefaultActor
 import persistence._
 import persistence.threading.ThreadPartitionActor.PartitionedTask
-import service.RequestActor.ResultType
+import service.RequestActor.Result
 
 import scala.collection.mutable
 import scala.language.implicitConversions
@@ -101,7 +101,7 @@ class KeyStateActor private(
    *
    * @param result the request result
    */
-  private def complete(result: ResultType): Unit = {
+  private def complete(result: Result): Unit = {
     pendingRequest match {
       case Some(requestPath) => actorContext.actorSelection(requestPath) ! result
       case None => log.error("Request complete called when no requests are pending")

@@ -14,6 +14,9 @@ JAR_LOCATION  = $(ROOT_LOCATION)-jars
 clean:
 	@sbt clean
 
+compile: clean
+	@sbt compile
+
 build: clean
 	@sbt assembly
 

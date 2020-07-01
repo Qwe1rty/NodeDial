@@ -1,25 +1,26 @@
 package service
 
-import akka.actor.{ActorContext, ActorLogging, ActorRef, Props}
+import akka.actor.{ActorContext, ActorLogging, ActorPath, ActorRef, Props}
 import common.utils.DefaultActor
 import io.jvm.uuid._
 import schema.ResponseTrait
-import service.RequestActor.{RequestCallback, ResultType}
+import service.RequestActor.{Result, ResultCallback}
 
-import scala.concurrent.Promise
+import scala.concurrent.{Future, Promise}
 import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
 
 
 object RequestActor {
 
-  type RequestCallback[A <: ResponseTrait] = Function[Option[Array[Byte]], A]
-  type ResultType = Try[Option[Array[Byte]]]
+  type ResultCallback[A <: ResponseTrait] = Function[ResultType, A]
+  type ResultType = Option[Array[Byte]]
+  type Result = Try[ResultType]
 
 
   def apply[A <: ResponseTrait: ClassTag](
       requestPromise: Promise[A],
-      callback: RequestCallback[A]
+      callback: ResultCallback[A]
     )
     (implicit parentContext: ActorContext): ActorRef = {
 
@@ -28,12 +29,21 @@ object RequestActor {
       s"requestActor-${UUID.random}"
     )
   }
+
+  def register[A <: ResponseTrait: ClassTag](
+      callback: ResultCallback[A]
+    )
+    (implicit parentContext: ActorContext): (ActorPath, Future[A]) = {
+
+    val requestPromise = Promise[A]()
+    (apply(requestPromise, callback).path, requestPromise.future)
+  }
 }
 
 
 class RequestActor[A <: ResponseTrait: ClassTag] private(
     requestPromise: Promise[A],
-    callback: RequestCallback[A]
+    callback: ResultCallback[A]
   )
   extends DefaultActor
   with ActorLogging {
@@ -43,7 +53,7 @@ class RequestActor[A <: ResponseTrait: ClassTag] private(
 
   override def receive: Receive = {
 
-    case ioResult: ResultType =>
+    case ioResult: Result =>
       ioResult match {
         case Success(result) => requestPromise.complete(Try(callback(result)))
         case Failure(e) => requestPromise.failure(e)
