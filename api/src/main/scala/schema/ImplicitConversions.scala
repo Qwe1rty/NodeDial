@@ -10,17 +10,26 @@ import scala.language.implicitConversions
 
 object ImplicitGrpcConversions {
 
+  // String & Array[Byte]
   implicit def stringToByteArray(value: String): Array[Byte] =
     value.getBytes(StandardCharsets.UTF_8)
 
   implicit def byteArrayToString(bytes: Array[Byte]): String =
     new String(bytes, StandardCharsets.UTF_8)
 
+  // String & ByteString
   implicit def stringToByteString(value: String): ByteString =
     ByteString.copyFrom(value)
 
   implicit def byteStringToString(bytes: ByteString): String =
     bytes.toStringUtf8
+
+  // Array[Byte] & ByteString
+  implicit def byteArrayToByteString(value: Array[Byte]): ByteString =
+    ByteString.copyFrom(value)
+
+  implicit def byteStringToByteArray(value: ByteString): Array[Byte] =
+    value.toByteArray
 }
 
 

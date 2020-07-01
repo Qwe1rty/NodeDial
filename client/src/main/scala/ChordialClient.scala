@@ -1,7 +1,8 @@
 import ch.qos.logback.classic.Level
 import schema.ImplicitGrpcConversions._
 import schema.LoggingConfiguration
-import schema.service.{GetRequest, PostRequest, ReadinessCheck}
+import schema.service.ReadinessCheck
+import schema.service.Request.{GetRequest, PostRequest}
 import scopt.OptionParser
 
 import scala.concurrent.Await

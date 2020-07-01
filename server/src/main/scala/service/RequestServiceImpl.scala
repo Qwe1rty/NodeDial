@@ -5,9 +5,11 @@ import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.http.scaladsl.{Http, HttpConnectionContext}
 import akka.pattern.ask
 import akka.stream.{ActorMaterializer, Materializer}
-import membership.api.{GetReadiness, MembershipAPI}
+import membership.api.GetReadiness
 import org.slf4j.LoggerFactory
 import schema.PortConfiguration.EXTERNAL_REQUEST_PORT
+import schema.service.Request.{DeleteRequest, GetRequest, PostRequest}
+import schema.service.Response.{DeleteResponse, GetResponse, PostResponse}
 import schema.service._
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -15,9 +17,11 @@ import scala.concurrent.{ExecutionContext, Future}
 
 object RequestServiceImpl {
 
-  def apply
-      (requestServiceActor: ActorRef, membershipActor: ActorRef)
-      (implicit actorSystem: ActorSystem): RequestService = {
+  def apply(
+      requestServiceActor: ActorRef,
+      membershipActor: ActorRef
+    )
+    (implicit actorSystem: ActorSystem): RequestService = {
 
     new RequestServiceImpl(requestServiceActor, membershipActor)
   }
@@ -80,7 +84,7 @@ class RequestServiceImpl(
     (membershipActor ? GetReadiness)
       .mapTo[Boolean]
       .map { readiness =>
-        log.debug(s"Readiness check response with: ${readiness}")
+        log.debug(s"Readiness check response with: $readiness")
         readiness
       }
       .map(ReadinessConfirmation(_))
