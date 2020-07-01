@@ -1,17 +1,16 @@
 package service
 
 import akka.actor.{ActorLogging, ActorPath, ActorRef, ActorSystem, Props}
-import com.google.protobuf.ByteString
 import com.roundeights.hasher.Implicits._
 import common.utils.DefaultActor
 import membership.api.DeclareReadiness
+import schema.ImplicitGrpcConversions._
 import schema.RequestTrait
 import schema.service.Request.{DeleteRequest, GetRequest, PostRequest}
 import schema.service.Response.{DeleteResponse, GetResponse, PostResponse}
-import schema.ImplicitGrpcConversions._
 import service.RequestActor.ResultCallback
 
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.Future
 
 
 object RequestServiceActor {
@@ -51,14 +50,13 @@ class RequestServiceActor private(
         Future.failed(new IllegalArgumentException("Key value cannot be empty or undefined"))
       }
 
-      val hash: String = request.key.sha256
       val (requestActor, future): (ActorPath, Future[_]) = RequestActor.register(request match {
 
         case _: GetRequest =>
           log.info(s"Get request with key '${request.key}' received")
 
           {
-            case Some(bytes) => new GetResponse(bytes)
+            case Some(bytes) => new GetResponse(byteArrayToByteString(bytes))
             case None => throw new IllegalStateException("Get request should not receive None object")
           }: ResultCallback[GetResponse]
 
@@ -81,8 +79,9 @@ class RequestServiceActor private(
 
       log.debug(s"Request actor initiated with path $requestActor for key '${request.key}'")
 
+      val hash: String = request.key.sha256
       requestProcessorActor ! OperationPackage(requestActor, hash, request)
-      log.debug(s"Operation package sent with hash ${hash}, for key '${request.key}'")
+      log.debug(s"Operation package sent with hash $hash, for key '${request.key}'")
 
       sender ! future
       log.debug("Future has been returned to gRPC service")
