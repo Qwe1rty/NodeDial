@@ -1,14 +1,40 @@
 package replication.roles
 
 
-sealed trait RPCTask[+Task] {
-  def task: Task
+/**
+ * An RPC task represents some sort of network task that needs to be completed.
+ * For example, this can be replying to an RPC, or broadcasting a message across to
+ * all known servers
+ *
+ * @tparam RPCObject the RPC object associated with the task (eg. request
+ *                   parameters for an RPC)
+ */
+sealed trait RPCTask[+RPCObject] {
+  def task: RPCObject
 }
 
 
-case class BroadcastTask[Task](task: Task) extends RPCTask[Task]
+/**
+ * RPCTaskHandler is an interface for specifying the side-effecting network calls
+ * that result from an RPCTask
+ *
+ * @tparam RPCObject the RPC object associated with the task (eg. request
+ *                   parameters for an RPC)
+ */
+trait RPCTaskHandler[-RPCObject] {
 
-case class RequestTask[Task](task: Task) extends RPCTask[Task]
+  /**
+   * Make the network calls as dictated by the RPC task
+   *
+   * @param RPCTask the RPC task
+   */
+  def handleRPCTask(RPCTask: RPCTask[RPCObject]): Unit
+}
 
-case class ReplyTask[Task](task: Task) extends RPCTask[Task]
+
+case class BroadcastTask[RPCObject](task: RPCObject) extends RPCTask[RPCObject]
+
+case class RequestTask[RPCObject](task: RPCObject) extends RPCTask[RPCObject]
+
+case class ReplyTask[RPCObject](task: RPCObject) extends RPCTask[RPCObject]
 

@@ -1,7 +1,7 @@
 package replication.roles
 
 import akka.actor.{ActorSystem, FSM}
-import replication.{RaftEvent, RaftRequest, RaftState}
+import replication.{RaftEvent, RaftMessage, RaftRequest, RaftState}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
@@ -15,7 +15,9 @@ import scala.util.{Failure, Success}
  * This FSM also includes the raft volatile and persistent state variables, and will
  * internally modify them as needed
  */
-abstract class RaftRoleFSM(implicit actorSystem: ActorSystem) extends FSM[RaftRole, RaftState] {
+abstract class RaftRoleFSM(implicit actorSystem: ActorSystem)
+  extends FSM[RaftRole, RaftState]
+  with RPCTaskHandler[RaftMessage] {
 
   implicit val executionContext: ExecutionContext = actorSystem.dispatcher
 
@@ -55,23 +57,17 @@ abstract class RaftRoleFSM(implicit actorSystem: ActorSystem) extends FSM[RaftRo
     case Event(event: RaftEvent, state: RaftState) =>
       val (response, newRole) = currentRole.processRaftEvent(event, state)
 
-      response.foreach {
-        case ReplyTask(reply) => sender ! reply
-        case BroadcastTask(task) => task match {
-          case request: RaftRequest => broadcast(request)
-        }
-      }
-
+      response.foreach(handleRPCTask)
       goto(newRole).using(state)
   }
 
-  private def broadcast(request: RaftRequest): Unit = {
-    publishRequest(request).foreach {
-        _.onComplete {
+  override def handleRPCTask(RPCTask: RPCTask[RaftMessage]): Unit = {
+    case ReplyTask(reply) => sender ! reply
+    case BroadcastTask(message) => message match {
+      case request: RaftRequest => publishRequest(request).foreach(_.onComplete {
         case Success(event) => self ! event
-        case Failure(reason) =>
-          log.debug(s"RPC reply failed for request with reason: ${reason.getLocalizedMessage}")
-      }
+        case Failure(reason) => log.debug(s"RPC reply failed: ${reason.getLocalizedMessage}")
+      })
     }
   }
 
