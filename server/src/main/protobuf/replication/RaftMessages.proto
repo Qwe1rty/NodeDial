@@ -10,6 +10,17 @@ import "scalapb/scalapb.proto";
 package chordial.replication;
 
 
+message AppendEntryEvent {
+
+    option (scalapb.message).extends = "replication.RaftMessage";
+
+    // The log entry that is actually being replicated under raft
+    required LogEntry log_entry = 1;
+
+    // Compressed write value for the request
+    required bytes compressed_value = 2;
+}
+
 message AppendEntriesRequest {
 
     option (scalapb.message).extends = "replication.RaftRequest";
@@ -24,8 +35,8 @@ message AppendEntriesRequest {
     required uint64 prev_log_index = 3;
     required uint64 prev_log_term = 4;
 
-    // Log entries to replicate. Left empty for heartbeats
-    repeated LogEntry entries = 5;
+    // Append entries to replicate. Left empty for heartbeats
+    repeated AppendEntryEvent entries = 5;
 
     // The index that specifies the entries that have been successfully
     // committed by a majority

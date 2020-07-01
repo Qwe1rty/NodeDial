@@ -58,7 +58,8 @@ abstract class RaftRoleFSM(implicit actorSystem: ActorSystem) extends FSM[RaftRo
       val (response, newRole) = currentRole.processRaftEvent(event, state)
 
       response match {
-        case ReplyTask(reply) => sender ! reply
+        case Some(ReplyTask(reply)) => sender ! reply
+          // TODO the rest
       }
 
       goto(newRole).using(state)

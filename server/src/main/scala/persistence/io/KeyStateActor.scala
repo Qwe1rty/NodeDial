@@ -1,10 +1,10 @@
 package persistence.io
 
-import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, Props}
+import akka.actor.{ActorContext, ActorLogging, ActorRef, Props}
 import better.files.File
 import common.utils.DefaultActor
 import persistence.PersistenceActor
-import schema.service.{DeleteRequest, GetRequest, PostRequest}
+import schema.service.Request.{DeleteRequest, GetRequest, PostRequest}
 import service.OperationPackage
 
 import scala.collection.mutable

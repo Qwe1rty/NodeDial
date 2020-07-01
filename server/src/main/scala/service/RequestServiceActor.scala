@@ -1,12 +1,13 @@
 package service
 
-import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
+import akka.actor.{ActorLogging, ActorRef, ActorSystem, Props}
 import com.google.protobuf.ByteString
 import com.roundeights.hasher.Implicits._
 import common.utils.DefaultActor
-import membership.api.{DeclareReadiness, MembershipAPI}
+import membership.api.DeclareReadiness
 import schema.RequestTrait
-import schema.service._
+import schema.service.Request.{DeleteRequest, GetRequest, PostRequest}
+import schema.service.Response.{DeleteResponse, GetResponse, PostResponse}
 
 import scala.concurrent.{Future, Promise}
 
@@ -31,8 +32,7 @@ class RequestServiceActor private(
     membershipActor: ActorRef
   )
   extends DefaultActor
-  with ActorLogging
-  with DefaultActor {
+  with ActorLogging {
 
   final private var requestCounter = Map[String, Int]()
 

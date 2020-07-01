@@ -4,7 +4,7 @@ import replication.{AppendEntriesRequest, AppendEntriesResult, RaftState, Reques
 
 case object Candidate extends RaftRole {
 
-  override def processAppendEntry(appendEntry: AppendEntriesRequest, state: RaftState): (Option[AppendEntriesResult], RaftRole) = ???
+  override def processAppendEntryRequest(appendEntry: AppendEntriesRequest, state: RaftState): (Option[AppendEntriesResult], RaftRole) = ???
 
-  override def processRequestVote(requestVote: RequestVoteRequest, state: RaftState): (Option[RequestVoteResult], RaftRole) = ???
+  override def processRequestVoteRequest(requestVote: RequestVoteRequest, state: RaftState): (Option[RequestVoteResult], RaftRole) = ???
 }

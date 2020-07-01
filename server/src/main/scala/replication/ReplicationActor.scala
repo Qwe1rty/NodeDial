@@ -3,9 +3,9 @@ package replication
 import akka.actor.{ActorRef, ActorSystem, Props}
 import com.roundeights.hasher.Implicits._
 import replication.eventlog.Compression
-import service.OperationPackage
-import schema.service.Request
 import schema.ImplicitGrpcConversions._
+import schema.service.Request
+import service.OperationPackage
 
 import scala.util.{Failure, Success}
 
@@ -30,9 +30,6 @@ class ReplicationActor(persistenceActor: ActorRef)(implicit actorSystem: ActorSy
 
   override type LogEntryType = LogEntry
 
-  override def commit: Function[LogEntry, Unit] = ???
-
-
   override def receive: Receive = {
 
     // Handles upstream requests
@@ -44,12 +41,20 @@ class ReplicationActor(persistenceActor: ActorRef)(implicit actorSystem: ActorSy
 
       // Post requests must be committed by the raft group before it can be written to disk
       case Request.PostRequest(key, value) => compress(value) match {
-        case Success(gzip) => super.receive(new LogEntry(key.sha256.bytes, gzip))
-        case Failure(e) => log.error(s"Compression error for key $key for reason: ${e.getLocalizedMessage}")
+        case Success(gzip) =>
+          super.receive(new AppendEntryEvent(new LogEntry(key.sha256.bytes, LogCommand.WRITE), gzip))
+        case Failure(e) =>
+          log.error(s"Compression error for key $key for reason: ${e.getLocalizedMessage}")
       }
+
+      // Delete requests also have to go through raft
+      case Request.DeleteRequest(key) =>
+        super.receive(new AppendEntryEvent(new LogEntry(key.sha256.bytes, LogCommand.DELETE), Array[Byte]()))
     }
 
     // Catches raft events, along with anything else
     case x => super.receive(x)
   }
+
+  override def commit: Function[LogEntry, Unit] = ???
 }

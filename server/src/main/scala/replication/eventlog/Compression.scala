@@ -1,6 +1,6 @@
 package replication.eventlog
 
-import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
+import java.io.{ByteArrayInputStream, ByteArrayOutputStream, InputStream}
 import java.util.zip.{GZIPInputStream, GZIPOutputStream}
 
 import scala.util.Try
@@ -29,8 +29,10 @@ trait Compression {
    * @return decompressed bytes
    */
   def decompress(bytes: Array[Byte]): Try[Array[Byte]] = Try {
-    new GZIPInputStream(new ByteArrayInputStream(bytes))
-      .readAllBytes()
+    val bytesInputStream: InputStream = new GZIPInputStream(new ByteArrayInputStream(bytes))
+    val raw = bytesInputStream.readAllBytes()
+    bytesInputStream.close()
+    raw
   }
 
 }

@@ -8,6 +8,8 @@ import akka.stream.{ActorMaterializer, Materializer}
 import membership.api.{GetReadiness, MembershipAPI}
 import org.slf4j.LoggerFactory
 import schema.PortConfiguration.EXTERNAL_REQUEST_PORT
+import schema.service.Request.{DeleteRequest, GetRequest, PostRequest}
+import schema.service.Response.{DeleteResponse, GetResponse, PostResponse}
 import schema.service._
 
 import scala.concurrent.{ExecutionContext, Future}

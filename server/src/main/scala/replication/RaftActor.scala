@@ -19,5 +19,4 @@ abstract class RaftActor(implicit actorSystem: ActorSystem)
    * @param request the request
    */
   override protected def publishRequest(request: RaftRequest): Set[Future[RaftEvent]] = ???
-
 }

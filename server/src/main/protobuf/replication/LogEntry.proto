@@ -12,6 +12,11 @@ message LogEntry {
     // SHA-256 hash value of the key
     required bytes key_hash = 1;
 
-    // Compressed write value for the request
-    required bytes compressed_value = 2;
+    // Determines the type of command the entry represents
+    required LogCommand command = 2;
+}
+
+enum LogCommand {
+    WRITE = 0;
+    DELETE = 1;
 }

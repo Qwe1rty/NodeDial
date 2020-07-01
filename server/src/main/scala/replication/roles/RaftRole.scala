@@ -8,14 +8,27 @@ import replication._
  */
 trait RaftRole {
 
-  final def processRaftEvent(event: RaftEvent, state: RaftState): (RPCTask[RaftResult], RaftRole) = {
-    event.message match {
-      case appendEntry: AppendEntriesRequest => processAppendEntry(appendEntry, state)
-      case requestVote: RequestVoteRequest   => processRequestVote(requestVote, state)
-    }
+  /** The output that contains information about what RPC actions need to be done, and next role state */
+  type EventResult = (Option[RPCTask[RaftEvent]], RaftRole)
+
+  /** Ingest a Raft event and return the event result */
+  final def processRaftEvent(event: RaftEvent, state: RaftState): EventResult = {
+    (event.message match {
+      case appendEntry: AppendEntryEvent     => processAppendEntryEvent(appendEntry) _
+      case appendEntry: AppendEntriesRequest => processAppendEntryRequest(appendEntry) _
+      case requestVote: RequestVoteRequest   => processRequestVoteRequest(requestVote) _
+      case appendEntry: AppendEntriesResult  => processAppendEntryResult(appendEntry) _
+      case requestVote: RequestVoteResult    => processRequestVoteResult(requestVote) _
+    })(state)
   }
 
-  def processAppendEntry(appendEntry: AppendEntriesRequest, state: RaftState): (RPCTask[AppendEntriesResult], RaftRole)
+  def processAppendEntryEvent(appendEntry: AppendEntryEvent)(state: RaftState): EventResult
 
-  def processRequestVote(requestVote: RequestVoteRequest, state: RaftState): (RPCTask[RequestVoteResult], RaftRole)
+  def processAppendEntryRequest(appendEntry: AppendEntriesRequest)(state: RaftState): EventResult
+
+  def processRequestVoteRequest(requestVote: RequestVoteRequest)(state: RaftState): EventResult
+
+  def processAppendEntryResult(appendEntry: AppendEntriesResult)(state: RaftState): EventResult
+
+  def processRequestVoteResult(requestVoe: RequestVoteResult)(state: RaftState): EventResult
 }
