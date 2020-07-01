@@ -10,7 +10,7 @@ package chordial.replication;
 message LogEntry {
 
     // SHA-256 hash value of the key
-    required string key_hash = 1;
+    required bytes key_hash = 1;
 
     // Compressed write value for the request
     required bytes compressed_value = 2;

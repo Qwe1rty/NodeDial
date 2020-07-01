@@ -1,11 +1,11 @@
 syntax = "proto2";
 
 option java_multiple_files = true;
-option java_package = "schema";
+option java_package = "schema.service";
 option java_outer_classname = "ChordialRequestService";
 
 import "google/api/annotations.proto";
-import "RequestMessages.proto";
+import "schema/RequestMessages.proto";
 
 package chordial.server;
 
