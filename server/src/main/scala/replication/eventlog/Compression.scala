@@ -30,7 +30,8 @@ trait Compression {
    */
   def decompress(bytes: Array[Byte]): Try[Array[Byte]] = Try {
     val bytesInputStream: InputStream = new GZIPInputStream(new ByteArrayInputStream(bytes))
-    val raw = bytesInputStream.readAllBytes()
+    val raw = new Array[Byte](bytesInputStream.available())
+    bytesInputStream.read(raw)
     bytesInputStream.close()
     raw
   }

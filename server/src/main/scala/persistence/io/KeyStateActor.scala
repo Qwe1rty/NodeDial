@@ -70,7 +70,7 @@ class KeyStateActor private(
    */
   private def process(): Unit = {
     exclusiveLocked = true
-    pendingRequest = Some(requestQueue.head.requestActor)
+    pendingRequest = requestQueue.head.requestActor
 
     schedule(requestQueue.dequeue() match {
 
@@ -101,12 +101,8 @@ class KeyStateActor private(
    *
    * @param result the request result
    */
-  private def complete(result: Result): Unit = {
-    pendingRequest match {
-      case Some(requestPath) => actorContext.actorSelection(requestPath) ! result
-      case None => log.error("Request complete called when no requests are pending")
-    }
-  }
+  private def complete(result: Result): Unit =
+    pendingRequest.foreach(actorContext.actorSelection(_) ! result)
 
 
   override def receive: Receive = {

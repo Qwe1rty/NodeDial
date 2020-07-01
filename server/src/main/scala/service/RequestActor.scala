@@ -20,23 +20,26 @@ object RequestActor {
 
   def apply[A <: ResponseTrait: ClassTag](
       requestPromise: Promise[A],
-      callback: ResultCallback[A]
+      callback: ResultCallback[A],
+      uuid: UUID
     )
     (implicit parentContext: ActorContext): ActorRef = {
 
     parentContext.actorOf(
       Props(new RequestActor[A](requestPromise, callback)),
-      s"requestActor-${UUID.random}"
+      s"requestActor-${uuid.string}"
     )
   }
 
   def register[A <: ResponseTrait: ClassTag](
       callback: ResultCallback[A]
     )
-    (implicit parentContext: ActorContext): (ActorPath, Future[A]) = {
+    (implicit parentContext: ActorContext): (ActorPath, Future[A], UUID) = {
 
     val requestPromise = Promise[A]()
-    (apply(requestPromise, callback).path, requestPromise.future)
+    val uuid = UUID.random
+
+    (apply(requestPromise, callback, uuid).path, requestPromise.future, uuid)
   }
 }
 

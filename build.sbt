@@ -15,11 +15,13 @@ lazy val dependencies =
     val protoCommonV = "1.17.0"
     val grpcCommonV  = "1.17.0"
     val scalaProtoV  = scalapb.compiler.Version.scalapbVersion
+    val uuidV        = "0.3.1"
     val ipAddressesV = "scala_upgrade"
 
     val protoCommon = "com.google.api.grpc"   % "proto-google-common-protos" % protoCommonV % "protobuf"
     val grpcCommon  = "com.google.api.grpc"   % "grpc-google-common-protos"  % grpcCommonV  % "protobuf"
     val scalaProto  = "com.thesamet.scalapb" %% "scalapb-runtime"            % scalaProtoV  % "protobuf"
+    val uuid        = "io.jvm.uuid"          %% "scala-uuid"                 % uuidV
 
     // Logging libraries
     val akkaSLF4jV = "2.6.0"
@@ -31,11 +33,9 @@ lazy val dependencies =
     // Server-specific libraries
     val betterFilesV = "3.8.0"
     val hasherV      = "1.2.2"
-    val uuidV        = "0.3.1"
 
     val betterFiles = "com.github.pathikrit" %% "better-files"  % betterFilesV
     val hasher      = "com.outr"             %% "hasher"        % hasherV
-    val uuid        = "io.jvm.uuid"          %% "scala-uuid"    % uuidV
 
     // Client-specific libraries
     val scoptV      = "3.7.1"
@@ -52,6 +52,7 @@ lazy val grpcLibraryGroup = Seq(
   dependencies.protoCommon,
   dependencies.grpcCommon,
   dependencies.scalaProto,
+  dependencies.uuid,
 )
 
 lazy val loggingLibraryGroup = Seq(

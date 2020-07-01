@@ -14,11 +14,17 @@ message AppendEntryEvent {
 
     option (scalapb.message).extends = "replication.RaftMessage";
 
-    // The log entry that is actually being replicated under raft
+    // The log entry that is actually being replicated under Raft
     required LogEntry log_entry = 1;
 
+    // The UUID that identifies this event across the Raft cluster.
+    //
+    // Not actually used by the Raft algorithm itself, but it makes client
+    // side code much easier by making these trackable.
+    required bytes uuid = 2;
+
     // Compressed write value for the request
-    required bytes compressed_value = 2;
+    required bytes compressed_value = 3;
 }
 
 message AppendEntriesRequest {

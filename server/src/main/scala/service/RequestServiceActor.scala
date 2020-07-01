@@ -1,8 +1,8 @@
 package service
 
 import akka.actor.{ActorLogging, ActorPath, ActorRef, ActorSystem, Props}
-import com.roundeights.hasher.Implicits._
 import common.utils.DefaultActor
+import io.jvm.uuid._
 import membership.api.DeclareReadiness
 import schema.ImplicitGrpcConversions._
 import schema.RequestTrait
@@ -50,7 +50,7 @@ class RequestServiceActor private(
         Future.failed(new IllegalArgumentException("Key value cannot be empty or undefined"))
       }
 
-      val (requestActor, future): (ActorPath, Future[_]) = RequestActor.register(request match {
+      val (requestActor, future, uuid): (ActorPath, Future[_], UUID) = RequestActor.register(request match {
 
         case _: GetRequest =>
           log.info(s"Get request with key '${request.key}' received")
@@ -79,9 +79,8 @@ class RequestServiceActor private(
 
       log.debug(s"Request actor initiated with path $requestActor for key '${request.key}'")
 
-      val hash: String = request.key.sha256
-      requestProcessorActor ! OperationPackage(requestActor, hash, request)
-      log.debug(s"Operation package sent with hash $hash, for key '${request.key}'")
+      requestProcessorActor ! OperationPackage(requestActor, uuid, request)
+      log.debug(s"Operation package sent for key '${request.key}'")
 
       sender ! future
       log.debug("Future has been returned to gRPC service")

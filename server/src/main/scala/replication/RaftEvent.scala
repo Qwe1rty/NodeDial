@@ -16,7 +16,7 @@ case class RaftEvent(node: Membership, message: RaftMessage)
 /**
  * RaftMessage is the parent trait for all Raft messages
  */
-sealed trait RaftMessage
+trait RaftMessage
 
 
 /**

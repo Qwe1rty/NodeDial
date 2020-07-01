@@ -1,6 +1,7 @@
 package service
 
 import akka.actor.ActorPath
+import io.jvm.uuid._
 import schema.RequestTrait
 
 
@@ -10,13 +11,12 @@ import schema.RequestTrait
  * and repackaged depending on their needs
  *
  * @param requestActor actor that manages this request
- * @param requestHash the hashed request key
- * @param requestBody the request body
+ * @param operation the request body
  */
 case class OperationPackage(
   requestActor: ActorPath,
-  requestHash:  String,
-  requestBody:  RequestTrait
+  uuid:         UUID,
+  operation:    RequestTrait
 )
 
 
