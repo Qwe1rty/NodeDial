@@ -9,9 +9,7 @@ import scala.concurrent.Future
 abstract class RaftActor(implicit actorSystem: ActorSystem)
   extends RaftRoleFSM {
 
-  type LogEntryType
-
-  def commit: Function[LogEntryType, Unit]
+  def commit: Function[AppendEntryEvent, Unit]
 
   /**
    * Broadcast a new RequestVotes or AppendEntries request to all nodes in the Raft group.

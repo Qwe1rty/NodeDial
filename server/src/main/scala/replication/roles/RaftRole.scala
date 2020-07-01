@@ -9,7 +9,10 @@ import replication._
 trait RaftRole {
 
   /** The output that contains information about what RPC actions need to be done, and next role state */
-  type EventResult = (Option[RPCTask[RaftEvent]], RaftRole)
+  type EventResult = (Option[RPCTask[RaftMessage]], RaftRole)
+
+  /** Used for logging */
+  val roleName: String
 
   /** Ingest a Raft event and return the event result */
   final def processRaftEvent(event: RaftEvent, state: RaftState): EventResult = {

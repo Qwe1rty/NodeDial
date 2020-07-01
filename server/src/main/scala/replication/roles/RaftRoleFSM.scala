@@ -26,11 +26,9 @@ abstract class RaftRoleFSM(implicit actorSystem: ActorSystem) extends FSM[RaftRo
    */
   protected def publishRequest(request: RaftRequest): Set[Future[RaftEvent]]
 
-  // Startup definition:
   // Will always start off as a Follower, even if it was a Candidate or Leader before.
-  //
   // All volatile raft state variables will be zero-initialized, but persisted states will
-  // be read from file and restored
+  // be read from file and restored.
   startWith(Follower, RaftState())
 
   // Define the event handling for all Raft roles, along with an error handling case
@@ -57,9 +55,11 @@ abstract class RaftRoleFSM(implicit actorSystem: ActorSystem) extends FSM[RaftRo
     case Event(event: RaftEvent, state: RaftState) =>
       val (response, newRole) = currentRole.processRaftEvent(event, state)
 
-      response match {
-        case Some(ReplyTask(reply)) => sender ! reply
-          // TODO the rest
+      response.foreach {
+        case ReplyTask(reply) => sender ! reply
+        case BroadcastTask(task) => task match {
+          case request: RaftRequest => broadcast(request)
+        }
       }
 
       goto(newRole).using(state)

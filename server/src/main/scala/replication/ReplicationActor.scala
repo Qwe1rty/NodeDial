@@ -4,10 +4,12 @@ import akka.actor.{ActorRef, ActorSystem, Props}
 import com.roundeights.hasher.Implicits._
 import replication.eventlog.Compression
 import schema.ImplicitGrpcConversions._
+import schema.RequestTrait
 import schema.service.Request
+import schema.service.Request.{DeleteRequest, PostRequest}
 import service.OperationPackage
 
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 
 object ReplicationActor {
@@ -27,8 +29,6 @@ object ReplicationActor {
 class ReplicationActor(persistenceActor: ActorRef)(implicit actorSystem: ActorSystem)
   extends RaftActor
   with Compression {
-
-  override type LogEntryType = LogEntry
 
   override def receive: Receive = {
 
@@ -56,5 +56,26 @@ class ReplicationActor(persistenceActor: ActorRef)(implicit actorSystem: ActorSy
     case x => super.receive(x)
   }
 
-  override def commit: Function[LogEntry, Unit] = ???
+  override def commit: Function[AppendEntryEvent, Unit] = {
+
+    // Process log entry, decompress it and send to persistence layer
+    case AppendEntryEvent(LogEntry(keyHash, command), compressedValue) =>
+      log.info(s"${command.name} entry with key hash $keyHash will now attempt to be committed")
+
+      val operationBody: Try[RequestTrait] = command match {
+        case LogCommand.DELETE => Success(new DeleteRequest(new String()))
+        case LogCommand.WRITE => decompress(compressedValue) match {
+          case Success(value) => Success(new PostRequest(new String(), value))
+          case failure: Failure[RequestTrait] =>
+            log.error(s"Decompression error for key hash $keyHash for reason: ${failure.exception.getLocalizedMessage}")
+            failure
+        }
+      }
+
+      operationBody match {
+        case Success(body) => persistenceActor ! new OperationPackage(???, keyHash, body)
+        case Failure(e) =>
+          log.error(s"Failed to commit entry due to error: ${e.getLocalizedMessage}")
+      }
+  }
 }
