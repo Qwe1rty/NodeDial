@@ -13,6 +13,9 @@ import membership.api.Membership
 case class RaftEvent(node: Membership, message: RaftMessage)
 
 
+// NOTE: The below traits are inherited by the Raft generated protobuf
+// messages!!
+
 /**
  * RaftMessage is the parent trait for all Raft messages
  */

@@ -1,5 +1,7 @@
 package replication.roles
 
+import common.rpc.RPCTask
+import common.time.TimerTask
 import membership.api.Membership
 import replication._
 
@@ -8,6 +10,26 @@ case object Candidate extends RaftRole {
 
   /** Used for logging */
   override val roleName: String = "Candidate"
+
+  /**
+   * Handles a global (or at least global w.r.t. this server's Raft FSM) timeout event. Typically
+   * the main source of role changes
+   *
+   * @param state current raft state
+   * @return the timeout result
+   */
+  override def processRaftGlobalTimeout(state: RaftState): (RPCTask[RaftMessage], RaftRole) = ???
+
+  /**
+   * Handles timeout for sending a request to a single node. For example, if this server is a leader,
+   * a timeout for a specific node can occur if it hasn't been contacted in a while, necessitating
+   * a heartbeat message to be sent out
+   *
+   * @param node  the node that timed out
+   * @param state current raft state
+   * @return the timeout result
+   */
+  override def processRaftIndividualTimeout(node: Membership, state: RaftState): (RPCTask[RaftMessage], TimerTask[RaftIndividualTimeoutKey], RaftRole) = ???
 
   /**
    * Handle a direct append entry request received by this server. Only in the leader role is this

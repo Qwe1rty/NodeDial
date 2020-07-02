@@ -34,7 +34,7 @@ object RaftRoleFSM {
 abstract class RaftRoleFSM(implicit actorSystem: ActorSystem)
   extends FSM[RaftRole, RaftState]
   with RPCTaskHandler[RaftMessage]
-  with TimerTaskHandler[RaftGlobalTimeoutKey.type]
+  with TimerTaskHandler[RaftTimeoutKey]
   with RaftGlobalTimeoutName {
 
   import RaftRoleFSM._
@@ -49,9 +49,9 @@ abstract class RaftRoleFSM(implicit actorSystem: ActorSystem)
   startWith(Follower, RaftState())
 
   // Define the event handling for all Raft roles, along with an error handling case
-  when(Follower)(onEvent(Follower) orElse onTimeout(Follower))
-  when(Candidate)(onEvent(Candidate) orElse onTimeout(Candidate))
-  when(Leader)(onEvent(Leader) orElse onTimeout(Leader))
+  when(Follower)(onReceive(Follower))
+  when(Candidate)(onReceive(Candidate))
+  when(Leader)(onReceive(Leader))
 
   whenUnhandled {
     case _: Event =>
@@ -69,29 +69,27 @@ abstract class RaftRoleFSM(implicit actorSystem: ActorSystem)
   log.info("Raft role FSM has been initialized, timer started")
 
 
-  private def onEvent[CurrentRole <: RaftRole](currentRole: CurrentRole): StateFunction = {
+  private def onReceive[CurrentRole <: RaftRole](currentRole: CurrentRole): StateFunction = {
 
     case Event(event: RaftEvent, state: RaftState) =>
-      val (rpcTask, timerTask, newRole) = currentRole.processRaftEvent(event, state)
+      val (rpcTask, globalTimerTask, newRole) = currentRole.processRaftEvent(event, state)
 
       handleRPCTask(rpcTask)
-      handleTimerTask(timerTask)
+      handleTimerTask(globalTimerTask)
       goto(newRole).using(state)
-  }
 
-  private def onTimeout[CurrentRole <: RaftRole](currentRole: CurrentRole): StateFunction = {
-
-    case Event(_: RaftGlobalTimeoutKey.type, state: RaftState) =>
+    case Event(_: RaftGlobalTimeoutTick.type, state: RaftState) =>
       val (rpcTask, newRole) = currentRole.processRaftGlobalTimeout(state)
 
       handleRPCTask(rpcTask)
       handleTimerTask(ResetTimer(RaftGlobalTimeoutKey))
       goto(newRole).using(state)
 
-    case Event(RaftIndividualTimeoutKey(node), state: RaftState) =>
-      val (rpcTask, newRole) = currentRole.processRaftIndividualTimeout(node, state)
+    case Event(RaftIndividualTimeoutTick(node), state: RaftState) =>
+      val (rpcTask, timerTask, newRole) = currentRole.processRaftIndividualTimeout(node, state)
 
       handleRPCTask(rpcTask)
+      handleTimerTask(timerTask)
       goto(newRole).using(state)
   }
 
@@ -99,16 +97,21 @@ abstract class RaftRoleFSM(implicit actorSystem: ActorSystem)
     case ReplyTask(reply) => sender ! reply
     case BroadcastTask(message) => message match {
       case request: RaftRequest => broadcast(request).foreach(_.onComplete {
-        case Success(event) => self ! event
+        case Success(event)  => self ! event
         case Failure(reason) => log.debug(s"RPC reply failed: ${reason.getLocalizedMessage}")
       })
     }
   }
 
-  override def handleTimerTask(timerTask: TimerTask[RaftGlobalTimeoutKey.type]): Unit = {
-    case ResetTimer(_) => startSingleTimer(TIMER_NAME, RaftGlobalTimeoutTick, timeoutRange.random())
-    case SetRandomTimer(_, lower, upper) => timeoutRange = TimeRange(lower, upper)
-    case SetFixedTimer(_, timeout)       => timeoutRange = TimeRange(timeout, timeout)
+  override def handleTimerTask(timerTask: TimerTask[RaftTimeoutKey]): Unit = {
+    case SetRandomTimer(RaftGlobalTimeoutKey, lower, upper) => timeoutRange = TimeRange(lower, upper)
+    case SetFixedTimer(RaftGlobalTimeoutKey, timeout)       => timeoutRange = TimeRange(timeout, timeout)
+    case ResetTimer(key) => key match {
+      case RaftGlobalTimeoutKey =>
+        startSingleTimer(TIMER_NAME, RaftGlobalTimeoutTick, timeoutRange.random())
+      case RaftIndividualTimeoutKey(node) =>
+        startSingleTimer(node.nodeID, RaftIndividualTimeoutTick(node), timeoutRange.random())
+    }
   }
 
   /**

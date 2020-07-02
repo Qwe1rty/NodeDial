@@ -1,6 +1,5 @@
 package replication.roles
 
-import akka.actor.Timers
 import common.rpc.RPCTask
 import common.time.TimerTask
 import membership.api.Membership
@@ -12,16 +11,16 @@ import replication._
  *
  * Since each of the 3 roles handles Raft events differently, they will need to implement
  */
-trait RaftRole extends Timers {
+trait RaftRole {
 
-  /** The output that contains information about what actions need to be done as a result of an event:
-   *   - any RPC actions
-   *   - any global timer actions
+  /** The result types contains information about what actions need to be done as a result of an event:
+   *   - any network actions that need to be taken
+   *   - any timer actions
    *   - the next role state
    */
   type EventResult = (RPCTask[RaftMessage], TimerTask[RaftGlobalTimeoutKey.type], RaftRole)
-
-  type TimeoutResult = (RPCTask[RaftMessage], RaftRole)
+  type GlobalTimeoutResult = (RPCTask[RaftMessage], RaftRole)
+  type IndividualTimeoutResult = (RPCTask[RaftMessage], TimerTask[RaftIndividualTimeoutKey], RaftRole)
 
   /** Used for logging */
   val roleName: String
@@ -38,9 +37,25 @@ trait RaftRole extends Timers {
     })(event.node, state)
   }
 
-  def processRaftGlobalTimeout(state: RaftState): TimeoutResult
+  /**
+   * Handles a global (or at least global w.r.t. this server's Raft FSM) timeout event. Typically
+   * the main source of role changes
+   *
+   * @param state current raft state
+   * @return the timeout result
+   */
+  def processRaftGlobalTimeout(state: RaftState): GlobalTimeoutResult
 
-  def processRaftIndividualTimeout(node: Membership, state: RaftState): TimeoutResult
+  /**
+   * Handles timeout for sending a request to a single node. For example, if this server is a leader,
+   * a timeout for a specific node can occur if it hasn't been contacted in a while, necessitating
+   * a heartbeat message to be sent out
+   *
+   * @param node the node that timed out
+   * @param state current raft state
+   * @return the timeout result
+   */
+  def processRaftIndividualTimeout(node: Membership, state: RaftState): IndividualTimeoutResult
 
   /**
    * Handle a direct append entry request received by this server. Only in the leader role is this

@@ -4,6 +4,7 @@ import akka.actor.{ActorPath, ActorRef, ActorSystem, Props}
 import com.roundeights.hasher.Implicits._
 import io.jvm.uuid._
 import persistence.{DeleteTask, GetTask, PersistenceTask, PostTask}
+import replication.LogCommand.{DELETE, WRITE}
 import replication.eventlog.Compression
 import schema.ImplicitGrpcConversions._
 import schema.service.Request
@@ -56,10 +57,8 @@ class ReplicationActor(persistenceActor: ActorRef)(implicit actorSystem: ActorSy
         pendingRequestActors += uuid -> requestActor
 
         compress(value) match {
-          case Success(gzip) =>
-            super.receive(new AppendEntryEvent(logEntry(key, LogCommand.WRITE), uuid, gzip))
-          case Failure(e) =>
-            log.error(s"Compression error for key $key: ${e.getLocalizedMessage}")
+          case Success(gzip) => super.receive(new AppendEntryEvent(logEntry(key, WRITE), uuid, gzip))
+          case Failure(e) => log.error(s"Compression error for key $key: ${e.getLocalizedMessage}")
         }
 
       case Request.DeleteRequest(key) =>
@@ -68,7 +67,7 @@ class ReplicationActor(persistenceActor: ActorRef)(implicit actorSystem: ActorSy
         log.debug(s"Delete request received with UUID ${uuid.string}")
         pendingRequestActors += uuid -> requestActor
 
-        super.receive(new AppendEntryEvent(logEntry(key, LogCommand.DELETE), uuid, Array[Byte]()))
+        super.receive(new AppendEntryEvent(logEntry(key, DELETE), uuid, Array[Byte]()))
     }
 
     case x => super.receive(x) // Catches raft events, along with anything else
@@ -83,8 +82,8 @@ class ReplicationActor(persistenceActor: ActorRef)(implicit actorSystem: ActorSy
       val requestActor = pendingRequestActors.get(uuid)
       val persistenceTask: Try[PersistenceTask] = command match {
 
-        case LogCommand.DELETE => Success(DeleteTask(requestActor, keyHash))
-        case LogCommand.WRITE => decompress(compressedValue) match {
+        case DELETE => Success(DeleteTask(requestActor, keyHash))
+        case WRITE  => decompress(compressedValue) match {
           case Success(decompressedValue) => Success(PostTask(requestActor, keyHash, decompressedValue))
           case Failure(e) =>
             log.error(s"Decompression error for key hash $keyHash for reason: ${e.getLocalizedMessage}")
@@ -94,8 +93,7 @@ class ReplicationActor(persistenceActor: ActorRef)(implicit actorSystem: ActorSy
 
       persistenceTask match {
         case Success(task) => persistenceActor ! task
-        case Failure(e) =>
-          log.error(s"Failed to commit entry due to error: ${e.getLocalizedMessage}")
+        case Failure(e) => log.error(s"Failed to commit entry due to error: ${e.getLocalizedMessage}")
       }
   }
 }
