@@ -32,12 +32,39 @@ trait RPCTaskHandler[-RPCObject] {
 }
 
 
+/**
+ * Represents a "broadcast" network task
+ *
+ * @param task the RPC task
+ * @tparam RPCObject the RPC object associated with the task (eg. request
+ *                   parameters for an RPC)
+ */
 case class BroadcastTask[RPCObject](task: RPCObject) extends RPCTask[RPCObject]
 
+
+/**
+ * Represents a "request" network task
+ *
+ * @param task the RPC task
+ * @tparam RPCObject the RPC object associated with the task (eg. request
+ *                   parameters for an RPC)
+ */
 case class RequestTask[RPCObject](task: RPCObject) extends RPCTask[RPCObject]
 
+
+/**
+ * Represents a "reply" network task
+ *
+ * @param task the RPC task
+ * @tparam RPCObject the RPC object associated with the task (eg. request
+ *                   parameters for an RPC)
+ */
 case class ReplyTask[RPCObject](task: RPCObject) extends RPCTask[RPCObject]
 
+
+/**
+ * Represents a "no task"
+ */
 case object NoTask extends RPCTask[Nothing] {
 
   /**

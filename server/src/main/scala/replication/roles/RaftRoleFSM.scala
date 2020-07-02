@@ -55,9 +55,9 @@ abstract class RaftRoleFSM(implicit actorSystem: ActorSystem)
   private def onEvent[CurrentRole <: RaftRole](currentRole: CurrentRole): StateFunction = {
 
     case Event(event: RaftEvent, state: RaftState) =>
-      val (response, newRole) = currentRole.processRaftEvent(event, state)
+      val (rpcTask, newRole) = currentRole.processRaftEvent(event, state)
 
-      response.foreach(handleRPCTask)
+      handleRPCTask(rpcTask)
       goto(newRole).using(state)
   }
 
