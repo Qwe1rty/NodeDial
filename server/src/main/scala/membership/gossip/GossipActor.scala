@@ -6,11 +6,12 @@ import akka.pattern.ask
 import akka.stream.{ActorMaterializer, Materializer}
 import akka.util.Timeout
 import com.risksense.ipaddr.IpAddress
-import common.ServerDefaults
+import common.{DefaultActor, ServerDefaults}
 import GossipSignal.{ClusterSizeReceived, SendRPC}
 import common.membership.types.NodeState
+import common.rpc.GRPCSettingsFactory
 import common.utils.ActorTimers.Tick
-import common.utils.{DefaultActor, ActorTimers, GrpcSettingsFactory}
+import common.utils.ActorTimers
 import membership.MembershipActor
 import membership.api.{GetClusterSize, GetRandomNode, Membership}
 import schema.ImplicitDataConversions._
@@ -23,7 +24,7 @@ import scala.reflect.ClassTag
 import scala.util.{Failure, Success}
 
 
-object GossipActor extends GrpcSettingsFactory {
+object GossipActor extends GRPCSettingsFactory {
 
   private case class PayloadTracker(payload: GossipPayload, var count: Int, cooldown: Int) {
 
@@ -44,7 +45,7 @@ object GossipActor extends GrpcSettingsFactory {
     )
   }
 
-  override def createGrpcSettings
+  override def createGRPCSettings
       (ipAddress: IpAddress, timeout: FiniteDuration)
       (implicit actorSystem: ActorSystem): GrpcClientSettings = {
 
@@ -96,7 +97,7 @@ class GossipActor[KeyType: ClassTag] private(
         val payload = keyTable(key)
 
         payload.count -= 1
-        if (payload.count >= 0) payload(createGrpcSettings(member.ipAddress, delay * 2))
+        if (payload.count >= 0) payload(createGRPCSettings(member.ipAddress, delay * 2))
         if (payload.count <= payload.cooldown) keyTable -= key
       })
 

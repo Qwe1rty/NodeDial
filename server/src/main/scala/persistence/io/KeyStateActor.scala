@@ -2,7 +2,7 @@ package persistence.io
 
 import akka.actor.{ActorContext, ActorLogging, ActorPath, ActorRef, Props}
 import better.files.File
-import common.utils.DefaultActor
+import common.DefaultActor
 import persistence.{PersistenceActor, _}
 import persistence.threading.ThreadPartitionActor.PartitionedTask
 import service.RequestActor.Result

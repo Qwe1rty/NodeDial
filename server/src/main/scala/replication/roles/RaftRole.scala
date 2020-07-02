@@ -1,16 +1,25 @@
 package replication.roles
 
+import akka.actor.Timers
+import common.rpc.RPCTask
+import common.time.TimerTask
 import membership.api.Membership
 import replication._
 
 
 /**
  * RaftRole represents one of the Raft server states (Leader, Candidate, Follower)
+ *
+ * Since each of the 3 roles handles Raft events differently, they will need to implement
  */
-trait RaftRole {
+trait RaftRole extends Timers {
 
-  /** The output that contains information about what RPC actions need to be done, and next role state */
-  type EventResult = (RPCTask[RaftMessage], RaftRole)
+  /** The output that contains information about what actions need to be done as a result of an event:
+   *   - any RPC actions
+   *   - any global timer actions
+   *   - the next role state
+   */
+  type EventResult = (RPCTask[RaftMessage], TimerTask[RaftGlobalTimeoutKey.type], RaftRole)
 
   /** Used for logging */
   val roleName: String
@@ -25,6 +34,8 @@ trait RaftRole {
       case voteReply:     RequestVoteResult    => processRequestVoteResult(voteReply) _
     })(event.node, state)
   }
+
+
 
   /**
    * Handle a direct append entry request received by this server. Only in the leader role is this

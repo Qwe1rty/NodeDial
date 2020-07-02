@@ -1,4 +1,4 @@
-package common.utils
+package common.rpc
 
 import akka.actor.ActorSystem
 import akka.grpc.GrpcClientSettings
@@ -7,9 +7,9 @@ import com.risksense.ipaddr.IpAddress
 import scala.concurrent.duration.FiniteDuration
 
 
-trait GrpcSettingsFactory {
+trait GRPCSettingsFactory {
 
-  def createGrpcSettings
+  def createGRPCSettings
       (ipAddress: IpAddress, timeout: FiniteDuration)
       (implicit actorSystem: ActorSystem): GrpcClientSettings
 }

@@ -1,7 +1,7 @@
 package service
 
 import akka.actor.{ActorLogging, ActorPath, ActorRef, ActorSystem, Props}
-import common.utils.DefaultActor
+import common.DefaultActor
 import io.jvm.uuid._
 import membership.api.DeclareReadiness
 import schema.ImplicitGrpcConversions._

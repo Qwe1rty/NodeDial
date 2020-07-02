@@ -1,7 +1,7 @@
 package partitioning
 
 import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, Props}
-import common.utils.DefaultActor
+import common.DefaultActor
 
 
 object PartitionActor {

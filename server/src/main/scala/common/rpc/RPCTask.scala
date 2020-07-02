@@ -1,4 +1,4 @@
-package replication.roles
+package common.rpc
 
 
 /**
@@ -26,9 +26,9 @@ trait RPCTaskHandler[-RPCObject] {
   /**
    * Make the network calls as dictated by the RPC task
    *
-   * @param RPCTask the RPC task
+   * @param rpcTask the RPC task
    */
-  def handleRPCTask(RPCTask: RPCTask[RPCObject]): Unit
+  def handleRPCTask(rpcTask: RPCTask[RPCObject]): Unit
 }
 
 

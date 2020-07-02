@@ -60,7 +60,7 @@ class FailureDetectorServiceImpl(implicit actorSystem: ActorSystem) extends Fail
     val ipAddress: IpAddress = in.ipAddress
 
     log.info(s"Followup check request has been received on suspect ${ipAddress}, attempting to request confirmation")
-    FailureDetectorServiceClient(createGrpcSettings(ipAddress, SUSPICION_DEADLINE))
+    FailureDetectorServiceClient(createGRPCSettings(ipAddress, SUSPICION_DEADLINE))
       .directCheck(DirectMessage())
   }
 }

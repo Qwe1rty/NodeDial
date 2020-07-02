@@ -2,8 +2,7 @@ package persistence
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import better.files.File
-import common.ServerConstants
-import common.utils.DefaultActor
+import common.{DefaultActor, ServerConstants}
 import membership.api.DeclareReadiness
 import persistence.io.KeyStateActor
 import service.OperationPackage

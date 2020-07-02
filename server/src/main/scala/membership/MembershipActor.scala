@@ -1,13 +1,12 @@
 package membership
 
 import akka.actor.{ActorLogging, ActorRef, ActorSystem, Props}
-import common.ServerConstants
+import common.{DefaultActor, ServerConstants}
 import common.membership.Event.EventType.Empty
 import common.membership.Event.{EventType, Refute}
 import common.membership._
 import common.membership.types.NodeState.{ALIVE, DEAD, SUSPECT}
 import common.membership.types.{NodeInfo, NodeState}
-import common.utils.DefaultActor
 import membership.addresser.AddressRetriever
 import membership.api._
 import membership.gossip.GossipAPI.PublishRequest

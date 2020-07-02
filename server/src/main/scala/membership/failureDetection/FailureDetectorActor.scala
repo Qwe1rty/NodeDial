@@ -3,11 +3,12 @@ package membership.failureDetection
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import akka.pattern.ask
 import akka.stream.ActorMaterializer
+import common.DefaultActor
 import common.ServerDefaults.ACTOR_REQUEST_TIMEOUT
 import common.membership.failureDetection.{DirectMessage, FailureDetectorServiceClient, FollowupMessage}
 import common.membership.types.NodeState
 import common.utils.ActorTimers.Tick
-import common.utils.{DefaultActor, ActorTimers}
+import common.utils.ActorTimers
 import membership.MembershipActor
 import membership.api.{DeclareEvent, GetRandomNode, GetRandomNodes, Membership}
 import membership.failureDetection.FailureDetectorConstants._
@@ -65,7 +66,7 @@ class FailureDetectorActor private
         // Make the check if there's not one pending already and it's not calling itself
         if (!pendingDirectChecks.contains(target) && target.nodeID != MembershipActor.nodeID) {
 
-          val grpcClient = FailureDetectorServiceClient(createGrpcSettings(target.ipAddress, SUSPICION_DEADLINE))
+          val grpcClient = FailureDetectorServiceClient(createGRPCSettings(target.ipAddress, SUSPICION_DEADLINE))
           pendingDirectChecks += target
 
           grpcClient.directCheck(DirectMessage()).onComplete {
@@ -109,7 +110,7 @@ class FailureDetectorActor private
         requestResult.foreach { member =>
 
           if (member.nodeID != MembershipActor.nodeID) {
-            val grpcClient = FailureDetectorServiceClient(createGrpcSettings(member.ipAddress, DEATH_DEADLINE))
+            val grpcClient = FailureDetectorServiceClient(createGRPCSettings(member.ipAddress, DEATH_DEADLINE))
 
             log.debug(s"Calling ${member} for indirect check on ${target}")
             grpcClient.followupCheck(FollowupMessage(target.ipAddress)).onComplete {

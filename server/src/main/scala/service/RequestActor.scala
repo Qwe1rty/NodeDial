@@ -1,7 +1,7 @@
 package service
 
 import akka.actor.{ActorContext, ActorLogging, ActorPath, ActorRef, Props}
-import common.utils.DefaultActor
+import common.DefaultActor
 import io.jvm.uuid._
 import schema.ResponseTrait
 import service.RequestActor.{Result, ResultCallback}
