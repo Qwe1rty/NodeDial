@@ -38,3 +38,13 @@ case class RequestTask[RPCObject](task: RPCObject) extends RPCTask[RPCObject]
 
 case class ReplyTask[RPCObject](task: RPCObject) extends RPCTask[RPCObject]
 
+case object NoTask extends RPCTask[Nothing] {
+
+  /**
+   * Contains no task, and will just throw a NoSuchElementException
+   *
+   * @return returns nothing, throws NoSuchElementException
+   */
+  override def task: Nothing =
+    throw new NoSuchElementException("NothingTask does not contain a task")
+}

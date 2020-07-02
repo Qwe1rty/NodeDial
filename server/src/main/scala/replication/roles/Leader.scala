@@ -1,5 +1,6 @@
 package replication.roles
 
+import membership.api.Membership
 import replication._
 
 
@@ -16,7 +17,7 @@ case object Leader extends RaftRole {
    * @param state       current raft state
    * @return the event result
    */
-  override def processAppendEntryEvent(appendEvent: AppendEntryEvent)(state: RaftState): (Option[RPCTask[RaftMessage]], RaftRole) = ???
+  override def processAppendEntryEvent(appendEvent: AppendEntryEvent)(node: Membership, state: RaftState): EventResult = ???
 
   /**
    * Handle an append entry request received from the leader
@@ -25,7 +26,7 @@ case object Leader extends RaftRole {
    * @param state         current raft state
    * @return the event result
    */
-  override def processAppendEntryRequest(appendRequest: AppendEntriesRequest)(state: RaftState): (Option[RPCTask[RaftMessage]], RaftRole) = ???
+  override def processAppendEntryRequest(appendRequest: AppendEntriesRequest)(node: Membership, state: RaftState): EventResult = ???
 
   /**
    * Handle a response from an append entry request from followers. Determines whether an entry is
@@ -35,7 +36,7 @@ case object Leader extends RaftRole {
    * @param state       current raft state
    * @return the event result
    */
-  override def processAppendEntryResult(appendReply: AppendEntriesResult)(state: RaftState): (Option[RPCTask[RaftMessage]], RaftRole) = ???
+  override def processAppendEntryResult(appendReply: AppendEntriesResult)(node: Membership, state: RaftState): EventResult = ???
 
   /**
    * Handle a vote request from a candidate, and decide whether or not to give that vote
@@ -44,7 +45,7 @@ case object Leader extends RaftRole {
    * @param state       current raft state
    * @return the event result
    */
-  override def processRequestVoteRequest(voteRequest: RequestVoteRequest)(state: RaftState): (Option[RPCTask[RaftMessage]], RaftRole) = ???
+  override def processRequestVoteRequest(voteRequest: RequestVoteRequest)(node: Membership, state: RaftState): EventResult = ???
 
   /**
    * Handle a vote reply from a follower. Determines whether this server becomes the new leader
@@ -53,5 +54,5 @@ case object Leader extends RaftRole {
    * @param state     current raft state
    * @return the event result
    */
-  override def processRequestVoteResult(voteReply: RequestVoteResult)(state: RaftState): (Option[RPCTask[RaftMessage]], RaftRole) = ???
+  override def processRequestVoteResult(voteReply: RequestVoteResult)(node: Membership, state: RaftState): EventResult = ???
 }

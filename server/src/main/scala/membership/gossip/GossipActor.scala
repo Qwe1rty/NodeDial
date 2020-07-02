@@ -76,7 +76,7 @@ class GossipActor[KeyType: ClassTag] private(
 
   private val keyTable = mutable.Map[GossipKey[KeyType], PayloadTracker]()
 
-  start(delay)
+  startPeriodic(delay)
 
   log.info(s"Gossip actor affiliated with ${affiliation} initialized")
 

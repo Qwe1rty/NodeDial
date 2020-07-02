@@ -43,13 +43,15 @@ class ReplicationActor(persistenceActor: ActorRef)(implicit actorSystem: ActorSy
     // Handles upstream requests
     case OperationPackage(requestActor, uuid, operation) => operation match {
 
-      // Get requests do not need to go through raft, so it directly goes to the persistence layer
       case Request.GetRequest(key) =>
+
+        // Get requests do not need to go through raft, so it directly goes to the persistence layer
+        log.debug(s"Get request received with UUID ${uuid.string}")
         persistenceActor ! GetTask(Some(requestActor), key.sha256)
 
-      // Post requests must be committed by the raft group before it can be written to disk
       case Request.PostRequest(key, value) =>
 
+        // Post requests must be committed by the raft group before it can be written to disk
         log.debug(s"Post request received with UUID ${uuid.string}")
         pendingRequestActors += uuid -> requestActor
 
@@ -60,17 +62,16 @@ class ReplicationActor(persistenceActor: ActorRef)(implicit actorSystem: ActorSy
             log.error(s"Compression error for key $key: ${e.getLocalizedMessage}")
         }
 
-      // Delete requests also have to go through raft
       case Request.DeleteRequest(key) =>
 
+        // Delete requests also have to go through raft
         log.debug(s"Delete request received with UUID ${uuid.string}")
         pendingRequestActors += uuid -> requestActor
 
         super.receive(new AppendEntryEvent(logEntry(key, LogCommand.DELETE), uuid, Array[Byte]()))
     }
 
-    // Catches raft events, along with anything else
-    case x => super.receive(x)
+    case x => super.receive(x) // Catches raft events, along with anything else
   }
 
   override def commit: Commit = {

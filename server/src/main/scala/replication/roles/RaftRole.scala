@@ -1,5 +1,6 @@
 package replication.roles
 
+import membership.api.Membership
 import replication._
 
 
@@ -9,7 +10,7 @@ import replication._
 trait RaftRole {
 
   /** The output that contains information about what RPC actions need to be done, and next role state */
-  type EventResult = (Option[RPCTask[RaftMessage]], RaftRole)
+  type EventResult = (RPCTask[RaftMessage], RaftRole)
 
   /** Used for logging */
   val roleName: String
@@ -22,7 +23,7 @@ trait RaftRole {
       case appendReply:   AppendEntriesResult  => processAppendEntryResult(appendReply) _
       case voteRequest:   RequestVoteRequest   => processRequestVoteRequest(voteRequest) _
       case voteReply:     RequestVoteResult    => processRequestVoteResult(voteReply) _
-    })(state)
+    })(event.node, state)
   }
 
   /**
@@ -33,7 +34,7 @@ trait RaftRole {
    * @param state current raft state
    * @return the event result
    */
-  def processAppendEntryEvent(appendEvent: AppendEntryEvent)(state: RaftState): EventResult
+  def processAppendEntryEvent(appendEvent: AppendEntryEvent)(node: Membership, state: RaftState): EventResult
 
   /**
    * Handle an append entry request received from the leader
@@ -42,7 +43,7 @@ trait RaftRole {
    * @param state current raft state
    * @return the event result
    */
-  def processAppendEntryRequest(appendRequest: AppendEntriesRequest)(state: RaftState): EventResult
+  def processAppendEntryRequest(appendRequest: AppendEntriesRequest)(node: Membership, state: RaftState): EventResult
 
   /**
    * Handle a response from an append entry request from followers. Determines whether an entry is
@@ -52,7 +53,7 @@ trait RaftRole {
    * @param state current raft state
    * @return the event result
    */
-  def processAppendEntryResult(appendReply: AppendEntriesResult)(state: RaftState): EventResult
+  def processAppendEntryResult(appendReply: AppendEntriesResult)(node: Membership, state: RaftState): EventResult
 
   /**
    * Handle a vote request from a candidate, and decide whether or not to give that vote
@@ -61,7 +62,7 @@ trait RaftRole {
    * @param state current raft state
    * @return the event result
    */
-  def processRequestVoteRequest(voteRequest: RequestVoteRequest)(state: RaftState): EventResult
+  def processRequestVoteRequest(voteRequest: RequestVoteRequest)(node: Membership, state: RaftState): EventResult
 
   /**
    * Handle a vote reply from a follower. Determines whether this server becomes the new leader
@@ -70,5 +71,5 @@ trait RaftRole {
    * @param state current raft state
    * @return the event result
    */
-  def processRequestVoteResult(voteReply: RequestVoteResult)(state: RaftState): EventResult
+  def processRequestVoteResult(voteReply: RequestVoteResult)(node: Membership, state: RaftState): EventResult
 }

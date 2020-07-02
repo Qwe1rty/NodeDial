@@ -45,7 +45,7 @@ class FailureDetectorActor private
   private var pendingDirectChecks: Set[Membership] = Set[Membership]()
   private var pendingFollowupChecks: Map[Membership, Int] = Map[Membership, Int]()
 
-  start(1500.millisecond)
+  startPeriodic(1500.millisecond)
 
 
   override def receive: Receive = {
