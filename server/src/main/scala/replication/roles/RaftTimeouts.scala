@@ -1,5 +1,7 @@
 package replication.roles
 
+import membership.api.Membership
+
 
 /**
  * This is the global timeout key for the Raft FSM. It's what determines
@@ -17,8 +19,18 @@ case object RaftGlobalTimeoutTick
 
 
 /**
- * The FSM timers use a string as a key, so this defines what the key is
+ * The FSM timers use a string as a timer key, so the default key is defined
+ * here
  */
 trait RaftGlobalTimeoutName {
   val TIMER_NAME = "raftGlobalTimer"
 }
+
+
+/**
+ * The Raft local timeout key controls the timeout between how often to
+ * resend a request to a specific node
+ *
+ * @param node the node that the request should be resent to
+ */
+case class RaftIndividualTimeoutKey(node: Membership)

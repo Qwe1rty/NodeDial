@@ -21,8 +21,11 @@ trait RaftRole extends Timers {
    */
   type EventResult = (RPCTask[RaftMessage], TimerTask[RaftGlobalTimeoutKey.type], RaftRole)
 
+  type TimeoutResult = (RPCTask[RaftMessage], RaftRole)
+
   /** Used for logging */
   val roleName: String
+
 
   /** Ingest a Raft event and return the event result */
   final def processRaftEvent(event: RaftEvent, state: RaftState): EventResult = {
@@ -35,7 +38,9 @@ trait RaftRole extends Timers {
     })(event.node, state)
   }
 
+  def processRaftGlobalTimeout(state: RaftState): TimeoutResult
 
+  def processRaftIndividualTimeout(node: Membership, state: RaftState): TimeoutResult
 
   /**
    * Handle a direct append entry request received by this server. Only in the leader role is this

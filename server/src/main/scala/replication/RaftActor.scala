@@ -1,6 +1,7 @@
 package replication
 
 import akka.actor.ActorSystem
+import membership.api.Membership
 import replication.roles.RaftRoleFSM
 
 import scala.concurrent.Future
@@ -23,5 +24,13 @@ abstract class RaftActor(implicit actorSystem: ActorSystem)
    *
    * @param request the request
    */
-  override protected def publishRequest(request: RaftRequest): Set[Future[RaftEvent]] = ???
-}
+  override protected def broadcast(request: RaftRequest): Set[Future[RaftEvent]] = ???
+
+   /**
+    * Send a new RequestVotes or AppendEntries request to a specific node
+    *
+    * @param request the request
+    * @return a future corresponding to a reply from a node
+    */
+   override protected def request(request: RaftRequest, node: Membership): Future[RaftEvent] = ???
+ }

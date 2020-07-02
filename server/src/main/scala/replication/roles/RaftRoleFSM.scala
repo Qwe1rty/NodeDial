@@ -2,9 +2,10 @@ package replication.roles
 
 import java.util.concurrent.TimeUnit
 
-import akka.actor.{ActorSystem, FSM, Timers}
+import akka.actor.{ActorSystem, FSM}
 import common.rpc.{BroadcastTask, RPCTask, RPCTaskHandler, ReplyTask}
-import common.time.{ResetTimer, SetFixedTimer, SetRandomTimer, TimeRange, TimerTask, TimerTaskHandler}
+import common.time._
+import membership.api.Membership
 import replication.{RaftEvent, RaftMessage, RaftRequest, RaftState}
 
 import scala.concurrent.duration.FiniteDuration
@@ -17,8 +18,8 @@ import scala.util.{Failure, Success}
  */
 object RaftRoleFSM {
 
-  val TIMEOUT_LOWER_BOUND: FiniteDuration = FiniteDuration(150, TimeUnit.MILLISECONDS)
-  val TIMEOUT_UPPER_BOUND: FiniteDuration = FiniteDuration(325, TimeUnit.MILLISECONDS)
+  val INITIAL_TIMEOUT_LOWER_BOUND: FiniteDuration = FiniteDuration(150, TimeUnit.MILLISECONDS)
+  val INITIAL_TIMEOUT_UPPER_BOUND: FiniteDuration = FiniteDuration(325, TimeUnit.MILLISECONDS)
 }
 
 
@@ -30,7 +31,7 @@ object RaftRoleFSM {
  * This FSM also includes the raft volatile and persistent state variables, and will
  * internally modify them as needed
  */
-abstract class RaftRoleFSM private[roles](implicit actorSystem: ActorSystem)
+abstract class RaftRoleFSM(implicit actorSystem: ActorSystem)
   extends FSM[RaftRole, RaftState]
   with RPCTaskHandler[RaftMessage]
   with TimerTaskHandler[RaftGlobalTimeoutKey.type]
@@ -39,7 +40,7 @@ abstract class RaftRoleFSM private[roles](implicit actorSystem: ActorSystem)
   import RaftRoleFSM._
   implicit val executionContext: ExecutionContext = actorSystem.dispatcher
 
-  private var timeoutRange = TimeRange(TIMEOUT_LOWER_BOUND, TIMEOUT_UPPER_BOUND)
+  private var timeoutRange = TimeRange(INITIAL_TIMEOUT_LOWER_BOUND, INITIAL_TIMEOUT_UPPER_BOUND)
 
 
   // Will always start off as a Follower, even if it was a Candidate or Leader before.
@@ -48,9 +49,9 @@ abstract class RaftRoleFSM private[roles](implicit actorSystem: ActorSystem)
   startWith(Follower, RaftState())
 
   // Define the event handling for all Raft roles, along with an error handling case
-  when(Follower)(onEvent(Follower))
-  when(Candidate)(onEvent(Candidate))
-  when(Leader)(onEvent(Leader))
+  when(Follower)(onEvent(Follower) orElse onTimeout(Follower))
+  when(Candidate)(onEvent(Candidate) orElse onTimeout(Candidate))
+  when(Leader)(onEvent(Leader) orElse onTimeout(Leader))
 
   whenUnhandled {
     case _: Event =>
@@ -61,6 +62,7 @@ abstract class RaftRoleFSM private[roles](implicit actorSystem: ActorSystem)
   // Define the state transitions
   // TODO
 
+  // Initialize the FSM and start the global FSM timer
   initialize()
   handleTimerTask(ResetTimer(RaftGlobalTimeoutKey))
 
@@ -74,14 +76,29 @@ abstract class RaftRoleFSM private[roles](implicit actorSystem: ActorSystem)
 
       handleRPCTask(rpcTask)
       handleTimerTask(timerTask)
+      goto(newRole).using(state)
+  }
 
+  private def onTimeout[CurrentRole <: RaftRole](currentRole: CurrentRole): StateFunction = {
+
+    case Event(_: RaftGlobalTimeoutKey.type, state: RaftState) =>
+      val (rpcTask, newRole) = currentRole.processRaftGlobalTimeout(state)
+
+      handleRPCTask(rpcTask)
+      handleTimerTask(ResetTimer(RaftGlobalTimeoutKey))
+      goto(newRole).using(state)
+
+    case Event(RaftIndividualTimeoutKey(node), state: RaftState) =>
+      val (rpcTask, newRole) = currentRole.processRaftIndividualTimeout(node, state)
+
+      handleRPCTask(rpcTask)
       goto(newRole).using(state)
   }
 
   override def handleRPCTask(rpcTask: RPCTask[RaftMessage]): Unit = {
     case ReplyTask(reply) => sender ! reply
     case BroadcastTask(message) => message match {
-      case request: RaftRequest => publishRequest(request).foreach(_.onComplete {
+      case request: RaftRequest => broadcast(request).foreach(_.onComplete {
         case Success(event) => self ! event
         case Failure(reason) => log.debug(s"RPC reply failed: ${reason.getLocalizedMessage}")
       })
@@ -98,6 +115,15 @@ abstract class RaftRoleFSM private[roles](implicit actorSystem: ActorSystem)
    * Broadcast a new RequestVotes or AppendEntries request to all nodes in the Raft group.
    *
    * @param request the request
+   * @return set of futures, each future corresponding to a reply from a node
    */
-  protected def publishRequest(request: RaftRequest): Set[Future[RaftEvent]]
+  protected def broadcast(request: RaftRequest): Set[Future[RaftEvent]]
+
+  /**
+   * Send a new RequestVotes or AppendEntries request to a specific node
+   *
+   * @param request the request
+   * @return a future corresponding to a reply from a node
+   */
+  protected def request(request: RaftRequest, node: Membership): Future[RaftEvent]
 }
