@@ -5,8 +5,9 @@ import java.util.concurrent.TimeUnit
 import akka.actor.{ActorSystem, FSM}
 import common.rpc.{BroadcastTask, RPCTask, RPCTaskHandler, ReplyTask}
 import common.time._
+import membership.MembershipActor
 import membership.api.Membership
-import replication.{RaftEvent, RaftMessage, RaftRequest, RaftState}
+import replication.{RaftEvent, RaftMessage, RaftRequest, RaftState, RequestVoteRequest}
 
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
@@ -53,14 +54,20 @@ abstract class RaftRoleFSM(implicit actorSystem: ActorSystem)
   when(Candidate)(onReceive(Candidate))
   when(Leader)(onReceive(Leader))
 
-  whenUnhandled {
-    case _: Event =>
-      log.error("Raft role FSM encountered unhandled event error")
-      stay
-  }
-
   // Define the state transitions
-  // TODO
+  // TODO: complete this
+  onTransition {
+    case Follower -> Candidate => nextStateData.currentTerm.read().foreach(currentTerm => {
+      log.info(s"Starting leader election from term $currentTerm to ${currentTerm + 1}")
+
+      nextStateData.currentTerm.increment()
+      nextStateData.votedFor.write(MembershipActor.nodeID)
+
+      handleTimerTask(ResetTimer(RaftGlobalTimeoutKey))
+      handleRPCTask(BroadcastTask(RequestVoteRequest(currentTerm + 1, MembershipActor.nodeID, ???, ???)))
+    })
+    case Candidate -> Candidate => ???
+  }
 
   // Initialize the FSM and start the global FSM timer
   initialize()
@@ -70,16 +77,15 @@ abstract class RaftRoleFSM(implicit actorSystem: ActorSystem)
 
 
   private def onReceive[CurrentRole <: RaftRole](currentRole: CurrentRole): StateFunction = {
+    case Event(receive: Any, state: RaftState) =>
 
-    case Event(event: RaftEvent, state: RaftState) =>
-      val (rpcTask, globalTimerTask, newRole) = currentRole.processRaftEvent(event, state)
-
-      handleRPCTask(rpcTask)
-      handleTimerTask(globalTimerTask)
-      goto(newRole).using(state)
-
-    case Event(timeout: RaftTimeoutTick, state: RaftState) =>
-      val (rpcTask, timerTask, newRole) = currentRole.processRaftTimeout(timeout, state)
+      val (rpcTask, timerTask, newRole) = receive match {
+        case event: RaftEvent         => currentRole.processRaftEvent(event, state)
+        case timeout: RaftTimeoutTick => currentRole.processRaftTimeout(timeout, state)
+        case x =>
+          log.error(s"Raft role FSM encountered unhandled event error, received ${x.getClass}")
+          throw new IllegalArgumentException(s"Unknown type ${x.getClass} received by Raft FSM")
+      }
 
       handleRPCTask(rpcTask)
       handleTimerTask(timerTask)

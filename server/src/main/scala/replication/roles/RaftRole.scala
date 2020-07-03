@@ -1,7 +1,7 @@
 package replication.roles
 
-import common.rpc.RPCTask
-import common.time.{ResetTimer, TimerTask}
+import common.rpc.{NoTask, RPCTask}
+import common.time.{NothingTimer, ResetTimer, TimerTask}
 import membership.api.Membership
 import replication._
 
@@ -21,10 +21,11 @@ private[replication] trait RaftRole {
    *   - any timer actions
    *   - the next role state
    */
+    // TODO make this an Either[(RPCTask[RaftMessage], TimerTask[RaftTimeoutKey]), RaftRole] maybe?
   type MessageResult = (RPCTask[RaftMessage], TimerTask[RaftTimeoutKey], RaftRole)
 
   protected type EventResult = (RPCTask[RaftMessage], TimerTask[RaftGlobalTimeoutKey.type], RaftRole)
-  protected type GlobalTimeoutResult = (RPCTask[RaftMessage], RaftRole)
+  protected type GlobalTimeoutResult = RaftRole
   protected type IndividualTimeoutResult = (RPCTask[RaftMessage], TimerTask[RaftIndividualTimeoutKey], RaftRole)
 
 
@@ -43,11 +44,10 @@ private[replication] trait RaftRole {
   final def processRaftTimeout(raftTimeoutTick: RaftTimeoutTick, state: RaftState): MessageResult = {
     raftTimeoutTick match {
       case RaftIndividualTimeoutTick(node) => processRaftIndividualTimeout(node, state)
-      case RaftGlobalTimeoutTick =>
-        val (rpcTask, newRole) = processRaftGlobalTimeout(state)
-        (rpcTask, ResetTimer(RaftGlobalTimeoutKey), newRole)
+      case RaftGlobalTimeoutTick           => (NoTask, NothingTimer, processRaftGlobalTimeout(state))
     }
   }
+
 
   /**
    * Handles a global (or at least global w.r.t. this server's Raft FSM) timeout event. Typically

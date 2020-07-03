@@ -1,7 +1,7 @@
 package replication.roles
 
 import common.rpc.{NoTask, ReplyTask}
-import common.time.NothingTimer
+import common.time.{NothingTimer, ResetTimer}
 import membership.MembershipActor
 import membership.api.Membership
 import org.slf4j.LoggerFactory
@@ -15,6 +15,7 @@ private[replication] case object Follower extends RaftRole {
   /** Used for logging */
   override val roleName: String = "Follower"
 
+
   /**
    * Handles a global (or at least global w.r.t. this server's Raft FSM) timeout event. Typically
    * the main source of role changes
@@ -22,7 +23,7 @@ private[replication] case object Follower extends RaftRole {
    * @param state current raft state
    * @return the timeout result
    */
-  override def processRaftGlobalTimeout(state: RaftState): GlobalTimeoutResult = ???
+  override def processRaftGlobalTimeout(state: RaftState): GlobalTimeoutResult = Candidate
 
   /**
    * Handles timeout for sending a request to a single node. For example, if this server is a leader,
@@ -96,7 +97,7 @@ private[replication] case object Follower extends RaftRole {
     (ReplyTask(RequestVoteResult(currentTerm, voteGiven = false)), NothingTimer, Follower)
 
   private def giveVote(currentTerm: Long): EventResult =
-    (ReplyTask(RequestVoteResult(currentTerm, voteGiven = true)), NothingTimer, Follower)
+    (ReplyTask(RequestVoteResult(currentTerm, voteGiven = true)), ResetTimer(RaftGlobalTimeoutKey), Follower)
 
   /**
    * Handle a vote reply from a follower. Determines whether this server becomes the new leader

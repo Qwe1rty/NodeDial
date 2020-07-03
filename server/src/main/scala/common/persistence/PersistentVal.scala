@@ -53,7 +53,7 @@ abstract class PersistentVal[A] private[persistence](
   /**
    * Check if value exists
    */
-  final def exists(): Boolean = value.isDefined
+  final def exists(): Boolean = file.exists
 
 
   /**

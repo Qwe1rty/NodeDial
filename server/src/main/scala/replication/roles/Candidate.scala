@@ -14,6 +14,7 @@ private[replication] case object Candidate extends RaftRole {
   /** Used for logging */
   override val roleName: String = "Candidate"
 
+
   /**
    * Handles a global (or at least global w.r.t. this server's Raft FSM) timeout event. Typically
    * the main source of role changes
@@ -87,5 +88,9 @@ private[replication] case object Candidate extends RaftRole {
    * @param state     current raft state
    * @return the event result
    */
-  override def processRequestVoteResult(voteReply: RequestVoteResult)(node: Membership, state: RaftState): EventResult = ???
+  override def processRequestVoteResult(voteReply: RequestVoteResult)(node: Membership, state: RaftState): EventResult = {
+
+    ???
+  }
+
 }

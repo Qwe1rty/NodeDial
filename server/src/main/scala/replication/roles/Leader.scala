@@ -14,6 +14,7 @@ private[replication] case object Leader extends RaftRole {
   /** Used for logging */
   override val roleName: String = "Leader"
 
+
   /**
    * Handles a global (or at least global w.r.t. this server's Raft FSM) timeout event. Typically
    * the main source of role changes
