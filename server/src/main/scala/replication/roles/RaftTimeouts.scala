@@ -7,20 +7,20 @@ import membership.api.Membership
  * The FSM timers use a string as a timer key, so the default key is defined
  * here
  */
-trait RaftGlobalTimeoutName {
+private[roles] trait RaftGlobalTimeoutName {
   val TIMER_NAME = "raftGlobalTimer"
 }
 
 
 /** For pattern matching */
-trait RaftTimeoutKey
+private[roles] trait RaftTimeoutKey
 
 /**
  * This is the global timeout key for the Raft FSM. It's what determines
  * around half of the state transitions, usually when stuff isn't happening
  * for a while
  */
-case object RaftGlobalTimeoutKey extends RaftTimeoutKey
+private[roles] case object RaftGlobalTimeoutKey extends RaftTimeoutKey
 
 
 /**
@@ -29,19 +29,19 @@ case object RaftGlobalTimeoutKey extends RaftTimeoutKey
  *
  * @param node the node that the individual timeout is referring to
  */
-case class RaftIndividualTimeoutKey(node: Membership) extends RaftTimeoutKey
+private[roles] case class RaftIndividualTimeoutKey(node: Membership) extends RaftTimeoutKey
 
 
 /** For pattern matching */
-trait RaftTimeoutTick
+private[roles] trait RaftTimeoutTick
 
 /**
  * This is the global tick object that's send to the actor when the timeout
  * hits
  */
-case object RaftGlobalTimeoutTick extends RaftTimeoutTick
+private[roles] case object RaftGlobalTimeoutTick extends RaftTimeoutTick
 
 /**
  * @param node the node that the individual timeout is referring to
  */
-case class RaftIndividualTimeoutTick(node: Membership) extends RaftTimeoutTick
+private[roles] case class RaftIndividualTimeoutTick(node: Membership) extends RaftTimeoutTick

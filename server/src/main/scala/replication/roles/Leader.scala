@@ -18,7 +18,7 @@ case object Leader extends RaftRole {
    * @param state current raft state
    * @return the timeout result
    */
-  override def processRaftGlobalTimeout(state: RaftState): (RPCTask[RaftMessage], RaftRole) = ???
+  override def processRaftGlobalTimeout(state: RaftState): GlobalTimeoutResult = ???
 
   /**
    * Handles timeout for sending a request to a single node. For example, if this server is a leader,
@@ -29,7 +29,7 @@ case object Leader extends RaftRole {
    * @param state current raft state
    * @return the timeout result
    */
-  override def processRaftIndividualTimeout(node: Membership, state: RaftState): (RPCTask[RaftMessage], TimerTask[RaftIndividualTimeoutKey], RaftRole) = ???
+  override def processRaftIndividualTimeout(node: Membership, state: RaftState): IndividualTimeoutResult = ???
 
   /**
    * Handle a direct append entry request received by this server. Only in the leader role is this

@@ -1,7 +1,7 @@
 package replication.roles
 
 import common.rpc.RPCTask
-import common.time.TimerTask
+import common.time.{ResetTimer, TimerTask}
 import membership.api.Membership
 import replication._
 
@@ -13,21 +13,23 @@ import replication._
  */
 trait RaftRole {
 
+  /** Used for logging */
+  val roleName: String
+
   /** The result types contains information about what actions need to be done as a result of an event:
    *   - any network actions that need to be taken
    *   - any timer actions
    *   - the next role state
    */
-  type EventResult = (RPCTask[RaftMessage], TimerTask[RaftGlobalTimeoutKey.type], RaftRole)
-  type GlobalTimeoutResult = (RPCTask[RaftMessage], RaftRole)
-  type IndividualTimeoutResult = (RPCTask[RaftMessage], TimerTask[RaftIndividualTimeoutKey], RaftRole)
+  type MessageResult = (RPCTask[RaftMessage], TimerTask[RaftTimeoutKey], RaftRole)
 
-  /** Used for logging */
-  val roleName: String
+  protected type EventResult = (RPCTask[RaftMessage], TimerTask[RaftGlobalTimeoutKey.type], RaftRole)
+  protected type GlobalTimeoutResult = (RPCTask[RaftMessage], RaftRole)
+  protected type IndividualTimeoutResult = (RPCTask[RaftMessage], TimerTask[RaftIndividualTimeoutKey], RaftRole)
 
 
-  /** Ingest a Raft event and return the event result */
-  final def processRaftEvent(event: RaftEvent, state: RaftState): EventResult = {
+  /** Ingest a Raft message event and return the event result */
+  final def processRaftEvent(event: RaftEvent, state: RaftState): MessageResult = {
     (event.message match {
       case appendEvent:   AppendEntryEvent     => processAppendEntryEvent(appendEvent) _
       case appendRequest: AppendEntriesRequest => processAppendEntryRequest(appendRequest) _
@@ -35,6 +37,16 @@ trait RaftRole {
       case voteRequest:   RequestVoteRequest   => processRequestVoteRequest(voteRequest) _
       case voteReply:     RequestVoteResult    => processRequestVoteResult(voteReply) _
     })(event.node, state)
+  }
+
+  /** Ingest a Raft timeout event and return the timeout result */
+  final def processRaftTimeout(raftTimeoutTick: RaftTimeoutTick, state: RaftState): MessageResult = {
+    raftTimeoutTick match {
+      case RaftIndividualTimeoutTick(node) => processRaftIndividualTimeout(node, state)
+      case RaftGlobalTimeoutTick =>
+        val (rpcTask, newRole) = processRaftGlobalTimeout(state)
+        (rpcTask, ResetTimer(RaftGlobalTimeoutKey), newRole)
+    }
   }
 
   /**

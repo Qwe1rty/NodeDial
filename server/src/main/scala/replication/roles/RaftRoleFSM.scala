@@ -78,15 +78,8 @@ abstract class RaftRoleFSM(implicit actorSystem: ActorSystem)
       handleTimerTask(globalTimerTask)
       goto(newRole).using(state)
 
-    case Event(_: RaftGlobalTimeoutTick.type, state: RaftState) =>
-      val (rpcTask, newRole) = currentRole.processRaftGlobalTimeout(state)
-
-      handleRPCTask(rpcTask)
-      handleTimerTask(ResetTimer(RaftGlobalTimeoutKey))
-      goto(newRole).using(state)
-
-    case Event(RaftIndividualTimeoutTick(node), state: RaftState) =>
-      val (rpcTask, timerTask, newRole) = currentRole.processRaftIndividualTimeout(node, state)
+    case Event(timeout: RaftTimeoutTick, state: RaftState) =>
+      val (rpcTask, timerTask, newRole) = currentRole.processRaftTimeout(timeout, state)
 
       handleRPCTask(rpcTask)
       handleTimerTask(timerTask)
