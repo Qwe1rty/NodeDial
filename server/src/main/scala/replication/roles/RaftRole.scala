@@ -11,7 +11,7 @@ import replication._
  *
  * Since each of the 3 roles handles Raft events differently, they will need to implement
  */
-trait RaftRole {
+private[replication] trait RaftRole {
 
   /** Used for logging */
   val roleName: String

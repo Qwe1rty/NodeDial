@@ -32,14 +32,14 @@ class PersistentLong(file: File) extends PersistentVal[Long](file) {
    *
    * @param num number to add
    */
-  def +=(num: Long): Unit = write(read() + num)
+  def +=(num: Long): Unit = read().foreach(current => write(current + num))
 
   /**
    * Subtract number to value, and persist
    *
    * @param num number to add
    */
-  def -=(num: Long): Unit = write(read() - num)
+  def -=(num: Long): Unit = +=(-num)
 
   /**
    * Increment number by 1, and persist

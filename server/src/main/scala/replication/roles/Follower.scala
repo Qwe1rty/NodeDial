@@ -1,12 +1,16 @@
 package replication.roles
 
-import common.rpc.RPCTask
-import common.time.TimerTask
+import common.rpc.{NoTask, ReplyTask}
+import common.time.NothingTimer
+import membership.MembershipActor
 import membership.api.Membership
+import org.slf4j.LoggerFactory
 import replication._
 
 
-case object Follower extends RaftRole {
+private[replication] case object Follower extends RaftRole {
+
+  private val log = LoggerFactory.getLogger(Follower.getClass)
 
   /** Used for logging */
   override val roleName: String = "Follower"
@@ -67,7 +71,32 @@ case object Follower extends RaftRole {
    * @param state       current raft state
    * @return the event result
    */
-  override def processRequestVoteRequest(voteRequest: RequestVoteRequest)(node: Membership, state: RaftState): EventResult = ???
+  override def processRequestVoteRequest(voteRequest: RequestVoteRequest)(node: Membership, state: RaftState): EventResult = {
+
+    state.currentTerm.read().foreach(currentTerm => {
+
+      if (voteRequest.candidateTerm < currentTerm) {
+        return refuseVote(currentTerm)
+      }
+
+      if (!state.votedFor.read().contains(MembershipActor.nodeID)) {
+        return refuseVote(currentTerm)
+      }
+
+      // TODO check candidate log recency
+
+      return giveVote(currentTerm)
+    })
+
+    log.error("Current term was undefined! Invalid state")
+    throw new IllegalStateException("Current Raft term value was undefined")
+  }
+
+  private def refuseVote(currentTerm: Long): EventResult =
+    (ReplyTask(RequestVoteResult(currentTerm, voteGiven = false)), NothingTimer, Follower)
+
+  private def giveVote(currentTerm: Long): EventResult =
+    (ReplyTask(RequestVoteResult(currentTerm, voteGiven = true)), NothingTimer, Follower)
 
   /**
    * Handle a vote reply from a follower. Determines whether this server becomes the new leader
@@ -76,5 +105,6 @@ case object Follower extends RaftRole {
    * @param state     current raft state
    * @return the event result
    */
-  override def processRequestVoteResult(voteReply: RequestVoteResult)(node: Membership, state: RaftState): EventResult = ???
+  override def processRequestVoteResult(voteReply: RequestVoteResult)(node: Membership, state: RaftState): EventResult =
+    (NoTask, NothingTimer, Follower)
 }

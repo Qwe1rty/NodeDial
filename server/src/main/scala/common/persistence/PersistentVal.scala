@@ -17,7 +17,7 @@ abstract class PersistentVal[A] private[persistence](
     val file: File,
   ) { self =>
 
-  private var value: Option[A] = if (file.exists) Some(read()) else None
+  private var value: Option[A] = read()
 
   /**
    * Persist a value to the file. Will completely overwrite file
@@ -35,12 +35,11 @@ abstract class PersistentVal[A] private[persistence](
    *
    * @return the persisted value
    */
-  final def read(): A = value match {
-    case Some(a) => a
-    case None =>
-      val a = decodeValue(file.loadBytes)
-      value = Some(a)
-      a
+  final def read(): Option[A] = {
+    if (value.isEmpty && file.exists) {
+      value = Some(decodeValue(file.loadBytes))
+    }
+    value
   }
 
   /**
@@ -50,6 +49,11 @@ abstract class PersistentVal[A] private[persistence](
     file.delete()
     value = None
   }
+
+  /**
+   * Check if value exists
+   */
+  final def exists(): Boolean = value.isDefined
 
 
   /**

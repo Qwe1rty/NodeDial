@@ -24,7 +24,7 @@ object RaftState {
 }
 
 
-class RaftState() {
+class RaftState private(initialTerm: Long = 0) {
 
   import RaftState._
 
@@ -34,4 +34,5 @@ class RaftState() {
   val commitIndex: Long = 0
   val lastApplied: Long = 0
 
+  currentTerm.write(initialTerm)
 }
