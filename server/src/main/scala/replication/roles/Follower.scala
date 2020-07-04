@@ -1,8 +1,11 @@
 package replication.roles
 
+import common.rpc.NoTask
+import common.time.ContinueTimer
 import membership.api.Membership
 import org.slf4j.{Logger, LoggerFactory}
 import replication._
+import replication.roles.RaftRole.MessageResult
 
 
 private[replication] case object Follower extends RaftRole {
@@ -20,7 +23,7 @@ private[replication] case object Follower extends RaftRole {
    * @param state current raft state
    * @return the timeout result
    */
-  override def processRaftGlobalTimeout(state: RaftState): GlobalTimeoutResult = Candidate
+  override def processRaftGlobalTimeout(state: RaftState): Option[RaftRole] = Some(Candidate)
 
   /**
    * Handles timeout for sending a request to a single node. For example, if this server is a leader,
@@ -31,7 +34,8 @@ private[replication] case object Follower extends RaftRole {
    * @param state current raft state
    * @return the timeout result
    */
-  override def processRaftIndividualTimeout(node: Membership, state: RaftState): IndividualTimeoutResult = ???
+  override def processRaftIndividualTimeout(node: Membership, state: RaftState): MessageResult =
+    MessageResult(NoTask, ContinueTimer, None)
 
   /**
    * Handle a direct append entry request received by this server. Only in the leader role is this
@@ -41,7 +45,7 @@ private[replication] case object Follower extends RaftRole {
    * @param state       current raft state
    * @return the event result
    */
-  override def processAppendEntryEvent(appendEvent: AppendEntryEvent)(node: Membership, state: RaftState): EventResult = ???
+  override def processAppendEntryEvent(appendEvent: AppendEntryEvent)(node: Membership, state: RaftState): MessageResult =
 
   /**
    * Handle an append entry request received from the leader
@@ -50,7 +54,7 @@ private[replication] case object Follower extends RaftRole {
    * @param state         current raft state
    * @return the event result
    */
-  override def processAppendEntryRequest(appendRequest: AppendEntriesRequest)(node: Membership, state: RaftState): EventResult = ???
+  override def processAppendEntryRequest(appendRequest: AppendEntriesRequest)(node: Membership, state: RaftState): MessageResult = ???
 
   /**
    * Handle a response from an append entry request from followers. Determines whether an entry is
@@ -60,5 +64,5 @@ private[replication] case object Follower extends RaftRole {
    * @param state       current raft state
    * @return the event result
    */
-  override def processAppendEntryResult(appendReply: AppendEntriesResult)(node: Membership, state: RaftState): EventResult = ???
+  override def processAppendEntryResult(appendReply: AppendEntriesResult)(node: Membership, state: RaftState): MessageResult = ???
 }

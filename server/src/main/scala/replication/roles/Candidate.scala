@@ -1,10 +1,12 @@
 package replication.roles
 
-import common.rpc.NoTask
-import common.time.ContinueTimer
+import common.rpc.{NoTask, RequestTask}
+import common.time.{ContinueTimer, ResetTimer}
+import membership.MembershipActor
 import membership.api.Membership
 import org.slf4j.{Logger, LoggerFactory}
 import replication._
+import replication.roles.RaftRole.MessageResult
 
 
 private[replication] case object Candidate extends RaftRole {
@@ -22,7 +24,7 @@ private[replication] case object Candidate extends RaftRole {
    * @param state current raft state
    * @return the timeout result
    */
-  override def processRaftGlobalTimeout(state: RaftState): GlobalTimeoutResult = ???
+override def processRaftGlobalTimeout(state: RaftState): Option[RaftRole] = Some(Candidate)
 
   /**
    * Handles timeout for sending a request to a single node. For example, if this server is a leader,
@@ -33,7 +35,17 @@ private[replication] case object Candidate extends RaftRole {
    * @param state current raft state
    * @return the timeout result
    */
-  override def processRaftIndividualTimeout(node: Membership, state: RaftState): IndividualTimeoutResult = ???
+  override def processRaftIndividualTimeout(node: Membership, state: RaftState): MessageResult = {
+
+    state.currentTerm.read().foreach { currentTerm => MessageResult(
+      RequestTask(RequestVoteRequest(currentTerm, MembershipActor.nodeID, ???, ???)),
+      ResetTimer(RaftIndividualTimeoutKey(node)),
+      None
+    )}
+
+    log.error("Current term was undefined! Invalid state")
+    throw new IllegalStateException("Current Raft term value was undefined")
+  }
 
   /**
    * Handle a direct append entry request received by this server. Only in the leader role is this
@@ -43,7 +55,7 @@ private[replication] case object Candidate extends RaftRole {
    * @param state       current raft state
    * @return the event result
    */
-  override def processAppendEntryEvent(appendEvent: AppendEntryEvent)(node: Membership, state: RaftState): EventResult = ???
+  override def processAppendEntryEvent(appendEvent: AppendEntryEvent)(node: Membership, state: RaftState): MessageResult = ???
 
   /**
    * Handle an append entry request received from the leader
@@ -52,7 +64,7 @@ private[replication] case object Candidate extends RaftRole {
    * @param state         current raft state
    * @return the event result
    */
-  override def processAppendEntryRequest(appendRequest: AppendEntriesRequest)(node: Membership, state: RaftState): EventResult = ???
+  override def processAppendEntryRequest(appendRequest: AppendEntriesRequest)(node: Membership, state: RaftState): MessageResult = ???
 
   /**
    * Handle a response from an append entry request from followers. Determines whether an entry is
@@ -62,7 +74,7 @@ private[replication] case object Candidate extends RaftRole {
    * @param state       current raft state
    * @return the event result
    */
-  override def processAppendEntryResult(appendReply: AppendEntriesResult)(node: Membership, state: RaftState): EventResult = ???
+  override def processAppendEntryResult(appendReply: AppendEntriesResult)(node: Membership, state: RaftState): MessageResult = ???
 
   /**
    * Handle a vote reply from a follower. Determines whether this server becomes the new leader
@@ -71,7 +83,7 @@ private[replication] case object Candidate extends RaftRole {
    * @param state     current raft state
    * @return the event result
    */
-  override def processRequestVoteResult(voteReply: RequestVoteResult)(node: Membership, state: RaftState): EventResult = {
+  override def processRequestVoteResult(voteReply: RequestVoteResult)(node: Membership, state: RaftState): MessageResult = {
 
     val newRole = determineStepDown(voteReply.currentTerm)(state)
 
@@ -79,11 +91,11 @@ private[replication] case object Candidate extends RaftRole {
     if (newRole.isEmpty) {
       state.votesReceived += 1
       if (??? /* quorum reached */) {
-        return (NoTask, ContinueTimer, Some(Leader))
+        return MessageResult(NoTask, ContinueTimer, Some(Leader))
       }
     }
 
-    (NoTask, ContinueTimer, newRole)
+    MessageResult(NoTask, ContinueTimer, newRole)
   }
 
 }

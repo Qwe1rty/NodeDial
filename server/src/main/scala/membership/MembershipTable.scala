@@ -16,7 +16,7 @@ import scala.util.Random
  * by any given node.
  */
 
-private[membership] object MembershipTable {
+object MembershipTable {
 
   final class NodeNotRegisteredException(nodeID: String) extends IllegalArgumentException(
     s"Node ID ${nodeID} is not registered"
@@ -49,7 +49,7 @@ private[membership] object MembershipTable {
 }
 
 
-final private[membership] class MembershipTable private(
+final class MembershipTable private(
     private val table:       Map[String, NodeInfo],
     private val stateGroups: Map[NodeState, Set[String]],
   )

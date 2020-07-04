@@ -5,8 +5,24 @@ import common.time.{ContinueTimer, ResetTimer, TimerTask}
 import membership.MembershipActor
 import membership.api.Membership
 import org.slf4j.Logger
-import replication._
+import replication.roles.RaftRole.MessageResult
+import replication.{RaftMessage, _}
 
+
+
+private[replication] object RaftRole {
+
+  /** The MessageResult types contains information about what actions need to be done as a result of an event:
+   *   - any network actions that need to be taken, which may reset timers (such as individual heartbeat timers)
+   *   - any timer actions
+   *   - the next role state. A Some(...) value triggers role transition functions, None does not
+   */
+  case class MessageResult(
+    rpcTask:   RPCTask[RaftMessage],
+    timerTask: TimerTask[RaftTimeoutKey],
+    newRole:   Option[RaftRole]
+  )
+}
 
 /**
  * RaftRole represents one of the Raft server states (Leader, Candidate, Follower)
@@ -18,23 +34,6 @@ private[replication] trait RaftRole {
   /** Used for logging */
   val roleName: String
   protected val log: Logger
-
-  /** The result types contains information about what actions need to be done as a result of an event:
-   *   - any network actions that need to be taken, which may reset timers (such as individual heartbeat timers)
-   *   - any timer actions
-   *   - the next role state. A Some(...) value triggers role transition functions, None does not
-   */
-  type MessageResult =
-    (RPCTask[RaftMessage], TimerTask[RaftTimeoutKey], Option[RaftRole])
-
-  protected type EventResult =
-    (RPCTask[RaftMessage], TimerTask[RaftGlobalTimeoutKey.type], Option[RaftRole])
-
-  protected type IndividualTimeoutResult =
-    (RPCTask[RaftMessage], TimerTask[RaftIndividualTimeoutKey], Option[RaftRole])
-
-  protected type GlobalTimeoutResult =
-    RaftRole
 
 
   /** Ingest a Raft message event and return the event result */
@@ -52,7 +51,7 @@ private[replication] trait RaftRole {
   final def processRaftTimeout(raftTimeoutTick: RaftTimeoutTick, state: RaftState): MessageResult = {
     raftTimeoutTick match {
       case RaftIndividualTimeoutTick(node) => processRaftIndividualTimeout(node, state)
-      case RaftGlobalTimeoutTick           => (NoTask, ContinueTimer, Some(processRaftGlobalTimeout(state)))
+      case RaftGlobalTimeoutTick           => MessageResult(NoTask, ContinueTimer, processRaftGlobalTimeout(state))
     }
   }
 
@@ -66,7 +65,7 @@ private[replication] trait RaftRole {
    * @param state current raft state
    * @return the timeout result
    */
-  def processRaftGlobalTimeout(state: RaftState): GlobalTimeoutResult
+  def processRaftGlobalTimeout(state: RaftState): Option[RaftRole]
 
   /**
    * Handles timeout for sending a request to a single node. For example, if this server is a leader,
@@ -77,7 +76,7 @@ private[replication] trait RaftRole {
    * @param state current raft state
    * @return the timeout result
    */
-  def processRaftIndividualTimeout(node: Membership, state: RaftState): IndividualTimeoutResult
+  def processRaftIndividualTimeout(node: Membership, state: RaftState): MessageResult
 
   /**
    * Handle a direct append entry request received by this server. Only in the leader role is this
@@ -87,7 +86,7 @@ private[replication] trait RaftRole {
    * @param state current raft state
    * @return the event result
    */
-  def processAppendEntryEvent(appendEvent: AppendEntryEvent)(node: Membership, state: RaftState): EventResult
+  def processAppendEntryEvent(appendEvent: AppendEntryEvent)(node: Membership, state: RaftState): MessageResult
 
   /**
    * Handle an append entry request received from the leader
@@ -96,7 +95,7 @@ private[replication] trait RaftRole {
    * @param state current raft state
    * @return the event result
    */
-  def processAppendEntryRequest(appendRequest: AppendEntriesRequest)(node: Membership, state: RaftState): EventResult
+  def processAppendEntryRequest(appendRequest: AppendEntriesRequest)(node: Membership, state: RaftState): MessageResult
 
   /**
    * Handle a response from an append entry request from followers. Determines whether an entry is
@@ -106,7 +105,7 @@ private[replication] trait RaftRole {
    * @param state current raft state
    * @return the event result
    */
-  def processAppendEntryResult(appendReply: AppendEntriesResult)(node: Membership, state: RaftState): EventResult
+  def processAppendEntryResult(appendReply: AppendEntriesResult)(node: Membership, state: RaftState): MessageResult
 
   /**
    * Handle a vote request from a candidate, and decide whether or not to give that vote
@@ -115,7 +114,7 @@ private[replication] trait RaftRole {
    * @param state current raft state
    * @return the event result
    */
-  def processRequestVoteRequest(voteRequest: RequestVoteRequest)(node: Membership, state: RaftState): EventResult = {
+  def processRequestVoteRequest(voteRequest: RequestVoteRequest)(node: Membership, state: RaftState): MessageResult = {
 
     state.currentTerm.read().foreach(currentTerm => {
       val newRole = determineStepDown(voteRequest.candidateTerm)(state)
@@ -144,15 +143,15 @@ private[replication] trait RaftRole {
    * @param state current raft state
    * @return the event result
    */
-  def processRequestVoteResult(voteReply: RequestVoteResult)(node: Membership, state: RaftState): EventResult =
-    (NoTask, ContinueTimer, determineStepDown(voteReply.currentTerm)(state))
+  def processRequestVoteResult(voteReply: RequestVoteResult)(node: Membership, state: RaftState): MessageResult =
+    MessageResult(NoTask, ContinueTimer, determineStepDown(voteReply.currentTerm)(state))
 
 
   // Implementation details:
 
   /**
    * Compare an incoming message's term to this server's term, and determine if we need to step down
-   * to a follower role. This is used for all Raft message types, including requests and replies
+   * to a follower role. This is required for all Raft message types, including requests and replies
    *
    * @param receivedTerm term of received message
    * @param state current state
@@ -166,9 +165,9 @@ private[replication] trait RaftRole {
     else None
   }
 
-  final protected def refuseVote(currentTerm: Long, newRole: Option[RaftRole]): EventResult =
-    (ReplyTask(RequestVoteResult(currentTerm, voteGiven = false)), ContinueTimer, newRole)
+  final protected def refuseVote(currentTerm: Long, newRole: Option[RaftRole]): MessageResult =
+    MessageResult(ReplyTask(RequestVoteResult(currentTerm, voteGiven = false)), ContinueTimer, newRole)
 
-  final protected def giveVote(currentTerm: Long, newRole: Option[RaftRole]): EventResult =
-    (ReplyTask(RequestVoteResult(currentTerm, voteGiven = true)), ResetTimer(RaftGlobalTimeoutKey), newRole)
+  final protected def giveVote(currentTerm: Long, newRole: Option[RaftRole]): MessageResult =
+    MessageResult(ReplyTask(RequestVoteResult(currentTerm, voteGiven = true)), ResetTimer(RaftGlobalTimeoutKey), newRole)
 }

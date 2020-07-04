@@ -3,6 +3,7 @@ package replication
 import akka.actor.{ActorPath, ActorRef, ActorSystem, Props}
 import com.roundeights.hasher.Implicits._
 import io.jvm.uuid._
+import membership.api.Membership
 import persistence.{DeleteTask, GetTask, PersistenceTask, PostTask}
 import replication.LogCommand.{DELETE, WRITE}
 import replication.eventlog.Compression
@@ -10,6 +11,7 @@ import schema.ImplicitGrpcConversions._
 import schema.service.Request
 import service.OperationPackage
 
+import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
 
 
@@ -39,6 +41,10 @@ class ReplicationActor(persistenceActor: ActorRef)(implicit actorSystem: ActorSy
   private var pendingRequestActors = Map[UUID, ActorPath]()
 
 
+  /**
+   * Receives messages from both the external gRPC replication/raft instance, as well as upstream
+   * CRUD requests
+   */
   override def receive: Receive = {
 
     // Handles upstream requests
@@ -73,6 +79,11 @@ class ReplicationActor(persistenceActor: ActorRef)(implicit actorSystem: ActorSy
     case x => super.receive(x) // Catches raft events, along with anything else
   }
 
+  /**
+   * The commit function is called after the Raft process has determined a majority of the
+   * servers have agreed to append the log entry, and now needs to be interpreted by the
+   * user code
+   */
   override def commit: Commit = {
 
     // Process log entry, decompress it and send to persistence layer
@@ -96,4 +107,5 @@ class ReplicationActor(persistenceActor: ActorRef)(implicit actorSystem: ActorSy
         case Failure(e) => log.error(s"Failed to commit entry due to error: ${e.getLocalizedMessage}")
       }
   }
+
 }
