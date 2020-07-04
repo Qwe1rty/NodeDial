@@ -1,15 +1,13 @@
 package replication.roles
 
-import common.rpc.{NoTask, ReplyTask}
-import common.time.NothingTimer
 import membership.api.Membership
-import org.slf4j.LoggerFactory
+import org.slf4j.{Logger, LoggerFactory}
 import replication._
 
 
 private[replication] case object Leader extends RaftRole {
 
-  private val log = LoggerFactory.getLogger(Leader.getClass)
+  protected val log: Logger = LoggerFactory.getLogger(Leader.getClass)
 
   /** Used for logging */
   override val roleName: String = "Leader"
@@ -63,31 +61,4 @@ private[replication] case object Leader extends RaftRole {
    * @return the event result
    */
   override def processAppendEntryResult(appendReply: AppendEntriesResult)(node: Membership, state: RaftState): EventResult = ???
-
-  /**
-   * Handle a vote request from a candidate, and decide whether or not to give that vote
-   *
-   * @param voteRequest the vote request from candidates
-   * @param state       current raft state
-   * @return the event result
-   */
-  override def processRequestVoteRequest(voteRequest: RequestVoteRequest)(node: Membership, state: RaftState): EventResult = {
-
-    state.currentTerm.read().foreach(currentTerm => {
-      return (ReplyTask(RequestVoteResult(currentTerm, voteGiven = false)), NothingTimer, Leader)
-    })
-
-    log.error("Current term was undefined! Invalid state")
-    throw new IllegalStateException("Current Raft term value was undefined")
-  }
-
-  /**
-   * Handle a vote reply from a follower. Determines whether this server becomes the new leader
-   *
-   * @param voteReply the vote reply from followers
-   * @param state     current raft state
-   * @return the event result
-   */
-  override def processRequestVoteResult(voteReply: RequestVoteResult)(node: Membership, state: RaftState): EventResult =
-    (NoTask, NothingTimer, Leader)
 }

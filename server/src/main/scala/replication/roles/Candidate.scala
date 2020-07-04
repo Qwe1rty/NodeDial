@@ -1,15 +1,15 @@
 package replication.roles
 
-import common.rpc.ReplyTask
-import common.time.NothingTimer
+import common.rpc.NoTask
+import common.time.ContinueTimer
 import membership.api.Membership
-import org.slf4j.LoggerFactory
+import org.slf4j.{Logger, LoggerFactory}
 import replication._
 
 
 private[replication] case object Candidate extends RaftRole {
 
-  private val log = LoggerFactory.getLogger(Candidate.getClass)
+  protected val log: Logger = LoggerFactory.getLogger(Candidate.getClass)
 
   /** Used for logging */
   override val roleName: String = "Candidate"
@@ -65,23 +65,6 @@ private[replication] case object Candidate extends RaftRole {
   override def processAppendEntryResult(appendReply: AppendEntriesResult)(node: Membership, state: RaftState): EventResult = ???
 
   /**
-   * Handle a vote request from a candidate, and decide whether or not to give that vote
-   *
-   * @param voteRequest the vote request from candidates
-   * @param state       current raft state
-   * @return the event result
-   */
-  override def processRequestVoteRequest(voteRequest: RequestVoteRequest)(node: Membership, state: RaftState): EventResult = {
-
-    state.currentTerm.read().foreach(currentTerm => {
-      return (ReplyTask(RequestVoteResult(currentTerm, voteGiven = false)), NothingTimer, Candidate)
-    })
-
-    log.error("Current term was undefined! Invalid state")
-    throw new IllegalStateException("Current Raft term value was undefined")
-  }
-
-  /**
    * Handle a vote reply from a follower. Determines whether this server becomes the new leader
    *
    * @param voteReply the vote reply from followers
@@ -90,7 +73,17 @@ private[replication] case object Candidate extends RaftRole {
    */
   override def processRequestVoteResult(voteReply: RequestVoteResult)(node: Membership, state: RaftState): EventResult = {
 
-    ???
+    val newRole = determineStepDown(voteReply.currentTerm)(state)
+
+    // If we haven't stepped down as a result of the new message, check to see if we've won the election
+    if (newRole == this) {
+      state.votesReceived += 1
+      if (??? /* quorum reached */) {
+        return (NoTask, ContinueTimer, Leader)
+      }
+    }
+
+    (NoTask, ContinueTimer, newRole)
   }
 
 }

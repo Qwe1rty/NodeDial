@@ -55,18 +55,26 @@ abstract class RaftRoleFSM(implicit actorSystem: ActorSystem)
   when(Leader)(onReceive(Leader))
 
   // Define the state transitions
-  // TODO: complete this
   onTransition {
-    case Follower -> Candidate => nextStateData.currentTerm.read().foreach(currentTerm => {
-      log.info(s"Starting leader election from term $currentTerm to ${currentTerm + 1}")
 
-      nextStateData.currentTerm.increment()
-      nextStateData.votedFor.write(MembershipActor.nodeID)
+    case Follower -> Candidate | Candidate -> Candidate =>
+      nextStateData.currentTerm.read().foreach(currentTerm => {
+        log.info(s"Starting leader election from term $currentTerm to ${currentTerm + 1}")
 
-      handleTimerTask(ResetTimer(RaftGlobalTimeoutKey))
-      handleRPCTask(BroadcastTask(RequestVoteRequest(currentTerm + 1, MembershipActor.nodeID, ???, ???)))
-    })
-    case Candidate -> Candidate => ???
+        nextStateData.currentTerm.increment()
+        nextStateData.votedFor.write(MembershipActor.nodeID)
+        nextStateData.votesReceived = 1
+
+        handleTimerTask(ResetTimer(RaftGlobalTimeoutKey))
+        handleRPCTask(BroadcastTask(RequestVoteRequest(currentTerm + 1, MembershipActor.nodeID, ???, ???)))
+      })
+
+    case Candidate -> Follower | Leader -> Follower =>
+      nextStateData.currentTerm.read().foreach(currentTerm => {
+        log.info(s"Stepping down: ${stateName.getClass.getName} -> Follower with term ${currentTerm}")
+      })
+
+    case Candidate -> Leader => ???
   }
 
   // Initialize the FSM and start the global FSM timer
@@ -103,8 +111,15 @@ abstract class RaftRoleFSM(implicit actorSystem: ActorSystem)
   }
 
   override def handleTimerTask(timerTask: TimerTask[RaftTimeoutKey]): Unit = {
-    case SetRandomTimer(RaftGlobalTimeoutKey, lower, upper) => timeoutRange = TimeRange(lower, upper)
-    case SetFixedTimer(RaftGlobalTimeoutKey, timeout)       => timeoutRange = TimeRange(timeout, timeout)
+
+    case SetRandomTimer(RaftGlobalTimeoutKey, lower, upper) =>
+      timeoutRange = TimeRange(lower, upper)
+      startSingleTimer(TIMER_NAME, RaftGlobalTimeoutTick, timeoutRange.random())
+
+    case SetFixedTimer(RaftGlobalTimeoutKey, timeout) =>
+      timeoutRange = TimeRange(timeout, timeout)
+      startSingleTimer(TIMER_NAME, RaftGlobalTimeoutTick, timeout)
+
     case ResetTimer(key) => key match {
       case RaftGlobalTimeoutKey =>
         startSingleTimer(TIMER_NAME, RaftGlobalTimeoutTick, timeoutRange.random())

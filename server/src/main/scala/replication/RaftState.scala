@@ -9,7 +9,7 @@ import common.persistence.{PersistentLong, PersistentString}
  * RaftState are the state variables that are used by the raft algorithm to track things
  * like election status, log entries, etc.
  *
- * Since some variables need to be persisted to disk, the class is inherently non-immutable
+ * Since some variables need to be persisted to disk, the class is inherently not immutable
  * and therefore the RaftState class is defined as a mutable object
  */
 object RaftState {

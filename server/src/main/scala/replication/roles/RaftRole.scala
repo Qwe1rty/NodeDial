@@ -1,8 +1,10 @@
 package replication.roles
 
-import common.rpc.{NoTask, RPCTask}
-import common.time.{NothingTimer, ResetTimer, TimerTask}
+import common.rpc.{NoTask, RPCTask, ReplyTask}
+import common.time.{ContinueTimer, ResetTimer, TimerTask}
+import membership.MembershipActor
 import membership.api.Membership
+import org.slf4j.Logger
 import replication._
 
 
@@ -15,13 +17,13 @@ private[replication] trait RaftRole {
 
   /** Used for logging */
   val roleName: String
+  protected val log: Logger
 
   /** The result types contains information about what actions need to be done as a result of an event:
    *   - any network actions that need to be taken
    *   - any timer actions
    *   - the next role state
    */
-    // TODO make this an Either[(RPCTask[RaftMessage], TimerTask[RaftTimeoutKey]), RaftRole] maybe?
   type MessageResult = (RPCTask[RaftMessage], TimerTask[RaftTimeoutKey], RaftRole)
 
   protected type EventResult = (RPCTask[RaftMessage], TimerTask[RaftGlobalTimeoutKey.type], RaftRole)
@@ -44,10 +46,12 @@ private[replication] trait RaftRole {
   final def processRaftTimeout(raftTimeoutTick: RaftTimeoutTick, state: RaftState): MessageResult = {
     raftTimeoutTick match {
       case RaftIndividualTimeoutTick(node) => processRaftIndividualTimeout(node, state)
-      case RaftGlobalTimeoutTick           => (NoTask, NothingTimer, processRaftGlobalTimeout(state))
+      case RaftGlobalTimeoutTick           => (NoTask, ContinueTimer, processRaftGlobalTimeout(state))
     }
   }
 
+
+  // Methods to (potentially) override in concrete classes below:
 
   /**
    * Handles a global (or at least global w.r.t. this server's Raft FSM) timeout event. Typically
@@ -105,7 +109,27 @@ private[replication] trait RaftRole {
    * @param state current raft state
    * @return the event result
    */
-  def processRequestVoteRequest(voteRequest: RequestVoteRequest)(node: Membership, state: RaftState): EventResult
+  def processRequestVoteRequest(voteRequest: RequestVoteRequest)(node: Membership, state: RaftState): EventResult = {
+
+    state.currentTerm.read().foreach(currentTerm => {
+      val newRole = determineStepDown(voteRequest.candidateTerm)(state)
+
+      // If candidate's term is outdated, or we voted for someone else already
+      if (voteRequest.candidateTerm < currentTerm || !state.votedFor.read().contains(MembershipActor.nodeID)) {
+        return refuseVote(currentTerm, newRole)
+      }
+
+      // TODO check candidate log recency
+      if (???) {
+        return refuseVote(currentTerm, newRole)
+      }
+
+      return giveVote(currentTerm, newRole)
+    })
+
+    log.error("Current term was undefined! Invalid state")
+    throw new IllegalStateException("Current Raft term value was undefined")
+  }
 
   /**
    * Handle a vote reply from a follower. Determines whether this server becomes the new leader
@@ -114,5 +138,31 @@ private[replication] trait RaftRole {
    * @param state current raft state
    * @return the event result
    */
-  def processRequestVoteResult(voteReply: RequestVoteResult)(node: Membership, state: RaftState): EventResult
+  def processRequestVoteResult(voteReply: RequestVoteResult)(node: Membership, state: RaftState): EventResult =
+    (NoTask, ContinueTimer, determineStepDown(voteReply.currentTerm)(state))
+
+
+  // Implementation details:
+
+  /**
+   * Compare an incoming message's term to this server's term, and determine if we need to step down
+   * to a follower role. This is used for all Raft message types, including requests and replies
+   *
+   * @param receivedTerm term of received message
+   * @param state current state
+   * @return new Raft role
+   */
+  final protected def determineStepDown(receivedTerm: Long)(state: RaftState): RaftRole = {
+    if (receivedTerm > state.currentTerm.read().get) {
+      state.currentTerm.write(receivedTerm)
+      Follower
+    }
+    else this
+  }
+
+  final protected def refuseVote(currentTerm: Long, newRole: RaftRole): EventResult =
+    (ReplyTask(RequestVoteResult(currentTerm, voteGiven = false)), ContinueTimer, newRole)
+
+  final protected def giveVote(currentTerm: Long, newRole: RaftRole): EventResult =
+    (ReplyTask(RequestVoteResult(currentTerm, voteGiven = true)), ResetTimer(RaftGlobalTimeoutKey), newRole)
 }

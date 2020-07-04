@@ -39,8 +39,8 @@ case object CancelAllTimers extends TimerTask[Nothing] {
 }
 
 
-case object NothingTimer extends TimerTask[Nothing] {
+case object ContinueTimer extends TimerTask[Nothing] {
 
   override val key: Nothing =
-    throw new NoSuchElementException("NothingTimer does not contain a specific key type")
+    throw new NoSuchElementException("ContinueTimer does not contain a specific key type")
 }
