@@ -7,7 +7,7 @@ import common.rpc.{BroadcastTask, RPCTask, RPCTaskHandler, ReplyTask}
 import common.time._
 import membership.MembershipActor
 import membership.api.Membership
-import replication.{RaftEvent, RaftMessage, RaftRequest, RaftState, RequestVoteRequest}
+import replication._
 
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
@@ -19,8 +19,11 @@ import scala.util.{Failure, Success}
  */
 object RaftRoleFSM {
 
-  val INITIAL_TIMEOUT_LOWER_BOUND: FiniteDuration = FiniteDuration(150, TimeUnit.MILLISECONDS)
-  val INITIAL_TIMEOUT_UPPER_BOUND: FiniteDuration = FiniteDuration(325, TimeUnit.MILLISECONDS)
+  val ELECTION_TIMEOUT_LOWER_BOUND: FiniteDuration = FiniteDuration(150, TimeUnit.MILLISECONDS)
+  val ELECTION_TIMEOUT_UPPER_BOUND: FiniteDuration = FiniteDuration(325, TimeUnit.MILLISECONDS)
+
+  val ELECTION_TIMEOUT_RANGE: TimeRange = TimeRange(ELECTION_TIMEOUT_LOWER_BOUND, ELECTION_TIMEOUT_UPPER_BOUND)
+  val LEADER_HEARTBEAT_TIMEOUT: FiniteDuration = FiniteDuration(50, TimeUnit.MILLISECONDS)
 }
 
 
@@ -39,9 +42,9 @@ abstract class RaftRoleFSM(implicit actorSystem: ActorSystem)
   with RaftGlobalTimeoutName {
 
   import RaftRoleFSM._
-  implicit val executionContext: ExecutionContext = actorSystem.dispatcher
 
-  private var timeoutRange = TimeRange(INITIAL_TIMEOUT_LOWER_BOUND, INITIAL_TIMEOUT_UPPER_BOUND)
+  implicit val executionContext: ExecutionContext = actorSystem.dispatcher
+  var timeoutRange: TimeRange = ELECTION_TIMEOUT_RANGE
 
 
   // Will always start off as a Follower, even if it was a Candidate or Leader before.
@@ -69,12 +72,27 @@ abstract class RaftRoleFSM(implicit actorSystem: ActorSystem)
         handleRPCTask(BroadcastTask(RequestVoteRequest(currentTerm + 1, MembershipActor.nodeID, ???, ???)))
       })
 
-    case Candidate -> Follower | Leader -> Follower =>
+    case Candidate -> Follower =>
       nextStateData.currentTerm.read().foreach(currentTerm => {
-        log.info(s"Stepping down: ${stateName.getClass.getName} -> Follower with term ${currentTerm}")
+        log.info(s"Stepping down from Candidate w/ term $currentTerm, after receiving ${nextStateData.votesReceived} votes")
       })
 
-    case Candidate -> Leader => ???
+    case Leader -> Follower =>
+      nextStateData.currentTerm.read().foreach(currentTerm => {
+        log.info(s"Stepping down from Leader w/ term $currentTerm")
+
+        handleTimerTask(SetRandomTimer(RaftGlobalTimeoutKey, ELECTION_TIMEOUT_RANGE))
+        handleTimerTask(ResetTimer(RaftGlobalTimeoutKey))
+      })
+
+    case Candidate -> Leader =>
+      nextStateData.currentTerm.read().foreach(currentTerm => {
+        log.info(s"Election won, becoming leader of term $currentTerm")
+
+        handleTimerTask(CancelTimer(RaftGlobalTimeoutKey))
+        // TODO broadcast AppendEntriesRequest
+        // TODO set heartbeat timers for all nodes
+      })
   }
 
   // Initialize the FSM and start the global FSM timer
@@ -97,10 +115,14 @@ abstract class RaftRoleFSM(implicit actorSystem: ActorSystem)
 
       handleRPCTask(rpcTask)
       handleTimerTask(timerTask)
-      goto(newRole).using(state)
+
+      newRole match {
+          case Some(role) => goto(role)
+          case None       => stay
+      }
   }
 
-  override def handleRPCTask(rpcTask: RPCTask[RaftMessage]): Unit = {
+  override def handleRPCTask(rpcTask: RPCTask[RaftMessage]): Unit = rpcTask match {
     case ReplyTask(reply) => sender ! reply
     case BroadcastTask(message) => message match {
       case request: RaftRequest => broadcast(request).foreach(_.onComplete {
@@ -110,10 +132,10 @@ abstract class RaftRoleFSM(implicit actorSystem: ActorSystem)
     }
   }
 
-  override def handleTimerTask(timerTask: TimerTask[RaftTimeoutKey]): Unit = {
+  override def handleTimerTask(timerTask: TimerTask[RaftTimeoutKey]): Unit = timerTask match {
 
-    case SetRandomTimer(RaftGlobalTimeoutKey, lower, upper) =>
-      timeoutRange = TimeRange(lower, upper)
+    case SetRandomTimer(RaftGlobalTimeoutKey, timeRange) =>
+      timeoutRange = timeRange
       startSingleTimer(TIMER_NAME, RaftGlobalTimeoutTick, timeoutRange.random())
 
     case SetFixedTimer(RaftGlobalTimeoutKey, timeout) =>
@@ -126,6 +148,9 @@ abstract class RaftRoleFSM(implicit actorSystem: ActorSystem)
       case RaftIndividualTimeoutKey(node) =>
         startSingleTimer(node.nodeID, RaftIndividualTimeoutTick(node), timeoutRange.random())
     }
+
+    case CancelTimer(RaftGlobalTimeoutKey) =>
+      cancelTimer(TIMER_NAME)
   }
 
   /**

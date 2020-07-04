@@ -20,15 +20,21 @@ private[replication] trait RaftRole {
   protected val log: Logger
 
   /** The result types contains information about what actions need to be done as a result of an event:
-   *   - any network actions that need to be taken
+   *   - any network actions that need to be taken, which may reset timers (such as individual heartbeat timers)
    *   - any timer actions
-   *   - the next role state
+   *   - the next role state. A Some(...) value triggers role transition functions, None does not
    */
-  type MessageResult = (RPCTask[RaftMessage], TimerTask[RaftTimeoutKey], RaftRole)
+  type MessageResult =
+    (RPCTask[RaftMessage], TimerTask[RaftTimeoutKey], Option[RaftRole])
 
-  protected type EventResult = (RPCTask[RaftMessage], TimerTask[RaftGlobalTimeoutKey.type], RaftRole)
-  protected type GlobalTimeoutResult = RaftRole
-  protected type IndividualTimeoutResult = (RPCTask[RaftMessage], TimerTask[RaftIndividualTimeoutKey], RaftRole)
+  protected type EventResult =
+    (RPCTask[RaftMessage], TimerTask[RaftGlobalTimeoutKey.type], Option[RaftRole])
+
+  protected type IndividualTimeoutResult =
+    (RPCTask[RaftMessage], TimerTask[RaftIndividualTimeoutKey], Option[RaftRole])
+
+  protected type GlobalTimeoutResult =
+    RaftRole
 
 
   /** Ingest a Raft message event and return the event result */
@@ -46,7 +52,7 @@ private[replication] trait RaftRole {
   final def processRaftTimeout(raftTimeoutTick: RaftTimeoutTick, state: RaftState): MessageResult = {
     raftTimeoutTick match {
       case RaftIndividualTimeoutTick(node) => processRaftIndividualTimeout(node, state)
-      case RaftGlobalTimeoutTick           => (NoTask, ContinueTimer, processRaftGlobalTimeout(state))
+      case RaftGlobalTimeoutTick           => (NoTask, ContinueTimer, Some(processRaftGlobalTimeout(state)))
     }
   }
 
@@ -152,17 +158,17 @@ private[replication] trait RaftRole {
    * @param state current state
    * @return new Raft role
    */
-  final protected def determineStepDown(receivedTerm: Long)(state: RaftState): RaftRole = {
+  final protected def determineStepDown(receivedTerm: Long)(state: RaftState): Option[RaftRole] = {
     if (receivedTerm > state.currentTerm.read().get) {
       state.currentTerm.write(receivedTerm)
-      Follower
+      Some(Follower)
     }
-    else this
+    else None
   }
 
-  final protected def refuseVote(currentTerm: Long, newRole: RaftRole): EventResult =
+  final protected def refuseVote(currentTerm: Long, newRole: Option[RaftRole]): EventResult =
     (ReplyTask(RequestVoteResult(currentTerm, voteGiven = false)), ContinueTimer, newRole)
 
-  final protected def giveVote(currentTerm: Long, newRole: RaftRole): EventResult =
+  final protected def giveVote(currentTerm: Long, newRole: Option[RaftRole]): EventResult =
     (ReplyTask(RequestVoteResult(currentTerm, voteGiven = true)), ResetTimer(RaftGlobalTimeoutKey), newRole)
 }

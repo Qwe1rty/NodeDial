@@ -76,10 +76,10 @@ private[replication] case object Candidate extends RaftRole {
     val newRole = determineStepDown(voteReply.currentTerm)(state)
 
     // If we haven't stepped down as a result of the new message, check to see if we've won the election
-    if (newRole == this) {
+    if (newRole.isEmpty) {
       state.votesReceived += 1
       if (??? /* quorum reached */) {
-        return (NoTask, ContinueTimer, Leader)
+        return (NoTask, ContinueTimer, Some(Leader))
       }
     }
 

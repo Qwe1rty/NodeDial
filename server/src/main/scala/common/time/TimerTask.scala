@@ -22,8 +22,7 @@ case class SetFixedTimer[TimerKey](
 
 case class SetRandomTimer[TimerKey](
   key: TimerKey,
-  lowerTimeout: FiniteDuration,
-  upperTimeout: FiniteDuration
+  timeRange: TimeRange
 ) extends TimerTask[TimerKey]
 
 
