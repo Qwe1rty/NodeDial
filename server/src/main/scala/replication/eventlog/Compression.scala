@@ -1,6 +1,6 @@
 package replication.eventlog
 
-import java.io.{ByteArrayInputStream, ByteArrayOutputStream, InputStream}
+import java.io.{ByteArrayInputStream, ByteArrayOutputStream, InputStream, ObjectInputStream, ObjectOutputStream}
 import java.util.zip.{GZIPInputStream, GZIPOutputStream}
 
 import scala.util.Try
@@ -35,5 +35,4 @@ trait Compression {
     bytesInputStream.close()
     raw
   }
-
 }

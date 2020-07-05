@@ -3,14 +3,14 @@ package replication
 import akka.actor.{ActorPath, ActorRef, ActorSystem, Props}
 import com.roundeights.hasher.Implicits._
 import io.jvm.uuid._
-import persistence.{DeleteTask, GetTask, PersistenceTask, PostTask}
+import persistence.{DeleteTask, GetTask, PostTask}
 import replication.ReplicatedOp.OperationType
-import replication.eventlog.Compression
+import replication.eventlog.{Compression, ProtobufSerializer}
 import schema.ImplicitGrpcConversions._
 import schema.service.Request
 import service.OperationPackage
 
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Success}
 
 
 object ReplicationActor {
@@ -29,6 +29,7 @@ object ReplicationActor {
 
 class ReplicationActor(persistenceActor: ActorRef)(implicit actorSystem: ActorSystem)
   extends RaftActor[ReplicatedOp]
+  with ProtobufSerializer[ReplicatedOp]
   with Compression {
 
   private var pendingRequestActors = Map[UUID, ActorPath]()
@@ -58,7 +59,7 @@ class ReplicationActor(persistenceActor: ActorRef)(implicit actorSystem: ActorSy
         // TODO make a compressed version of the new log entry type
 
         compressBytes(value) match {
-          case Success(gzip) => super.receive(AppendEntryEvent(LogEntry(key, ??? ??? ???), Some(uuid)))
+          case Success(gzip) => super.receive(AppendEntryEvent(LogEntry(key, ???), Some(uuid)))
           case Failure(e) => log.error(s"Compression error for key $key: ${e.getLocalizedMessage}")
         }
 

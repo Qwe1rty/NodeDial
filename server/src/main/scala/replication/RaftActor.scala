@@ -5,6 +5,7 @@ import common.rpc.{BroadcastTask, RPCTask, RPCTaskHandler, ReplyTask}
 import common.time._
 import membership.MembershipActor
 import membership.api.Membership
+import replication.eventlog.Serializer
 import replication.roles.RaftRole.MessageResult
 import replication.roles._
 
@@ -31,6 +32,8 @@ private[replication] abstract class RaftActor[Command <: Serializable](
   with RPCTaskHandler[RaftMessage]
   with TimerTaskHandler[RaftTimeoutKey]
   with RaftTimeouts {
+
+  this: Serializer[Command] =>
 
   implicit val executionContext: ExecutionContext = actorSystem.dispatcher
   var timeoutRange: TimeRange = ELECTION_TIMEOUT_RANGE
