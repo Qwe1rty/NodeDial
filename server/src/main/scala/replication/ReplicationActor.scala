@@ -3,15 +3,13 @@ package replication
 import akka.actor.{ActorPath, ActorRef, ActorSystem, Props}
 import com.roundeights.hasher.Implicits._
 import io.jvm.uuid._
-import membership.api.Membership
 import persistence.{DeleteTask, GetTask, PersistenceTask, PostTask}
-import replication.LogCommand.{DELETE, WRITE}
+import replication.ReplicatedOp.OperationType
 import replication.eventlog.Compression
 import schema.ImplicitGrpcConversions._
 import schema.service.Request
 import service.OperationPackage
 
-import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
 
 
@@ -26,17 +24,12 @@ object ReplicationActor {
       "replicationActor"
     )
   }
-
-  private def logEntry(key: String, command: LogCommand): LogEntry =
-    new LogEntry(key.sha256.bytes, command)
 }
 
 
 class ReplicationActor(persistenceActor: ActorRef)(implicit actorSystem: ActorSystem)
-  extends RaftActor
+  extends RaftActor[ReplicatedOp]
   with Compression {
-
-  import ReplicationActor._
 
   private var pendingRequestActors = Map[UUID, ActorPath]()
 
@@ -62,8 +55,10 @@ class ReplicationActor(persistenceActor: ActorRef)(implicit actorSystem: ActorSy
         log.debug(s"Post request received with UUID ${uuid.string}")
         pendingRequestActors += uuid -> requestActor
 
-        compress(value) match {
-          case Success(gzip) => super.receive(new AppendEntryEvent(logEntry(key, WRITE), uuid, gzip))
+        // TODO make a compressed version of the new log entry type
+
+        compressBytes(value) match {
+          case Success(gzip) => super.receive(AppendEntryEvent(LogEntry(key, ??? ??? ???), Some(uuid)))
           case Failure(e) => log.error(s"Compression error for key $key: ${e.getLocalizedMessage}")
         }
 
@@ -73,7 +68,7 @@ class ReplicationActor(persistenceActor: ActorRef)(implicit actorSystem: ActorSy
         log.debug(s"Delete request received with UUID ${uuid.string}")
         pendingRequestActors += uuid -> requestActor
 
-        super.receive(new AppendEntryEvent(logEntry(key, DELETE), uuid, Array[Byte]()))
+        super.receive(AppendEntryEvent(LogEntry(key, Array[Byte]()), Some(uuid)))
     }
 
     case x => super.receive(x) // Catches raft events, along with anything else
@@ -84,28 +79,31 @@ class ReplicationActor(persistenceActor: ActorRef)(implicit actorSystem: ActorSy
    * servers have agreed to append the log entry, and now needs to be interpreted by the
    * user code
    */
-  override def commit: Commit = {
+  override def commit: Commit = { case ReplicatedOp(operation) => operation match {
 
-    // Process log entry, decompress it and send to persistence layer
-    case AppendEntryEvent(LogEntry(keyHash, command), uuid, compressedValue) =>
-      log.info(s"${command.name} entry with key hash $keyHash will now attempt to be committed")
+    case OperationType.Read(ReadOp(key, uuid)) =>
+      log.info(s"Get entry with key $key and UUID ${uuid: String} has been received as Raft commit")
 
       val requestActor = pendingRequestActors.get(uuid)
-      val persistenceTask: Try[PersistenceTask] = command match {
+      persistenceActor ! GetTask(requestActor, byteStringToString(key).sha256)
 
-        case DELETE => Success(DeleteTask(requestActor, keyHash))
-        case WRITE  => decompress(compressedValue) match {
-          case Success(decompressedValue) => Success(PostTask(requestActor, keyHash, decompressedValue))
-          case Failure(e) =>
-            log.error(s"Decompression error for key hash $keyHash for reason: ${e.getLocalizedMessage}")
-            Failure(e)
-        }
+    case OperationType.Write(WriteOp(key, compressedValue, uuid)) =>
+      log.info(s"Write entry with key $key and UUID ${uuid: String} will now attempt to be committed")
+
+      val requestActor = pendingRequestActors.get(uuid)
+      decompressBytes(compressedValue) match {
+        case Success(value) => persistenceActor ! PostTask(requestActor, byteStringToString(key).sha256, value)
+        case Failure(e) => log.error(s"Decompression error for key $key for reason: ${e.getLocalizedMessage}")
       }
 
-      persistenceTask match {
-        case Success(task) => persistenceActor ! task
-        case Failure(e) => log.error(s"Failed to commit entry due to error: ${e.getLocalizedMessage}")
-      }
-  }
+    case OperationType.Delete(DeleteOp(key, uuid)) =>
+      log.info(s"Delete entry with key $key and UUID ${uuid: String} will now attempt to be committed")
+
+      val requestActor = pendingRequestActors.get(uuid)
+      persistenceActor ! DeleteTask(requestActor, byteStringToString(key).sha256)
+
+    case OperationType.Empty =>
+      log.error("Received empty replicated operation type!")
+  }}
 
 }

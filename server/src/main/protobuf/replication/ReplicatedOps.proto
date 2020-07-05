@@ -1,0 +1,55 @@
+syntax = "proto2";
+
+option java_multiple_files = true;
+option java_package = "replication";
+option java_outer_classname = "ChordialReplicatedOps";
+
+import "replication/LogEntry.proto";
+
+package chordial.replication;
+
+
+// Note: these ops are specific to the Chordial DB interface, and is not
+// part of the Raft algorithm.
+
+message ReplicatedOp {
+
+    oneof operationType {
+        ReadOp read = 1;
+        WriteOp write = 2;
+        DeleteOp delete = 3;
+    }
+}
+
+message WriteOp {
+
+    // The key value
+    required bytes key = 1;
+
+    // The compressed write value
+    required bytes compressed_value = 2;
+
+    // The UUID, used for tracking which request actor to send the
+    // result back to
+    required bytes uuid = 3;
+}
+
+message ReadOp {
+
+    // The key value
+    required bytes key = 1;
+
+    // The UUID, used for tracking which request actor to send the
+    // result back to
+    required bytes uuid = 2;
+}
+
+message DeleteOp {
+
+    // The key value
+    required bytes key = 1;
+
+    // The UUID, used for tracking which request actor to send the
+    // result back to
+    required bytes uuid = 2;
+}

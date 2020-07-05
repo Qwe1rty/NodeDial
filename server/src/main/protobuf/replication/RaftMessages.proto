@@ -21,10 +21,7 @@ message AppendEntryEvent {
     //
     // Not actually used by the Raft algorithm itself, but it makes client
     // side code much easier by making these trackable.
-    required bytes uuid = 2;
-
-    // Compressed write value for the request
-    required bytes compressed_value = 3;
+    optional bytes uuid = 2;
 }
 
 message AppendEntriesRequest {

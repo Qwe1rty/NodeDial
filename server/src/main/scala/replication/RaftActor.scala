@@ -19,14 +19,18 @@ import scala.util.{Failure, Success}
  *
  * This FSM also includes the raft volatile and persistent state variables, and will
  * internally modify them as needed
+ *
+ * @param actorSystem the actor system
+ * @tparam Command the serializable type that will be replicated in the Raft log
  */
-private[replication] abstract class RaftActor(implicit actorSystem: ActorSystem)
+private[replication] abstract class RaftActor[Command <: Serializable](
+    implicit
+    actorSystem: ActorSystem
+  )
   extends FSM[RaftRole, RaftState]
   with RPCTaskHandler[RaftMessage]
   with TimerTaskHandler[RaftTimeoutKey]
   with RaftTimeouts {
-
-  type Commit = Function[AppendEntryEvent, Unit]
 
   implicit val executionContext: ExecutionContext = actorSystem.dispatcher
   var timeoutRange: TimeRange = ELECTION_TIMEOUT_RANGE
@@ -37,6 +41,7 @@ private[replication] abstract class RaftActor(implicit actorSystem: ActorSystem)
    * servers have agreed to append the log entry, and now needs to be interpreted by the
    * user code
    */
+  type Commit = Function[Command, Unit]
   def commit: Commit
 
   /**

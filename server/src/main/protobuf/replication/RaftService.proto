@@ -5,6 +5,7 @@ option java_package = "replication";
 option java_outer_classname = "ChordialRaftService";
 
 import "replication/RaftMessages.proto";
+import "google/protobuf/empty.proto";
 
 package chordial.replication;
 
@@ -18,6 +19,12 @@ service RaftService {
     // RequestVote is called by candidates to try and get a majority vote,
     // to become leader
     rpc RequestVote (RequestVoteRequest) returns (RequestVoteResult) {}
+
+
+    // Handles a new write request from client - starts an AppendEntries
+    // broadcast if leader for replication, or redirects it to the leader (if
+    // existing).
+    rpc NewLogWrite (AppendEntryEvent) returns (google.protobuf.Empty) {}
 }
 
 

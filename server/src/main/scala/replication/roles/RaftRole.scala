@@ -9,7 +9,6 @@ import replication.roles.RaftRole.MessageResult
 import replication.{RaftMessage, _}
 
 
-
 private[replication] object RaftRole {
 
   /** The MessageResult types contains information about what actions need to be done as a result of an event:
@@ -23,6 +22,7 @@ private[replication] object RaftRole {
     newRole:   Option[RaftRole]
   )
 }
+
 
 /**
  * RaftRole represents one of the Raft server states (Leader, Candidate, Follower)

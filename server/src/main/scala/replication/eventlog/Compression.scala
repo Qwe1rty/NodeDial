@@ -14,7 +14,7 @@ trait Compression {
    * @param bytes bytes to compress to gzip
    * @return compressed bytes
    */
-  def compress(bytes: Array[Byte]): Try[Array[Byte]] = Try {
+  def compressBytes(bytes: Array[Byte]): Try[Array[Byte]] = Try {
     val bytesOutputStream = new ByteArrayOutputStream()
     val gzip = new GZIPOutputStream(bytesOutputStream)
     gzip.write(bytes)
@@ -28,7 +28,7 @@ trait Compression {
    * @param bytes gzipped bytes to decompress
    * @return decompressed bytes
    */
-  def decompress(bytes: Array[Byte]): Try[Array[Byte]] = Try {
+  def decompressBytes(bytes: Array[Byte]): Try[Array[Byte]] = Try {
     val bytesInputStream: InputStream = new GZIPInputStream(new ByteArrayInputStream(bytes))
     val raw = new Array[Byte](bytesInputStream.available())
     bytesInputStream.read(raw)

@@ -5,6 +5,7 @@ import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.http.scaladsl.{Http, HttpConnectionContext}
 import akka.pattern.ask
 import akka.stream.{ActorMaterializer, Materializer}
+import com.google.protobuf.empty.Empty
 import common.ServerDefaults.ACTOR_REQUEST_TIMEOUT
 import org.slf4j.LoggerFactory
 import schema.PortConfiguration.REPLICATION_PORT
@@ -62,5 +63,17 @@ class RaftServiceImpl(raftActor: ActorRef)(implicit actorSystem: ActorSystem) ex
 
     (raftActor ? in)
       .mapTo[AppendEntriesResult]
+  }
+
+  /**
+   * Handles a new write request from client - starts an AppendEntries
+   * broadcast if leader for replication, or redirects it to the leader (if
+   * existing).
+   */
+  override def newLogWrite(in: AppendEntryEvent): Future[Empty] = {
+    log.debug(s"New log write event with key ${in.logEntry.key}")
+
+    raftActor ! in
+    Future.successful(Empty())
   }
 }
