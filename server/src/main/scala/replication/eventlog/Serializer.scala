@@ -2,11 +2,15 @@ package replication.eventlog
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream, ObjectInputStream, ObjectOutputStream}
 
-import com.sun.tools.javac.code.TypeTag
 import scalapb.{GeneratedMessage, GeneratedMessageCompanion, Message}
 
-import scala.reflect.runtime.universe._
 import scala.util.Try
+
+
+object Serializer {
+
+  type DefaultSerializer[T <: Serializable] = JavaSerializer[T]
+}
 
 trait Serializer[T] {
 
@@ -37,15 +41,10 @@ trait JavaSerializer[T <: Serializable] extends Serializer[T] {
 }
 
 
-trait ProtobufSerializer[T <: GeneratedMessage with Message[T]: TypeTag[T]] extends Serializer[T] {
-
-  import scala.reflect.runtime.currentMirror
+trait ProtobufSerializer[T <: GeneratedMessage with Message[T]] extends Serializer[T] {
 
   // Reflection required to get the companion object...
-  val messageCompanion: GeneratedMessageCompanion[T] = currentMirror
-    .reflectModule(typeOf[T].typeSymbol.companion.asModule)
-    .instance
-    .asInstanceOf[GeneratedMessageCompanion[T]]
+  def messageCompanion: GeneratedMessageCompanion[T]
 
   override def serialize(value: T): Try[Array[Byte]] = Try {
     value.toByteArray

@@ -6,6 +6,7 @@ import io.jvm.uuid._
 import persistence.{DeleteTask, GetTask, PostTask}
 import replication.ReplicatedOp.OperationType
 import replication.eventlog.{Compression, ProtobufSerializer}
+import scalapb.GeneratedMessageCompanion
 import schema.ImplicitGrpcConversions._
 import schema.service.Request
 import service.OperationPackage
@@ -34,6 +35,8 @@ class ReplicationActor(persistenceActor: ActorRef)(implicit actorSystem: ActorSy
 
   private var pendingRequestActors = Map[UUID, ActorPath]()
 
+
+  override val messageCompanion: GeneratedMessageCompanion[ReplicatedOp] = ReplicatedOp
 
   /**
    * Receives messages from both the external gRPC replication/raft instance, as well as upstream
