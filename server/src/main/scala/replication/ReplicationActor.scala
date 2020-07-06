@@ -59,10 +59,8 @@ class ReplicationActor(persistenceActor: ActorRef)(implicit actorSystem: ActorSy
         log.debug(s"Post request received with UUID ${uuid.string}")
         pendingRequestActors += uuid -> requestActor
 
-        // TODO make a compressed version of the new log entry type
-
         compressBytes(value) match {
-          case Success(gzip) => super.receive(AppendEntryEvent(LogEntry(key, ???), Some(uuid)))
+          case Success(gzip) => super.receive(AppendEntryEvent(LogEntry(key, gzip), Some(uuid)))
           case Failure(e) => log.error(s"Compression error for key $key: ${e.getLocalizedMessage}")
         }
 

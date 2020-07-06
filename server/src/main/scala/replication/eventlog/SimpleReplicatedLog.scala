@@ -81,6 +81,21 @@ class SimpleReplicatedLog(
     entry
   }
 
+  override def slice(from: Int, until: Int): Array[Byte] = {
+    if (from >= until) {
+      throw new IllegalArgumentException("Range is invalid: left bound must strictly be smaller than right bound")
+    }
+
+    val sliceLength =
+      metadata.offsetIndex(until - 1).length +
+      metadata.offsetIndex(until - 1).offset -
+      metadata.offsetIndex(from).offset
+
+    val entry = new Array[Byte](sliceLength)
+    randomAccess.read(entry, metadata.offsetIndex(from).offset, sliceLength)
+    entry
+  }
+
 
   private def offsetOf(index: Int): Offset = metadata.offsetIndex(index).offset
 

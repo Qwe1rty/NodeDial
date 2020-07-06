@@ -11,4 +11,6 @@ trait ReplicatedLog {
 
   def apply(index: Int): Array[Byte]
   final def get(index: Int): Array[Byte] = apply(index)
+
+  def slice(from: Int, until: Int): Array[Byte]
 }
