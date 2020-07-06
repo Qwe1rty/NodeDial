@@ -5,7 +5,7 @@ import common.rpc.{BroadcastTask, RPCTask, RPCTaskHandler, ReplyTask}
 import common.time._
 import membership.MembershipActor
 import membership.api.Membership
-import replication.eventlog.Serializer
+import replication.eventlog.{ReplicatedLog, Serializer}
 import replication.roles.RaftRole.MessageResult
 import replication.roles._
 
@@ -25,6 +25,8 @@ import scala.util.{Failure, Success}
  * @tparam Command the serializable type that will be replicated in the Raft log
  */
 private[replication] abstract class RaftActor[Command <: Serializable](
+    private val replicatedLog: ReplicatedLog
+  )(
     implicit
     actorSystem: ActorSystem
   )
