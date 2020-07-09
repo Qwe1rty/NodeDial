@@ -2,6 +2,8 @@ package common.persistence
 
 import better.files.File
 
+import scala.util.Try
+
 
 object PersistentLong {
 
@@ -12,20 +14,6 @@ object PersistentLong {
 
 
 class PersistentLong(file: File) extends PersistentVal[Long](file) {
-
-  /**
-   * The function for serializing value to bytes
-   */
-  override protected def serialize: Function[Long, Array[Byte]] = {
-    long: Long => BigInt(long).toByteArray
-  }
-
-  /**
-   * The function for deserialize bytes to its value
-   */
-  override protected def deserialize: Function[Array[Byte], Long] = {
-    bytes: Array[Byte] => BigInt(bytes).toLong
-  }
 
   /**
    * Add number to value, and persist
@@ -45,4 +33,18 @@ class PersistentLong(file: File) extends PersistentVal[Long](file) {
    * Increment number by 1, and persist
    */
   def increment(): Unit = +=(1)
+
+  /**
+   * The function for serializing value to bytes
+   */
+  override protected def serialize(value: Long): Try[Array[Byte]] = Try {
+    BigInt(value).toByteArray
+  }
+
+  /**
+   * The function for deserialize bytes to its value
+   */
+  override protected def deserialize(bytes: Array[Byte]): Try[Long] = Try {
+    BigInt(bytes).toLong
+  }
 }

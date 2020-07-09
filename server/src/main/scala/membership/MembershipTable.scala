@@ -49,7 +49,7 @@ object MembershipTable {
 }
 
 
-final class MembershipTable private(
+final case class MembershipTable private(
     private val table:       Map[String, NodeInfo],
     private val stateGroups: Map[NodeState, Set[String]],
   )

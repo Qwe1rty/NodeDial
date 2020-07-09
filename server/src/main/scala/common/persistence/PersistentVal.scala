@@ -2,6 +2,8 @@ package common.persistence
 
 import better.files.File
 
+import scala.util.{Failure, Success, Try}
+
 
 /**
  * PersistentVal is a mutable interface that is intended to make it easier
@@ -13,9 +15,10 @@ import better.files.File
  * @param file file where the value should be persisted
  * @tparam A the value type
  */
-abstract class PersistentVal[A] private[persistence](
+abstract class PersistentVal[A](
     val file: File,
-  ) { self =>
+  )
+  extends Serializer[A] { self =>
 
   private var value: Option[A] = read()
 
@@ -25,7 +28,10 @@ abstract class PersistentVal[A] private[persistence](
    * @param a the value to persist
    */
   final def write(a: A): Unit = {
-    file.writeByteArray(serialize(a))
+    serialize(a) match {
+      case Success(bytes) => file.writeByteArray(bytes)
+      case Failure(exception) => throw exception
+    }
     value = Some(a)
   }
 
@@ -37,7 +43,10 @@ abstract class PersistentVal[A] private[persistence](
    */
   final def read(): Option[A] = {
     if (value.isEmpty && file.exists) {
-      value = Some(deserialize(file.loadBytes))
+      deserialize(file.loadBytes) match {
+        case Success(value) => this.value = Some(value)
+        case Failure(exception) => throw exception
+      }
     }
     value
   }
@@ -54,15 +63,4 @@ abstract class PersistentVal[A] private[persistence](
    * Check if value exists
    */
   final def exists(): Boolean = file.exists
-
-
-  /**
-   * The function for serializing value to bytes
-   */
-  protected def serialize: Function[A, Array[Byte]]
-
-  /**
-   * The function for deserialize bytes to its value
-   */
-  protected def deserialize: Function[Array[Byte], A]
 }

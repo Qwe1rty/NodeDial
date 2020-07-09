@@ -15,13 +15,11 @@ import replication.eventlog.ReplicatedLog
  */
 object RaftState {
 
-  private val RAFT_DIR             = ServerConstants.BASE_DIRECTORY/"raft"
-  private val RAFT_STATE_EXTENSION = ".state"
+  val RAFT_DIR             = ServerConstants.BASE_DIRECTORY/"raft"
+  val RAFT_STATE_EXTENSION = ".state"
 
 
   def apply(replicatedLog: ReplicatedLog): RaftState = new RaftState(replicatedLog)
-
-  private def createRaftFile(filename: String): File = RAFT_DIR/filename/RAFT_STATE_EXTENSION
 }
 
 
@@ -29,9 +27,10 @@ class RaftState(val replicatedLog: ReplicatedLog) {
 
   import RaftState._
 
+
   // Common state variables, for all roles
-  val currentTerm: PersistentLong = PersistentLong(createRaftFile("currentTerm"))
-  val votedFor: PersistentString = PersistentString(createRaftFile("votedFor"))
+  val currentTerm: PersistentLong = PersistentLong(RAFT_DIR/"currentTerm"/RAFT_STATE_EXTENSION)
+  val votedFor: PersistentString = PersistentString(RAFT_DIR/"votedFor"/RAFT_STATE_EXTENSION)
 
   var commitIndex: Long = 0
   var lastApplied: Long = 0

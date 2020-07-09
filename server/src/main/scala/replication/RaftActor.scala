@@ -1,11 +1,12 @@
 package replication
 
 import akka.actor.{ActorSystem, FSM}
+import common.persistence.Serializer
 import common.rpc.{BroadcastTask, RPCTask, RPCTaskHandler, ReplyTask}
 import common.time._
 import membership.MembershipActor
 import membership.api.Membership
-import replication.eventlog.{ReplicatedLog, Serializer}
+import replication.eventlog.ReplicatedLog
 import replication.roles.RaftRole.MessageResult
 import replication.roles._
 

@@ -2,10 +2,10 @@ package replication
 
 import akka.actor.{ActorPath, ActorRef, ActorSystem, Props}
 import com.roundeights.hasher.Implicits._
+import common.persistence.{Compression, ProtobufSerializer}
 import io.jvm.uuid._
 import persistence.{DeleteTask, GetTask, PostTask}
 import replication.ReplicatedOp.OperationType
-import replication.eventlog.{Compression, ProtobufSerializer}
 import scalapb.GeneratedMessageCompanion
 import schema.ImplicitGrpcConversions._
 import schema.service.Request

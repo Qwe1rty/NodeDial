@@ -3,6 +3,7 @@ package replication.eventlog
 import java.io.RandomAccessFile
 
 import better.files.File
+import common.persistence.JavaSerializer
 import replication.eventlog.SimpleReplicatedLog.{LogIndex, LogMetadata, Offset}
 
 import scala.collection.mutable

@@ -1,6 +1,6 @@
-package replication.eventlog
+package common.persistence
 
-import java.io.{ByteArrayInputStream, ByteArrayOutputStream, InputStream, ObjectInputStream, ObjectOutputStream}
+import java.io.{ByteArrayInputStream, ByteArrayOutputStream, InputStream}
 import java.util.zip.{GZIPInputStream, GZIPOutputStream}
 
 import scala.util.Try
