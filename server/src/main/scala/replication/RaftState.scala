@@ -3,6 +3,7 @@ package replication
 import better.files.File
 import common.ServerConstants
 import common.persistence.{PersistentLong, PersistentString}
+import replication.eventlog.ReplicatedLog
 
 
 /**
@@ -18,13 +19,13 @@ object RaftState {
   private val RAFT_STATE_EXTENSION = ".state"
 
 
-  def apply(): RaftState = new RaftState
+  def apply(replicatedLog: ReplicatedLog): RaftState = new RaftState(replicatedLog)
 
   private def createRaftFile(filename: String): File = RAFT_DIR/filename/RAFT_STATE_EXTENSION
 }
 
 
-class RaftState private(initialTerm: Long = 0) {
+class RaftState(val replicatedLog: ReplicatedLog) {
 
   import RaftState._
 
@@ -39,5 +40,5 @@ class RaftState private(initialTerm: Long = 0) {
   var votesReceived: Int = 0
 
 
-  if (!currentTerm.exists()) currentTerm.write(initialTerm)
+  if (!currentTerm.exists()) currentTerm.write(0)
 }

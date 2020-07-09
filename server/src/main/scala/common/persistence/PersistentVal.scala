@@ -25,7 +25,7 @@ abstract class PersistentVal[A] private[persistence](
    * @param a the value to persist
    */
   final def write(a: A): Unit = {
-    file.writeByteArray(encodeValue(a))
+    file.writeByteArray(serialize(a))
     value = Some(a)
   }
 
@@ -37,7 +37,7 @@ abstract class PersistentVal[A] private[persistence](
    */
   final def read(): Option[A] = {
     if (value.isEmpty && file.exists) {
-      value = Some(decodeValue(file.loadBytes))
+      value = Some(deserialize(file.loadBytes))
     }
     value
   }
@@ -59,10 +59,10 @@ abstract class PersistentVal[A] private[persistence](
   /**
    * The function for serializing value to bytes
    */
-  protected def encodeValue: Function[A, Array[Byte]]
+  protected def serialize: Function[A, Array[Byte]]
 
   /**
    * The function for deserialize bytes to its value
    */
-  protected def decodeValue: Function[Array[Byte], A]
+  protected def deserialize: Function[Array[Byte], A]
 }

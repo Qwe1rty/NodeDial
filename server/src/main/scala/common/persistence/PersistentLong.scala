@@ -16,14 +16,14 @@ class PersistentLong(file: File) extends PersistentVal[Long](file) {
   /**
    * The function for serializing value to bytes
    */
-  override protected def encodeValue: Function[Long, Array[Byte]] = {
+  override protected def serialize: Function[Long, Array[Byte]] = {
     long: Long => BigInt(long).toByteArray
   }
 
   /**
    * The function for deserialize bytes to its value
    */
-  override protected def decodeValue: Function[Array[Byte], Long] = {
+  override protected def deserialize: Function[Array[Byte], Long] = {
     bytes: Array[Byte] => BigInt(bytes).toLong
   }
 

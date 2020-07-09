@@ -116,16 +116,13 @@ private[replication] trait RaftRole {
    */
   def processRequestVoteRequest(voteRequest: RequestVoteRequest)(node: Membership, state: RaftState): MessageResult = {
 
+    log.info(s"Vote request received from node ${node.nodeID} with IP address ${node.ipAddress}")
+
     state.currentTerm.read().foreach(currentTerm => {
       val newRole = determineStepDown(voteRequest.candidateTerm)(state)
 
       // If candidate's term is outdated, or we voted for someone else already
       if (voteRequest.candidateTerm < currentTerm || !state.votedFor.read().contains(MembershipActor.nodeID)) {
-        return refuseVote(currentTerm, newRole)
-      }
-
-      // TODO check candidate log recency
-      if (???) {
         return refuseVote(currentTerm, newRole)
       }
 

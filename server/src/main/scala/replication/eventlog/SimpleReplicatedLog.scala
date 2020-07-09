@@ -61,7 +61,7 @@ class SimpleReplicatedLog(
 
   override def lastLogIndex(): Int = metadata.offsetIndex.length
 
-  // Note: important that you update the metadata AFTER the data itself, to prevent
+  // Note: important that metadata is updated AFTER the data itself, to prevent
   // invalid state
   override def append(term: Long, entry: Array[Byte]): Unit = {
     val logIndex = LogIndex(dataFile.size.toInt, entry.length, term)
