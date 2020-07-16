@@ -30,16 +30,12 @@ class RaftState(val selfInfo: Membership, val replicatedLog: ReplicatedLog) exte
 
   import RaftState._
 
-
   // Common state variables, for all roles
   val currentTerm: PersistentLong = PersistentLong(RAFT_DIR/"currentTerm"/RAFT_STATE_EXTENSION)
   val votedFor: PersistentString = PersistentString(RAFT_DIR/"votedFor"/RAFT_STATE_EXTENSION)
 
   var commitIndex: Long = 0
   var lastApplied: Long = 0
-
-  // Variables used when Candidate
-  var votesReceived: Int = 0
 
 
   if (!currentTerm.exists()) currentTerm.write(0)

@@ -17,14 +17,24 @@ abstract class RaftCluster(self: Membership) {
   raftMembership.write(HashSet[Membership](self))
 
 
+  def foreach(f: Membership => Unit): Unit =
+    raftMembership.read().get.foreach(f)
+
+  def iterator(): Iterator[Membership] =
+    raftMembership.read().get.iterator
+
   def registerReply(node: Membership): Unit = {
     if (raftMembership.read().get.contains(node)) {
       attemptedQuorum += node
     }
   }
 
-  def hasQuorum: Boolean = attemptedQuorum.size > (raftMembership.read().get.size / 2)
+  def hasQuorum: Boolean =
+    attemptedQuorum.size > (raftMembership.read().get.size / 2)
 
-  def resetQuorum(): Unit = attemptedQuorum = HashSet[Membership]()
+  def resetQuorum(): Unit =
+    attemptedQuorum = HashSet[Membership](self)
 
+  def numReplies(): Int =
+    attemptedQuorum.size
 }

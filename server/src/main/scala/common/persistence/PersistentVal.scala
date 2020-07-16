@@ -22,6 +22,7 @@ abstract class PersistentVal[A](
 
   private var value: Option[A] = read()
 
+
   /**
    * Persist a value to the file. Will completely overwrite file
    *

@@ -87,15 +87,20 @@ private[replication] abstract class RaftActor[Command <: Serializable](
 
         nextStateData.currentTerm.increment()
         nextStateData.votedFor.write(MembershipActor.nodeID)
-        nextStateData.votesReceived = 1
+        nextStateData.resetQuorum()
 
         handleTimerTask(ResetTimer(RaftGlobalTimeoutKey))
-        handleRPCTask(BroadcastTask(RequestVoteRequest(currentTerm + 1, MembershipActor.nodeID, ???, ???)))
+        handleRPCTask(BroadcastTask(RequestVoteRequest(
+          currentTerm + 1,
+          MembershipActor.nodeID,
+          nextStateData.replicatedLog.lastLogIndex(),
+          nextStateData.replicatedLog.lastLogTerm()
+        )))
       })
 
     case Candidate -> Follower =>
       nextStateData.currentTerm.read().foreach(currentTerm => {
-        log.info(s"Stepping down from Candidate w/ term $currentTerm, after receiving ${nextStateData.votesReceived} votes")
+        log.info(s"Stepping down from Candidate w/ term $currentTerm, after receiving ${nextStateData.numReplies()} votes")
       })
 
     case Leader -> Follower =>

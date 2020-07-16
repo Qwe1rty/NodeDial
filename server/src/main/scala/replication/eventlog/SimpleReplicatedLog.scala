@@ -4,16 +4,13 @@ import java.io.RandomAccessFile
 
 import better.files.File
 import common.persistence.JavaSerializer
-import replication.eventlog.SimpleReplicatedLog.{LogIndex, LogMetadata, Offset}
+import replication.eventlog.ReplicatedLog.Offset
 
 import scala.collection.mutable
 import scala.util.{Failure, Success}
 
 
 private[this] object SimpleReplicatedLog {
-
-  type Offset = Int
-
 
   private object LogMetadata extends JavaSerializer[LogMetadata] {
 
@@ -51,6 +48,8 @@ class SimpleReplicatedLog(
   )
   extends ReplicatedLog {
 
+  import SimpleReplicatedLog._
+
   dataFile.createFileIfNotExists()
 
   private val metadata: LogMetadata = loadMetadata()
@@ -58,9 +57,11 @@ class SimpleReplicatedLog(
     dataFile.newRandomAccess(File.RandomAccessMode.readWriteContentSynchronous)
 
 
-  override def lastLogTerm(): Long = metadata.lastIncludedTerm
-
-  override def lastLogIndex(): Int = metadata.offsetIndex.length
+  override def apply(index: Int): Array[Byte] = {
+    val entry = new Array[Byte](lengthOf(index))
+    randomAccess.read(entry, offsetOf(index), lengthOf(index))
+    entry
+  }
 
   // Note: important that metadata is updated AFTER the data itself, to prevent
   // invalid state
@@ -74,12 +75,6 @@ class SimpleReplicatedLog(
         saveMetadata(metadata)
       case Failure(exception) => throw exception
     }
-  }
-
-  override def apply(index: Int): Array[Byte] = {
-    val entry = new Array[Byte](lengthOf(index))
-    randomAccess.read(entry, offsetOf(index), lengthOf(index))
-    entry
   }
 
   override def slice(from: Int, until: Int): Array[Byte] = {
@@ -97,10 +92,24 @@ class SimpleReplicatedLog(
     entry
   }
 
+  override def size(): Offset =
+    metadata.offsetIndex.size
 
-  private def offsetOf(index: Int): Offset = metadata.offsetIndex(index).offset
+  override def lastLogTerm(): Long =
+    metadata.lastIncludedTerm
 
-  private def lengthOf(index: Int): Offset = metadata.offsetIndex(index).length
+  override def lastLogIndex(): Int =
+    metadata.offsetIndex.length
+
+  override def offsetOf(index: Int): Offset =
+    metadata.offsetIndex(index).offset
+
+  override def lengthOf(index: Int): Offset =
+    metadata.offsetIndex(index).length
+
+  override def termOf(index: Int): Long =
+    metadata.offsetIndex(index).term
+
 
   private def loadMetadata(): LogMetadata = {
     if (indexFile.exists) LogMetadata.deserialize(indexFile.loadBytes) match {

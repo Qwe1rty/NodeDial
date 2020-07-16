@@ -89,12 +89,12 @@ override def processRaftGlobalTimeout(state: RaftState): Option[RaftRole] = Some
 
     // If we haven't stepped down as a result of the new message, check to see if we've won the election
     if (newRole.isEmpty) {
-      state.votesReceived += 1
-      if (??? /* quorum reached */) {
+      state.registerReply(node)
+      if (state.hasQuorum) {
         return MessageResult(NoTask, ContinueTimer, Some(Leader))
       }
     }
-
+    
     MessageResult(NoTask, ContinueTimer, newRole)
   }
 

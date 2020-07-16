@@ -95,7 +95,40 @@ private[replication] trait RaftRole {
    * @param state current raft state
    * @return the event result
    */
-  def processAppendEntryRequest(appendRequest: AppendEntriesRequest)(node: Membership, state: RaftState): MessageResult
+  def processAppendEntryRequest(appendRequest: AppendEntriesRequest)(node: Membership, state: RaftState): MessageResult = {
+
+    log.info(s"Append entry request received from node ${node.nodeID} with IP address ${node.ipAddress}")
+
+    state.currentTerm.read().foreach(currentTerm => {
+      val newRole = determineStepDown(appendRequest.leaderTerm)(state)
+
+      // If leader's term is outdated, or the last log entry doesn't match
+      if (appendRequest.leaderTerm < currentTerm) {
+        rejectEntry(currentTerm, newRole)
+      }
+
+      // If the log entries don't match up, then reject entries, and it indicates logs prior to this entry are inconsistent
+      else if (
+        state.replicatedLog.size() <= appendRequest.prevLogIndex ||
+        state.replicatedLog.termOf(appendRequest.prevLogIndex) != appendRequest.prevLogTerm) {
+
+
+      }
+
+      else {
+
+      }
+    })
+
+    log.error("Current term was undefined! Invalid state")
+    throw new IllegalStateException("Current Raft term value was undefined")
+  }
+
+  final protected def rejectEntry(currentTerm: Long, newRole: Option[RaftRole]): MessageResult =
+    MessageResult(ReplyTask(AppendEntriesResult(currentTerm, success = false)), ContinueTimer, newRole)
+
+  final protected def acceptEntry(currentTerm: Long, newRole: Option[RaftRole]): MessageResult =
+    MessageResult(ReplyTask(AppendEntriesResult(currentTerm, success = true)), ResetTimer(RaftGlobalTimeoutKey), newRole)
 
   /**
    * Handle a response from an append entry request from followers. Determines whether an entry is
@@ -123,10 +156,9 @@ private[replication] trait RaftRole {
 
       // If candidate's term is outdated, or we voted for someone else already
       if (voteRequest.candidateTerm < currentTerm || !state.votedFor.read().contains(MembershipActor.nodeID)) {
-        return refuseVote(currentTerm, newRole)
+        refuseVote(currentTerm, newRole)
       }
-
-      return giveVote(currentTerm, newRole)
+      else giveVote(currentTerm, newRole)
     })
 
     log.error("Current term was undefined! Invalid state")
