@@ -15,7 +15,7 @@ import replication.eventlog.ReplicatedLog
  */
 object RaftState {
 
-  val RAFT_DIR             = ServerConstants.BASE_DIRECTORY/"raft"
+  val RAFT_DIR: File       = ServerConstants.BASE_DIRECTORY/"raft"
   val RAFT_STATE_EXTENSION = ".state"
 
 
