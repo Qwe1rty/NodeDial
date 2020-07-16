@@ -1,11 +1,17 @@
 package replication
 
 import akka.actor.{ActorPath, ActorRef, ActorSystem, Props}
+import better.files.File
 import com.roundeights.hasher.Implicits._
+import common.ServerConstants
 import common.persistence.{Compression, ProtobufSerializer}
 import io.jvm.uuid._
+import membership.MembershipActor
+import membership.addresser.AddressRetriever
+import membership.api.Membership
 import persistence.{DeleteTask, GetTask, PostTask}
 import replication.ReplicatedOp.OperationType
+import replication.eventlog.SimpleReplicatedLog
 import scalapb.GeneratedMessageCompanion
 import schema.ImplicitGrpcConversions._
 import schema.service.Request
@@ -16,20 +22,35 @@ import scala.util.{Failure, Success}
 
 object ReplicationActor {
 
+  val REPLICATION_DIR: File = ServerConstants.BASE_DIRECTORY/"raft"
+
+  val REPLICATED_LOG_INDEX: File = REPLICATION_DIR/"log.index"
+  val REPLICATED_LOG_DATA: File  = REPLICATION_DIR/"log.data"
+
+
   def apply
-      (persistenceActor: ActorRef)
+      (addressRetriever: AddressRetriever, persistenceActor: ActorRef)
       (implicit actorSystem: ActorSystem): ActorRef = {
 
     actorSystem.actorOf(
-      Props(new ReplicationActor(persistenceActor)),
+      Props(new ReplicationActor(addressRetriever, persistenceActor)),
       "replicationActor"
     )
   }
 }
 
 
-class ReplicationActor(persistenceActor: ActorRef)(implicit actorSystem: ActorSystem)
-  extends RaftActor[ReplicatedOp]
+class ReplicationActor(
+    addressRetriever: AddressRetriever,
+    persistenceActor: ActorRef
+  )(
+    implicit
+    actorSystem: ActorSystem
+  )
+  extends RaftActor[ReplicatedOp](
+    Membership(MembershipActor.nodeID, addressRetriever.selfIP),
+    new SimpleReplicatedLog(ReplicationActor.REPLICATED_LOG_INDEX, ReplicationActor.REPLICATED_LOG_DATA)
+  )
   with ProtobufSerializer[ReplicatedOp]
   with Compression {
 

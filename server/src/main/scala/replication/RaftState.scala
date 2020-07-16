@@ -3,6 +3,8 @@ package replication
 import better.files.File
 import common.ServerConstants
 import common.persistence.{PersistentLong, PersistentString}
+import membership.api.Membership
+import replication.cluster.RaftCluster
 import replication.eventlog.ReplicatedLog
 
 
@@ -19,11 +21,12 @@ object RaftState {
   val RAFT_STATE_EXTENSION = ".state"
 
 
-  def apply(replicatedLog: ReplicatedLog): RaftState = new RaftState(replicatedLog)
+  def apply(selfInfo: Membership, replicatedLog: ReplicatedLog): RaftState =
+    new RaftState(selfInfo, replicatedLog)
 }
 
 
-class RaftState(val replicatedLog: ReplicatedLog) {
+class RaftState(val selfInfo: Membership, val replicatedLog: ReplicatedLog) extends RaftCluster(selfInfo) {
 
   import RaftState._
 

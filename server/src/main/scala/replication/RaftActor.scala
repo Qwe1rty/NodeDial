@@ -26,6 +26,7 @@ import scala.util.{Failure, Success}
  * @tparam Command the serializable type that will be replicated in the Raft log
  */
 private[replication] abstract class RaftActor[Command <: Serializable](
+    private val selfInfo: Membership,
     private val replicatedLog: ReplicatedLog
   )(
     implicit
@@ -70,7 +71,7 @@ private[replication] abstract class RaftActor[Command <: Serializable](
   // Will always start off as a Follower, even if it was a Candidate or Leader before.
   // All volatile raft state variables will be zero-initialized, but persisted states will
   // be read from file and restored.
-  startWith(Follower, RaftState(replicatedLog))
+  startWith(Follower, RaftState(selfInfo, replicatedLog))
 
   // Define the event handling for all Raft roles, along with an error handling case
   when(Follower)(onReceive(Follower))

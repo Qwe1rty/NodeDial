@@ -65,7 +65,7 @@ private object ChordialServer extends App {
    */
   log.info("Initializing raft and replication layer components")
 
-  val replicationActor = ReplicationActor(persistenceActor)
+  val replicationActor = ReplicationActor(addressRetriever, persistenceActor)
   RaftServiceImpl(replicationActor)
 
   log.info("Replication layer components created")

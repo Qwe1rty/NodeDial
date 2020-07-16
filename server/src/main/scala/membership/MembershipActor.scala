@@ -53,8 +53,10 @@ object MembershipActor {
 class MembershipActor private(
     protected val clusterAddresses:    AddressRetriever,
     protected var initializationCount: Int
+  )(
+    implicit
+    protected val actorSystem: ActorSystem
   )
-  (implicit protected val actorSystem: ActorSystem)
   extends DefaultActor
   with ActorLogging
   with InternalRequestDispatcher {
