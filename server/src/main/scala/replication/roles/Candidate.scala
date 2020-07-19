@@ -38,7 +38,12 @@ override def processRaftGlobalTimeout(state: RaftState): Option[RaftRole] = Some
   override def processRaftIndividualTimeout(node: Membership, state: RaftState): MessageResult = {
 
     state.currentTerm.read().foreach { currentTerm => MessageResult(
-      RequestTask(RequestVoteRequest(currentTerm, MembershipActor.nodeID, ???, ???)),
+      RequestTask(RequestVoteRequest(
+        currentTerm,
+        MembershipActor.nodeID,
+        state.replicatedLog.lastLogIndex(),
+        state.replicatedLog.lastLogTerm()
+      )),
       ResetTimer(RaftIndividualTimeoutKey(node)),
       None
     )}

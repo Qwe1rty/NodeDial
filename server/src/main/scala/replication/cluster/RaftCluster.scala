@@ -21,7 +21,7 @@ abstract class RaftCluster(self: Membership) {
   def foreach(f: Membership => Unit): Unit =
     raftMembership.read().get.foreach(f)
 
-  def view(): View[Membership] =
+  def cluster(): View[Membership] =
     raftMembership.read().get.view
 
   def iterator(): Iterator[Membership] =

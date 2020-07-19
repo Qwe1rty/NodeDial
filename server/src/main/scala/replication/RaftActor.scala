@@ -155,7 +155,7 @@ private[replication] abstract class RaftActor[Command <: Serializable](
    * @return set of futures, each future corresponding to a reply from a node
    */
   private def broadcast(request: RaftRequest): Set[Future[RaftResult]] =
-    stateData.view().map(message(request, _)).toSet
+    stateData.cluster().map(message(request, _)).toSet
 
   /**
    * Send a new RequestVotes or AppendEntries request to a specific node

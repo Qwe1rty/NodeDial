@@ -158,6 +158,15 @@ private[replication] trait RaftRole {
       if (voteRequest.candidateTerm < currentTerm || !state.votedFor.read().contains(MembershipActor.nodeID)) {
         refuseVote(currentTerm, newRole)
       }
+
+      // If this follower's log is more up-to-date, then refuse vote
+      else if (
+        voteRequest.lastLogTerm < state.replicatedLog.lastLogTerm() ||
+        voteRequest.lastLogTerm == state.replicatedLog.lastLogTerm() && voteRequest.lastLogIndex < state.replicatedLog.lastLogIndex()) {
+
+        refuseVote(currentTerm, newRole)
+      }
+
       else giveVote(currentTerm, newRole)
     })
 
