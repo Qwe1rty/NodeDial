@@ -1,7 +1,7 @@
 package replication.roles
 
 import common.rpc.{NoTask, RequestTask}
-import common.time.{ContinueTimer, ResetTimer}
+import common.time.{CancelTimer, ContinueTimer, ResetTimer}
 import membership.MembershipActor
 import membership.api.Membership
 import org.slf4j.{Logger, LoggerFactory}
@@ -37,13 +37,17 @@ override def processRaftGlobalTimeout(state: RaftState): Option[RaftRole] = Some
    */
   override def processRaftIndividualTimeout(node: Membership, state: RaftState): MessageResult = {
 
+    // For candidates, individual timeouts mean that a request vote reply was not received, so resend vote request
     state.currentTerm.read().foreach { currentTerm => MessageResult(
-      RequestTask(RequestVoteRequest(
-        currentTerm,
-        MembershipActor.nodeID,
-        state.replicatedLog.lastLogIndex(),
-        state.replicatedLog.lastLogTerm()
-      )),
+      RequestTask(
+        RequestVoteRequest(
+          currentTerm,
+          MembershipActor.nodeID,
+          state.replicatedLog.lastLogIndex(),
+          state.replicatedLog.lastLogTerm()
+        ),
+        node.ipAddress
+      ),
       ResetTimer(RaftIndividualTimeoutKey(node)),
       None
     )}
@@ -102,18 +106,19 @@ override def processRaftGlobalTimeout(state: RaftState): Option[RaftRole] = Some
    */
   override def processRequestVoteResult(voteReply: RequestVoteResult)(node: Membership, state: RaftState): MessageResult = {
 
-    val newRole = determineStepDown(voteReply.currentTerm)(state)
+    val nextRole = determineStepDown(voteReply.currentTerm)(state)
 
-    // If we haven't stepped down as a result of the new message, register reply and check to see if we've won the election
-    if (newRole.isEmpty) {
+    // If we haven't stepped down as a result of the new message, and the vote was given, register reply and check
+    // to see if we've won the election
+    if (nextRole.isEmpty && voteReply.voteGiven) {
       state.registerReply(node)
 
       if (state.hasQuorum) {
-        return MessageResult(NoTask, ContinueTimer, Some(Leader))
+        return MessageResult(NoTask, CancelTimer(RaftIndividualTimeoutKey(node)), Some(Leader))
       }
     }
 
-    MessageResult(NoTask, ContinueTimer, newRole)
+    MessageResult(NoTask, CancelTimer(RaftIndividualTimeoutKey(node)), nextRole)
   }
 
 }

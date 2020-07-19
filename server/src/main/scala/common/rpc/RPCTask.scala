@@ -1,5 +1,7 @@
 package common.rpc
 
+import com.risksense.ipaddr.IpAddress
+
 
 /**
  * An RPC task represents some sort of network task that needs to be completed.
@@ -28,7 +30,7 @@ trait RPCTaskHandler[-RPCObject] {
    *
    * @param rpcTask the RPC task
    */
-  def handleRPCTask(rpcTask: RPCTask[RPCObject]): Unit
+  def processRPCTask(rpcTask: RPCTask[RPCObject]): Unit
 }
 
 
@@ -46,10 +48,11 @@ case class BroadcastTask[RPCObject](task: RPCObject) extends RPCTask[RPCObject]
  * Represents a "request" network task
  *
  * @param task the RPC task
+ * @param recipient the address to send the request to
  * @tparam RPCObject the RPC object associated with the task (eg. request
  *                   parameters for an RPC)
  */
-case class RequestTask[RPCObject](task: RPCObject) extends RPCTask[RPCObject]
+case class RequestTask[RPCObject](task: RPCObject, recipient: IpAddress) extends RPCTask[RPCObject]
 
 
 /**

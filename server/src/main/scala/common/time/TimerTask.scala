@@ -10,7 +10,7 @@ sealed trait TimerTask[+TimerKey] {
 
 trait TimerTaskHandler[-TimerKey] {
 
-  def handleTimerTask(timerTask: TimerTask[TimerKey]): Unit
+  def processTimerTask(timerTask: TimerTask[TimerKey]): Unit
 }
 
 

@@ -43,13 +43,6 @@ private[replication] abstract class RaftActor[Command <: Serializable](
   // Raft determines an entry needs to be committed
   this: Serializer[Command] =>
 
-  implicit val materializer: Materializer = ActorMaterializer()
-  implicit val executionContext: ExecutionContext = actorSystem.dispatcher
-
-  private val raftService = RaftServiceImpl(self)
-  private var timeoutRange: TimeRange = ELECTION_TIMEOUT_RANGE
-
-
   /**
    * The commit function is called after the Raft process has determined a majority of the
    * servers have agreed to append the log entry, and now needs to be interpreted by the
@@ -57,6 +50,12 @@ private[replication] abstract class RaftActor[Command <: Serializable](
    */
   type Commit = Function[Command, Unit]
   def commit: Commit
+
+
+  implicit val materializer: Materializer = ActorMaterializer()
+  implicit val executionContext: ExecutionContext = actorSystem.dispatcher
+
+  private var timeoutRange: TimeRange = ELECTION_TIMEOUT_RANGE
 
 
   // Will always start off as a Follower on startup, even if it was a Candidate or Leader before.
@@ -80,8 +79,8 @@ private[replication] abstract class RaftActor[Command <: Serializable](
         nextStateData.votedFor.write(MembershipActor.nodeID)
         nextStateData.resetQuorum()
 
-        handleTimerTask(ResetTimer(RaftGlobalTimeoutKey))
-        handleRPCTask(BroadcastTask(RequestVoteRequest(
+        processTimerTask(ResetTimer(RaftGlobalTimeoutKey))
+        processRPCTask(BroadcastTask(RequestVoteRequest(
           currentTerm,
           MembershipActor.nodeID,
           nextStateData.replicatedLog.lastLogIndex(),
@@ -98,16 +97,16 @@ private[replication] abstract class RaftActor[Command <: Serializable](
       nextStateData.currentTerm.read().foreach(currentTerm => {
         log.info(s"Stepping down from Leader w/ term $currentTerm")
 
-        handleTimerTask(SetRandomTimer(RaftGlobalTimeoutKey, ELECTION_TIMEOUT_RANGE))
-        handleTimerTask(ResetTimer(RaftGlobalTimeoutKey))
+        processTimerTask(SetRandomTimer(RaftGlobalTimeoutKey, ELECTION_TIMEOUT_RANGE))
+        processTimerTask(ResetTimer(RaftGlobalTimeoutKey))
       })
 
     case Candidate -> Leader =>
       nextStateData.currentTerm.read().foreach(currentTerm => {
         log.info(s"Election won, becoming leader of term $currentTerm")
 
-        handleTimerTask(CancelTimer(RaftGlobalTimeoutKey))
-        handleRPCTask(BroadcastTask(AppendEntriesRequest(
+        processTimerTask(CancelTimer(RaftGlobalTimeoutKey))
+        processRPCTask(BroadcastTask(AppendEntriesRequest(
           currentTerm,
           MembershipActor.nodeID,
           nextStateData.replicatedLog.lastLogIndex(),
@@ -118,11 +117,14 @@ private[replication] abstract class RaftActor[Command <: Serializable](
       })
   }
 
-  // Initialize the FSM and start the global FSM timer
   initialize()
-  handleTimerTask(ResetTimer(RaftGlobalTimeoutKey))
+  log.info("Raft role FSM has been initialized")
 
-  log.info("Raft role FSM has been initialized, election timer started")
+  RaftServiceImpl(self)
+  log.info("Raft API service has been initialized")
+
+  processTimerTask(ResetTimer(RaftGlobalTimeoutKey))
+  log.info("Randomized Raft election timeout started")
 
 
   private def onReceive[CurrentRole <: RaftRole](currentRole: CurrentRole): StateFunction = {
@@ -136,16 +138,21 @@ private[replication] abstract class RaftActor[Command <: Serializable](
           throw new IllegalArgumentException(s"Unknown type ${x.getClass} received by Raft FSM")
       }
 
-      handleRPCTask(rpcTask)
-      handleTimerTask(timerTask)
+      processRPCTask(rpcTask)
+      processTimerTask(timerTask)
 
       newRole match {
-          case Some(role) => goto(role)
-          case None       => stay
+        case Some(role) => goto(role)
+        case None       => stay
       }
   }
 
-  override def handleRPCTask(rpcTask: RPCTask[RaftMessage]): Unit = rpcTask match {
+  /**
+   * Make the network calls as dictated by the RPC task
+   *
+   * @param rpcTask the RPC task
+   */
+  override def processRPCTask(rpcTask: RPCTask[RaftMessage]): Unit = rpcTask match {
     case ReplyTask(reply) => sender ! reply
     case BroadcastTask(message) => message match {
       case request: RaftRequest => broadcast(request).foreach(_.onComplete {
@@ -165,7 +172,7 @@ private[replication] abstract class RaftActor[Command <: Serializable](
     stateData.cluster().map(message(request, _)).toSet
 
   /**
-   * Send a new RequestVotes or AppendEntries request to a specific node
+   * Send a new RequestVotes or AppendEntries request message to a specific node
    *
    * @param request the request
    * @return a future corresponding to a reply from a node
@@ -181,11 +188,11 @@ private[replication] abstract class RaftActor[Command <: Serializable](
         Future.failed(new IllegalArgumentException("unknown Raft request type"))
     }
 
-    startSingleTimer(node.nodeID, RaftIndividualTimeoutTick(node), timeoutRange.random())
+    startSingleTimer(node.nodeID, RaftIndividualTimeoutTick(node), INDIVIDUAL_NODE_TIMEOUT)
     futureReply
   }
 
-  override def handleTimerTask(timerTask: TimerTask[RaftTimeoutKey]): Unit = timerTask match {
+  override def processTimerTask(timerTask: TimerTask[RaftTimeoutKey]): Unit = timerTask match {
 
     case SetRandomTimer(RaftGlobalTimeoutKey, timeRange) =>
       timeoutRange = timeRange
@@ -199,11 +206,17 @@ private[replication] abstract class RaftActor[Command <: Serializable](
       case RaftGlobalTimeoutKey =>
         startSingleTimer(ELECTION_TIMER_NAME, RaftGlobalTimeoutTick, timeoutRange.random())
       case RaftIndividualTimeoutKey(node) =>
-        startSingleTimer(node.nodeID, RaftIndividualTimeoutTick(node), timeoutRange.random())
+        startSingleTimer(node.nodeID, RaftIndividualTimeoutTick(node), INDIVIDUAL_NODE_TIMEOUT)
     }
 
-    case CancelTimer(RaftGlobalTimeoutKey) =>
-      cancelTimer(ELECTION_TIMER_NAME)
+    case CancelTimer(key) => key match {
+      case RaftGlobalTimeoutKey =>
+        cancelTimer(ELECTION_TIMER_NAME)
+      case RaftIndividualTimeoutKey(node) =>
+        cancelTimer(node.nodeID)
+    }
+
+    case ContinueTimer => () // no need to do anything
   }
 
 }
