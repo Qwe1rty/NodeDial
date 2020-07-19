@@ -1,7 +1,7 @@
 package replication.roles
 
 import common.rpc.{NoTask, RequestTask}
-import common.time.{CancelTimer, ContinueTimer, ResetTimer}
+import common.time.{CancelTimer, ResetTimer}
 import membership.MembershipActor
 import membership.api.Membership
 import org.slf4j.{Logger, LoggerFactory}
@@ -38,19 +38,21 @@ override def processRaftGlobalTimeout(state: RaftState): Option[RaftRole] = Some
   override def processRaftIndividualTimeout(node: Membership, state: RaftState): MessageResult = {
 
     // For candidates, individual timeouts mean that a request vote reply was not received, so resend vote request
-    state.currentTerm.read().foreach { currentTerm => MessageResult(
-      RequestTask(
-        RequestVoteRequest(
-          currentTerm,
-          MembershipActor.nodeID,
-          state.replicatedLog.lastLogIndex(),
-          state.replicatedLog.lastLogTerm()
-        ),
-        node.ipAddress
-      ),
-      ResetTimer(RaftIndividualTimeoutKey(node)),
-      None
-    )}
+    state.currentTerm.read().foreach { currentTerm =>
+
+      val voteRequest = RequestVoteRequest(
+        currentTerm,
+        MembershipActor.nodeID,
+        state.replicatedLog.lastLogIndex(),
+        state.replicatedLog.lastLogTerm()
+      )
+
+      MessageResult(
+        RequestTask(voteRequest, node.ipAddress),
+        ResetTimer(RaftIndividualTimeoutKey(node)),
+        None
+      )
+    }
 
     log.error("Current term was undefined! Invalid state")
     throw new IllegalStateException("Current Raft term value was undefined")

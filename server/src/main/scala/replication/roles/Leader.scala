@@ -1,5 +1,8 @@
 package replication.roles
 
+import common.rpc.RequestTask
+import common.time.ResetTimer
+import membership.MembershipActor
 import membership.api.Membership
 import org.slf4j.{Logger, LoggerFactory}
 import replication._
@@ -32,7 +35,30 @@ private[replication] case object Leader extends RaftRole {
    * @param state current raft state
    * @return the timeout result
    */
-  override def processRaftIndividualTimeout(node: Membership, state: RaftState): MessageResult = ???
+  override def processRaftIndividualTimeout(node: Membership, state: RaftState): MessageResult = {
+
+    // For leaders, individual timeouts mean a node has not received a heartbeat/request in a while
+    state.currentTerm.read().foreach { currentTerm =>
+
+      val appendEntriesRequest = AppendEntriesRequest(
+        currentTerm,
+        MembershipActor.nodeID,
+        state.replicatedLog.lastLogIndex(),
+        state.replicatedLog.lastLogTerm(),
+        Seq.empty,
+        state.commitIndex
+      )
+
+      MessageResult(
+        RequestTask(appendEntriesRequest, node.ipAddress),
+        ResetTimer(RaftIndividualTimeoutKey(node)),
+        None
+      )
+    }
+
+    log.error("Current term was undefined! Invalid state")
+    throw new IllegalStateException("Current Raft term value was undefined")
+  }
 
   /**
    * Handle a direct append entry request received by this server. Only in the leader role is this

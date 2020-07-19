@@ -34,8 +34,11 @@ private[replication] case object Follower extends RaftRole {
    * @param state current raft state
    * @return the timeout result
    */
-  override def processRaftIndividualTimeout(node: Membership, state: RaftState): MessageResult =
+  override def processRaftIndividualTimeout(node: Membership, state: RaftState): MessageResult = {
+
+    // For followers, nothing needs to happen, and occur as holdovers from previous roles
     MessageResult(NoTask, ContinueTimer, None)
+  }
 
   /**
    * Handle a direct append entry request received by this server. Only in the leader role is this

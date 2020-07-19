@@ -39,8 +39,10 @@ private[replication] abstract class RaftActor[Command <: Serializable](
   with TimerTaskHandler[RaftTimeoutKey]
   with RaftTimeouts {
 
-  // The serializer is used to convert the log entry bytes to the command object, for when
-  // Raft determines an entry needs to be committed
+  /**
+   * The serializer is used to convert the log entry bytes to the command object, for when
+   * Raft determines an entry needs to be committed
+   */
   this: Serializer[Command] =>
 
   /**
@@ -118,7 +120,7 @@ private[replication] abstract class RaftActor[Command <: Serializable](
   }
 
   initialize()
-  log.info("Raft role FSM has been initialized")
+  log.debug("Raft role FSM has been initialized")
 
   RaftServiceImpl(self)
   log.info("Raft API service has been initialized")
