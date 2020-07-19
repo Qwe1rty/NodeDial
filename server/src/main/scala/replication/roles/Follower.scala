@@ -51,10 +51,11 @@ private[replication] case object Follower extends RaftRole {
    * Handle an append entry request received from the leader
    *
    * @param appendRequest the append entry request from leader
-   * @param state         current raft state
+   * @param state current raft state
    * @return the event result
    */
-  override def processAppendEntryRequest(appendRequest: AppendEntriesRequest)(node: Membership, state: RaftState): MessageResult = ???
+  override def processAppendEntryRequest(appendRequest: AppendEntriesRequest)(node: Membership, state: RaftState): MessageResult =
+    super.processAppendEntryRequest(appendRequest)(node, state)
 
   /**
    * Handle a response from an append entry request from followers. Determines whether an entry is
@@ -64,5 +65,26 @@ private[replication] case object Follower extends RaftRole {
    * @param state       current raft state
    * @return the event result
    */
-  override def processAppendEntryResult(appendReply: AppendEntriesResult)(node: Membership, state: RaftState): MessageResult = ???
+  override def processAppendEntryResult(appendReply: AppendEntriesResult)(node: Membership, state: RaftState): MessageResult =
+    super.processAppendEntryResult(appendReply)(node, state)
+
+  /**
+   * Handle a vote request from a candidate, and decide whether or not to give that vote
+   *
+   * @param voteRequest the vote request from candidates
+   * @param state current raft state
+   * @return the event result
+   */
+  override def processRequestVoteRequest(voteRequest: RequestVoteRequest)(node: Membership, state: RaftState): MessageResult =
+    super.processRequestVoteRequest(voteRequest)(node, state)
+
+  /**
+   * Handle a vote reply from a follower. Determines whether this server becomes the new leader
+   *
+   * @param voteReply the vote reply from followers
+   * @param state current raft state
+   * @return the event result
+   */
+  override def processRequestVoteResult(voteReply: RequestVoteResult)(node: Membership, state: RaftState): MessageResult =
+    super.processRequestVoteResult(voteReply)(node, state)
 }

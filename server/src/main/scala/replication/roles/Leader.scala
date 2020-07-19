@@ -32,10 +32,7 @@ private[replication] case object Leader extends RaftRole {
    * @param state current raft state
    * @return the timeout result
    */
-  override def processRaftIndividualTimeout(node: Membership, state: RaftState): MessageResult = {
-
-
-  }
+  override def processRaftIndividualTimeout(node: Membership, state: RaftState): MessageResult = ???
 
   /**
    * Handle a direct append entry request received by this server. Only in the leader role is this
@@ -45,9 +42,7 @@ private[replication] case object Leader extends RaftRole {
    * @param state       current raft state
    * @return the event result
    */
-  override def processAppendEntryEvent(appendEvent: AppendEntryEvent)(node: Membership, state: RaftState): MessageResult = {
-
-  }
+  override def processAppendEntryEvent(appendEvent: AppendEntryEvent)(node: Membership, state: RaftState): MessageResult = ???
 
   /**
    * Handle an append entry request received from the leader
@@ -67,4 +62,24 @@ private[replication] case object Leader extends RaftRole {
    * @return the event result
    */
   override def processAppendEntryResult(appendReply: AppendEntriesResult)(node: Membership, state: RaftState): MessageResult = ???
+
+  /**
+   * Handle a vote request from a candidate, and decide whether or not to give that vote
+   *
+   * @param voteRequest the vote request from candidates
+   * @param state current raft state
+   * @return the event result
+   */
+  override def processRequestVoteRequest(voteRequest: RequestVoteRequest)(node: Membership, state: RaftState): MessageResult =
+    super.processRequestVoteRequest(voteRequest)(node, state)
+
+  /**
+   * Handle a vote reply from a follower. Determines whether this server becomes the new leader
+   *
+   * @param voteReply the vote reply from followers
+   * @param state current raft state
+   * @return the event result
+   */
+  override def processRequestVoteResult(voteReply: RequestVoteResult)(node: Membership, state: RaftState): MessageResult =
+    super.processRequestVoteResult(voteReply)(node, state)
 }

@@ -20,6 +20,8 @@ trait ReplicatedLog {
   def slice(from: Int, until: Int): Array[Byte]
   def size(): Offset
 
+  def rollback(newSize: Int): Unit
+
   def lastLogTerm(): Long
   def lastLogIndex(): Int
 

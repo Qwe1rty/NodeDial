@@ -69,7 +69,8 @@ override def processRaftGlobalTimeout(state: RaftState): Option[RaftRole] = Some
    * @param state         current raft state
    * @return the event result
    */
-  override def processAppendEntryRequest(appendRequest: AppendEntriesRequest)(node: Membership, state: RaftState): MessageResult = ???
+  override def processAppendEntryRequest(appendRequest: AppendEntriesRequest)(node: Membership, state: RaftState): MessageResult =
+    super.processAppendEntryRequest(appendRequest)(node, state)
 
   /**
    * Handle a response from an append entry request from followers. Determines whether an entry is
@@ -79,7 +80,18 @@ override def processRaftGlobalTimeout(state: RaftState): Option[RaftRole] = Some
    * @param state       current raft state
    * @return the event result
    */
-  override def processAppendEntryResult(appendReply: AppendEntriesResult)(node: Membership, state: RaftState): MessageResult = ???
+  override def processAppendEntryResult(appendReply: AppendEntriesResult)(node: Membership, state: RaftState): MessageResult =
+    super.processAppendEntryResult(appendReply)(node, state)
+
+  /**
+   * Handle a vote request from a candidate, and decide whether or not to give that vote
+   *
+   * @param voteRequest the vote request from candidates
+   * @param state current raft state
+   * @return the event result
+   */
+  override def processRequestVoteRequest(voteRequest: RequestVoteRequest)(node: Membership, state: RaftState): MessageResult =
+    super.processRequestVoteRequest(voteRequest)(node, state)
 
   /**
    * Handle a vote reply from a follower. Determines whether this server becomes the new leader
@@ -92,9 +104,10 @@ override def processRaftGlobalTimeout(state: RaftState): Option[RaftRole] = Some
 
     val newRole = determineStepDown(voteReply.currentTerm)(state)
 
-    // If we haven't stepped down as a result of the new message, check to see if we've won the election
+    // If we haven't stepped down as a result of the new message, register reply and check to see if we've won the election
     if (newRole.isEmpty) {
       state.registerReply(node)
+
       if (state.hasQuorum) {
         return MessageResult(NoTask, ContinueTimer, Some(Leader))
       }

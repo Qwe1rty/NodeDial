@@ -39,6 +39,8 @@ private[replication] abstract class RaftActor[Command <: Serializable](
   with TimerTaskHandler[RaftTimeoutKey]
   with RaftTimeouts {
 
+  // The serializer is used to convert the log entry bytes to the command object, for when
+  // Raft determines an entry needs to be committed
   this: Serializer[Command] =>
 
   implicit val materializer: Materializer = ActorMaterializer()
@@ -57,7 +59,7 @@ private[replication] abstract class RaftActor[Command <: Serializable](
   def commit: Commit
 
 
-  // Will always start off as a Follower, even if it was a Candidate or Leader before.
+  // Will always start off as a Follower on startup, even if it was a Candidate or Leader before.
   // All volatile raft state variables will be zero-initialized, but persisted states will
   // be read from file and restored.
   startWith(Follower, RaftState(selfInfo, replicatedLog))
@@ -71,16 +73,16 @@ private[replication] abstract class RaftActor[Command <: Serializable](
   onTransition {
 
     case Follower -> Candidate | Candidate -> Candidate =>
+      nextStateData.currentTerm.increment()
       nextStateData.currentTerm.read().foreach(currentTerm => {
-        log.info(s"Starting leader election from term $currentTerm to ${currentTerm + 1}")
+        log.info(s"Starting leader election for new term: $currentTerm")
 
-        nextStateData.currentTerm.increment()
         nextStateData.votedFor.write(MembershipActor.nodeID)
         nextStateData.resetQuorum()
 
         handleTimerTask(ResetTimer(RaftGlobalTimeoutKey))
         handleRPCTask(BroadcastTask(RequestVoteRequest(
-          currentTerm + 1,
+          currentTerm,
           MembershipActor.nodeID,
           nextStateData.replicatedLog.lastLogIndex(),
           nextStateData.replicatedLog.lastLogTerm()
@@ -105,9 +107,14 @@ private[replication] abstract class RaftActor[Command <: Serializable](
         log.info(s"Election won, becoming leader of term $currentTerm")
 
         handleTimerTask(CancelTimer(RaftGlobalTimeoutKey))
-
-        // TODO broadcast AppendEntriesRequest
-        // TODO set heartbeat timers for all nodes
+        handleRPCTask(BroadcastTask(AppendEntriesRequest(
+          currentTerm,
+          MembershipActor.nodeID,
+          nextStateData.replicatedLog.lastLogIndex(),
+          nextStateData.replicatedLog.lastLogTerm(),
+          Seq.empty,
+          nextStateData.commitIndex
+        )))
       })
   }
 

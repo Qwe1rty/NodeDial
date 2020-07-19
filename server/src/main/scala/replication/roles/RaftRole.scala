@@ -19,7 +19,7 @@ private[replication] object RaftRole {
   case class MessageResult(
     rpcTask:   RPCTask[RaftMessage],
     timerTask: TimerTask[RaftTimeoutKey],
-    newRole:   Option[RaftRole]
+    nextRole:   Option[RaftRole]
   )
 }
 
@@ -56,7 +56,7 @@ private[replication] trait RaftRole {
   }
 
 
-  // Methods to (potentially) override in concrete classes below:
+  // Raft event handler methods (without implementations) to override in concrete classes below:
 
   /**
    * Handles a global (or at least global w.r.t. this server's Raft FSM) timeout event. Typically
@@ -88,6 +88,9 @@ private[replication] trait RaftRole {
    */
   def processAppendEntryEvent(appendEvent: AppendEntryEvent)(node: Membership, state: RaftState): MessageResult
 
+
+  // Raft event handler methods (with default implementations)
+
   /**
    * Handle an append entry request received from the leader
    *
@@ -100,35 +103,46 @@ private[replication] trait RaftRole {
     log.info(s"Append entry request received from node ${node.nodeID} with IP address ${node.ipAddress}")
 
     state.currentTerm.read().foreach(currentTerm => {
-      val newRole = determineStepDown(appendRequest.leaderTerm)(state)
+      val nextRole = determineStepDown(appendRequest.leaderTerm)(state)
 
       // If leader's term is outdated, or the last log entry doesn't match
       if (appendRequest.leaderTerm < currentTerm) {
-        rejectEntry(currentTerm, newRole)
+        rejectEntry(currentTerm, nextRole)
       }
 
       // If the log entries don't match up, then reject entries, and it indicates logs prior to this entry are inconsistent
       else if (
-        state.replicatedLog.size() <= appendRequest.prevLogIndex ||
+        state.replicatedLog.lastLogIndex() < appendRequest.prevLogIndex ||
         state.replicatedLog.termOf(appendRequest.prevLogIndex) != appendRequest.prevLogTerm) {
 
-
+        rejectEntry(currentTerm, nextRole)
       }
 
+      // New log entry (or entries) can now be appended
       else {
+        
+        // If the new entry conflicts with existing follower log entries, then rollback follower log
+        if (state.replicatedLog.lastLogIndex() > appendRequest.prevLogIndex) {
+          state.replicatedLog.rollback(appendRequest.prevLogIndex + 1)
+        } 
 
+        // Append entries and send success message, implying follower & leader logs are now fully in sync
+        for (entry <- appendRequest.entries) {
+          state.replicatedLog.append(appendRequest.leaderTerm, entry.logEntry.toByteArray)
+        }
+        if (appendRequest.leaderCommitIndex > state.commitIndex) {
+          state.commitIndex = Math.min(state.replicatedLog.lastLogIndex(), appendRequest.leaderCommitIndex)
+        }
+
+        // TODO start commit task?
+
+        acceptEntry(currentTerm, nextRole)
       }
     })
 
     log.error("Current term was undefined! Invalid state")
     throw new IllegalStateException("Current Raft term value was undefined")
   }
-
-  final protected def rejectEntry(currentTerm: Long, newRole: Option[RaftRole]): MessageResult =
-    MessageResult(ReplyTask(AppendEntriesResult(currentTerm, success = false)), ContinueTimer, newRole)
-
-  final protected def acceptEntry(currentTerm: Long, newRole: Option[RaftRole]): MessageResult =
-    MessageResult(ReplyTask(AppendEntriesResult(currentTerm, success = true)), ResetTimer(RaftGlobalTimeoutKey), newRole)
 
   /**
    * Handle a response from an append entry request from followers. Determines whether an entry is
@@ -138,7 +152,8 @@ private[replication] trait RaftRole {
    * @param state current raft state
    * @return the event result
    */
-  def processAppendEntryResult(appendReply: AppendEntriesResult)(node: Membership, state: RaftState): MessageResult
+  def processAppendEntryResult(appendReply: AppendEntriesResult)(node: Membership, state: RaftState): MessageResult =
+    stepDownIfBehind(appendReply.currentTerm, state)
 
   /**
    * Handle a vote request from a candidate, and decide whether or not to give that vote
@@ -152,11 +167,11 @@ private[replication] trait RaftRole {
     log.info(s"Vote request received from node ${node.nodeID} with IP address ${node.ipAddress}")
 
     state.currentTerm.read().foreach(currentTerm => {
-      val newRole = determineStepDown(voteRequest.candidateTerm)(state)
+      val nextRole = determineStepDown(voteRequest.candidateTerm)(state)
 
       // If candidate's term is outdated, or we voted for someone else already
       if (voteRequest.candidateTerm < currentTerm || !state.votedFor.read().contains(MembershipActor.nodeID)) {
-        refuseVote(currentTerm, newRole)
+        refuseVote(currentTerm, nextRole)
       }
 
       // If this follower's log is more up-to-date, then refuse vote
@@ -164,10 +179,10 @@ private[replication] trait RaftRole {
         voteRequest.lastLogTerm < state.replicatedLog.lastLogTerm() ||
         voteRequest.lastLogTerm == state.replicatedLog.lastLogTerm() && voteRequest.lastLogIndex < state.replicatedLog.lastLogIndex()) {
 
-        refuseVote(currentTerm, newRole)
+        refuseVote(currentTerm, nextRole)
       }
 
-      else giveVote(currentTerm, newRole)
+      else giveVote(currentTerm, nextRole)
     })
 
     log.error("Current term was undefined! Invalid state")
@@ -182,7 +197,7 @@ private[replication] trait RaftRole {
    * @return the event result
    */
   def processRequestVoteResult(voteReply: RequestVoteResult)(node: Membership, state: RaftState): MessageResult =
-    MessageResult(NoTask, ContinueTimer, determineStepDown(voteReply.currentTerm)(state))
+    stepDownIfBehind(voteReply.currentTerm, state)
 
 
   // Implementation details:
@@ -203,9 +218,18 @@ private[replication] trait RaftRole {
     else None
   }
 
-  final protected def refuseVote(currentTerm: Long, newRole: Option[RaftRole]): MessageResult =
-    MessageResult(ReplyTask(RequestVoteResult(currentTerm, voteGiven = false)), ContinueTimer, newRole)
+  final protected def stepDownIfBehind(messageTerm: Long, state: RaftState): MessageResult =
+    MessageResult(NoTask, ContinueTimer, determineStepDown(messageTerm)(state))
 
-  final protected def giveVote(currentTerm: Long, newRole: Option[RaftRole]): MessageResult =
-    MessageResult(ReplyTask(RequestVoteResult(currentTerm, voteGiven = true)), ResetTimer(RaftGlobalTimeoutKey), newRole)
+  final protected def rejectEntry(currentTerm: Long, nextRole: Option[RaftRole]): MessageResult =
+    MessageResult(ReplyTask(AppendEntriesResult(currentTerm, success = false)), ContinueTimer, nextRole)
+
+  final protected def acceptEntry(currentTerm: Long, nextRole: Option[RaftRole]): MessageResult =
+    MessageResult(ReplyTask(AppendEntriesResult(currentTerm, success = true)), ResetTimer(RaftGlobalTimeoutKey), nextRole)
+
+  final protected def refuseVote(currentTerm: Long, nextRole: Option[RaftRole]): MessageResult =
+    MessageResult(ReplyTask(RequestVoteResult(currentTerm, voteGiven = false)), ContinueTimer, nextRole)
+
+  final protected def giveVote(currentTerm: Long, nextRole: Option[RaftRole]): MessageResult =
+    MessageResult(ReplyTask(RequestVoteResult(currentTerm, voteGiven = true)), ResetTimer(RaftGlobalTimeoutKey), nextRole)
 }

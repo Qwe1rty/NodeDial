@@ -15,7 +15,7 @@ private[this] object SimpleReplicatedLog {
   private object LogMetadata extends JavaSerializer[LogMetadata] {
 
     def apply(): LogMetadata =
-      new LogMetadata(0, mutable.Buffer[LogIndex]())
+      new LogMetadata(0, mutable.ListBuffer[LogIndex]())
   }
 
   @SerialVersionUID(100L)
@@ -53,13 +53,13 @@ class SimpleReplicatedLog(
   dataFile.createFileIfNotExists()
 
   private val metadata: LogMetadata = loadMetadata()
-  private val randomAccess: RandomAccessFile =
+  private val dataAccess: RandomAccessFile =
     dataFile.newRandomAccess(File.RandomAccessMode.readWriteContentSynchronous)
 
 
   override def apply(index: Int): Array[Byte] = {
     val entry = new Array[Byte](lengthOf(index))
-    randomAccess.read(entry, offsetOf(index), lengthOf(index))
+    dataAccess.read(entry, offsetOf(index), lengthOf(index))
     entry
   }
 
@@ -69,10 +69,12 @@ class SimpleReplicatedLog(
     val logIndex = LogIndex(dataFile.size.toInt, entry.length, term)
 
     LogIndex.serialize(logIndex) match {
+        
       case Success(bytes) =>
         dataFile.appendByteArray(bytes)
         metadata.append(term, logIndex)
         saveMetadata(metadata)
+
       case Failure(exception) => throw exception
     }
   }
@@ -88,18 +90,30 @@ class SimpleReplicatedLog(
       metadata.offsetIndex(from).offset
 
     val entry = new Array[Byte](sliceLength)
-    randomAccess.read(entry, metadata.offsetIndex(from).offset, sliceLength)
+    dataAccess.read(entry, metadata.offsetIndex(from).offset, sliceLength)
     entry
   }
 
   override def size(): Offset =
     metadata.offsetIndex.size
 
+  override def rollback(newSize: Offset): Unit = {
+    if (newSize < 0 || newSize > size()) {
+      throw new IllegalArgumentException(s"Illegal new size: $newSize")
+    }
+
+    metadata.offsetIndex.trimEnd(size() - newSize)
+    metadata.lastIncludedTerm = termOf(lastLogIndex())
+
+    saveMetadata(metadata)
+  }
+
+
   override def lastLogTerm(): Long =
     metadata.lastIncludedTerm
 
   override def lastLogIndex(): Int =
-    metadata.offsetIndex.length
+    size() - 1
 
   override def offsetOf(index: Int): Offset =
     metadata.offsetIndex(index).offset
