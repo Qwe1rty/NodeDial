@@ -6,6 +6,7 @@ import membership.api.Membership
 import org.slf4j.{Logger, LoggerFactory}
 import replication._
 import replication.roles.RaftRole.MessageResult
+import replication.state.RaftState
 
 
 private[replication] case object Follower extends RaftRole {

@@ -1,4 +1,4 @@
-package replication
+package replication.state
 
 import better.files.File
 import common.ServerConstants
@@ -26,7 +26,9 @@ object RaftState {
 }
 
 
-class RaftState(val selfInfo: Membership, val replicatedLog: ReplicatedLog) extends RaftCluster(selfInfo) {
+class RaftState(val selfInfo: Membership, val replicatedLog: ReplicatedLog)
+  extends RaftCluster(selfInfo)
+  with RaftLeaderState {
 
   import RaftState._
 

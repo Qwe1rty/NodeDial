@@ -2,7 +2,7 @@ package replication.cluster
 
 import common.persistence.{JavaSerializer, PersistentVal}
 import membership.api.Membership
-import replication.RaftState._
+import replication.state.RaftState._
 
 import scala.collection.View
 import scala.collection.immutable.HashSet

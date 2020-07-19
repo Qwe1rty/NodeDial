@@ -7,6 +7,7 @@ import membership.api.Membership
 import org.slf4j.{Logger, LoggerFactory}
 import replication._
 import replication.roles.RaftRole.MessageResult
+import replication.state.RaftState
 
 
 private[replication] case object Leader extends RaftRole {
@@ -87,7 +88,9 @@ private[replication] case object Leader extends RaftRole {
    * @param state       current raft state
    * @return the event result
    */
-  override def processAppendEntryResult(appendReply: AppendEntriesResult)(node: Membership, state: RaftState): MessageResult = ???
+  override def processAppendEntryResult(appendReply: AppendEntriesResult)(node: Membership, state: RaftState): MessageResult = {
+    ???
+  }
 
   /**
    * Handle a vote request from a candidate, and decide whether or not to give that vote

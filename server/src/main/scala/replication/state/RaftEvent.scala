@@ -1,4 +1,4 @@
-package replication
+package replication.state
 
 import membership.api.Membership
 

@@ -6,7 +6,8 @@ import membership.MembershipActor
 import membership.api.Membership
 import org.slf4j.Logger
 import replication.roles.RaftRole.MessageResult
-import replication.{RaftMessage, _}
+import replication.state.{RaftEvent, RaftMessage, RaftState}
+import replication._
 
 
 private[replication] object RaftRole {
