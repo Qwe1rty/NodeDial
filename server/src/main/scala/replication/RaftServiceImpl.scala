@@ -1,27 +1,45 @@
 package replication
 
 import akka.actor.{ActorRef, ActorSystem}
+import akka.grpc.GrpcClientSettings
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.http.scaladsl.{Http, HttpConnectionContext}
 import akka.pattern.ask
 import akka.stream.{ActorMaterializer, Materializer}
 import com.google.protobuf.empty.Empty
+import com.risksense.ipaddr.IpAddress
 import common.ServerDefaults.ACTOR_REQUEST_TIMEOUT
+import common.rpc.GRPCSettingsFactory
 import org.slf4j.LoggerFactory
+import schema.ImplicitDataConversions._
 import schema.PortConfiguration.REPLICATION_PORT
 
+import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
 
 
-object RaftServiceImpl {
+object RaftServiceImpl extends GRPCSettingsFactory {
 
   def apply(raftActor: ActorRef)(implicit actorSystem: ActorSystem): RaftService = {
     new RaftServiceImpl(raftActor)
   }
+
+  override def createGRPCSettings
+    (ipAddress: IpAddress, timeout: FiniteDuration)
+    (implicit actorSystem: ActorSystem): GrpcClientSettings = {
+
+    GrpcClientSettings
+      .connectToServiceAt(
+        ipAddress,
+        REPLICATION_PORT
+      )
+      .withDeadline(timeout)
+  }
 }
 
 
-class RaftServiceImpl(raftActor: ActorRef)(implicit actorSystem: ActorSystem) extends RaftService {
+class RaftServiceImpl(raftActor: ActorRef)(implicit actorSystem: ActorSystem)
+  extends RaftService {
 
   implicit val materializer: Materializer = ActorMaterializer()
   implicit val executionContext: ExecutionContext = actorSystem.dispatcher
@@ -76,4 +94,5 @@ class RaftServiceImpl(raftActor: ActorRef)(implicit actorSystem: ActorSystem) ex
     raftActor ! in
     Future.successful(Empty())
   }
+
 }

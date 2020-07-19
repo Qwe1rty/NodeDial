@@ -1,11 +1,13 @@
 package replication
 
 import akka.actor.{ActorSystem, FSM}
+import akka.stream.{ActorMaterializer, Materializer}
 import common.persistence.Serializer
 import common.rpc.{BroadcastTask, RPCTask, RPCTaskHandler, ReplyTask}
 import common.time._
 import membership.MembershipActor
 import membership.api.Membership
+import replication.RaftServiceImpl.createGRPCSettings
 import replication.eventlog.ReplicatedLog
 import replication.roles.RaftRole.MessageResult
 import replication.roles._
@@ -39,8 +41,11 @@ private[replication] abstract class RaftActor[Command <: Serializable](
 
   this: Serializer[Command] =>
 
+  implicit val materializer: Materializer = ActorMaterializer()
   implicit val executionContext: ExecutionContext = actorSystem.dispatcher
-  var timeoutRange: TimeRange = ELECTION_TIMEOUT_RANGE
+
+  private val raftService = RaftServiceImpl(self)
+  private var timeoutRange: TimeRange = ELECTION_TIMEOUT_RANGE
 
 
   /**
@@ -50,22 +55,6 @@ private[replication] abstract class RaftActor[Command <: Serializable](
    */
   type Commit = Function[Command, Unit]
   def commit: Commit
-
-  /**
-   * Broadcast a new RequestVotes or AppendEntries request to all nodes in the Raft group.
-   *
-   * @param request the request
-   * @return set of futures, each future corresponding to a reply from a node
-   */
-  protected def broadcast(request: RaftRequest): Set[Future[RaftEvent]]
-
-  /**
-   * Send a new RequestVotes or AppendEntries request to a specific node
-   *
-   * @param request the request
-   * @return a future corresponding to a reply from a node
-   */
-  protected def request(request: RaftRequest, node: Membership): Future[RaftEvent]
 
 
   // Will always start off as a Follower, even if it was a Candidate or Leader before.
@@ -157,6 +146,36 @@ private[replication] abstract class RaftActor[Command <: Serializable](
         case Failure(reason) => log.debug(s"RPC reply failed: ${reason.getLocalizedMessage}")
       })
     }
+  }
+
+  /**
+   * Broadcast a new RequestVotes or AppendEntries request to all nodes in the Raft group.
+   *
+   * @param request the request
+   * @return set of futures, each future corresponding to a reply from a node
+   */
+  private def broadcast(request: RaftRequest): Set[Future[RaftResult]] =
+    stateData.view().map(message(request, _)).toSet
+
+  /**
+   * Send a new RequestVotes or AppendEntries request to a specific node
+   *
+   * @param request the request
+   * @return a future corresponding to a reply from a node
+   */
+  private def message(request: RaftRequest, node: Membership): Future[RaftResult] = {
+
+    val client = RaftServiceClient(createGRPCSettings(node.ipAddress, INDIVIDUAL_NODE_TIMEOUT))
+
+    val futureReply = request match {
+      case appendEntriesRequest: AppendEntriesRequest => client.appendEntries(appendEntriesRequest)
+      case requestVoteRequest: RequestVoteRequest     => client.requestVote(requestVoteRequest)
+      case _ =>
+        Future.failed(new IllegalArgumentException("unknown Raft request type"))
+    }
+
+    startSingleTimer(node.nodeID, RaftIndividualTimeoutTick(node), timeoutRange.random())
+    futureReply
   }
 
   override def handleTimerTask(timerTask: TimerTask[RaftTimeoutKey]): Unit = timerTask match {

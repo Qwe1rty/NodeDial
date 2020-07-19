@@ -46,8 +46,8 @@ object GossipActor extends GRPCSettingsFactory {
   }
 
   override def createGRPCSettings
-      (ipAddress: IpAddress, timeout: FiniteDuration)
-      (implicit actorSystem: ActorSystem): GrpcClientSettings = {
+    (ipAddress: IpAddress, timeout: FiniteDuration)
+    (implicit actorSystem: ActorSystem): GrpcClientSettings = {
 
     GrpcClientSettings
       .connectToServiceAt(
@@ -63,8 +63,10 @@ class GossipActor[KeyType: ClassTag] private(
     membershipActor: ActorRef,
     delay:           FiniteDuration,
     affiliation:     String
+  )(
+    implicit
+    actorSystem: ActorSystem
   )
-  (implicit actorSystem: ActorSystem)
   extends DefaultActor
   with ActorLogging
   with ActorTimers {

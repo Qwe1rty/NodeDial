@@ -32,7 +32,10 @@ private[replication] case object Leader extends RaftRole {
    * @param state current raft state
    * @return the timeout result
    */
-  override def processRaftIndividualTimeout(node: Membership, state: RaftState): MessageResult = ???
+  override def processRaftIndividualTimeout(node: Membership, state: RaftState): MessageResult = {
+
+
+  }
 
   /**
    * Handle a direct append entry request received by this server. Only in the leader role is this
@@ -42,7 +45,9 @@ private[replication] case object Leader extends RaftRole {
    * @param state       current raft state
    * @return the event result
    */
-  override def processAppendEntryEvent(appendEvent: AppendEntryEvent)(node: Membership, state: RaftState): MessageResult = ???
+  override def processAppendEntryEvent(appendEvent: AppendEntryEvent)(node: Membership, state: RaftState): MessageResult = {
+
+  }
 
   /**
    * Handle an append entry request received from the leader

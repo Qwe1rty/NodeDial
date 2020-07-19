@@ -4,6 +4,7 @@ import common.persistence.{JavaSerializer, PersistentVal}
 import membership.api.Membership
 import replication.RaftState._
 
+import scala.collection.View
 import scala.collection.immutable.HashSet
 
 
@@ -19,6 +20,9 @@ abstract class RaftCluster(self: Membership) {
 
   def foreach(f: Membership => Unit): Unit =
     raftMembership.read().get.foreach(f)
+
+  def view(): View[Membership] =
+    raftMembership.read().get.view
 
   def iterator(): Iterator[Membership] =
     raftMembership.read().get.iterator

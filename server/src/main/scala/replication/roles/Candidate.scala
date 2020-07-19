@@ -94,7 +94,7 @@ override def processRaftGlobalTimeout(state: RaftState): Option[RaftRole] = Some
         return MessageResult(NoTask, ContinueTimer, Some(Leader))
       }
     }
-    
+
     MessageResult(NoTask, ContinueTimer, newRole)
   }
 
