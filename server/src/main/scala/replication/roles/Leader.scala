@@ -7,7 +7,7 @@ import membership.api.Membership
 import org.slf4j.{Logger, LoggerFactory}
 import replication._
 import replication.roles.RaftRole.MessageResult
-import replication.state.RaftState
+import replication.state.{RaftIndividualTimeoutKey, RaftState}
 
 
 private[replication] case object Leader extends RaftRole {

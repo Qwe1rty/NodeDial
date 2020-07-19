@@ -1,4 +1,4 @@
-package replication.roles
+package replication.state
 
 import java.util.concurrent.TimeUnit
 

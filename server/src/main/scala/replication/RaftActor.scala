@@ -11,7 +11,7 @@ import replication.RaftServiceImpl.createGRPCSettings
 import replication.eventlog.ReplicatedLog
 import replication.roles.RaftRole.MessageResult
 import replication.roles._
-import replication.state.{RaftEvent, RaftMessage, RaftRequest, RaftResult, RaftState}
+import replication.state.{RaftEvent, RaftGlobalTimeoutKey, RaftGlobalTimeoutTick, RaftIndividualTimeoutKey, RaftIndividualTimeoutTick, RaftMessage, RaftRequest, RaftResult, RaftState, RaftTimeoutKey, RaftTimeoutTick, RaftTimeouts}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
