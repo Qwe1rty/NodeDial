@@ -3,7 +3,7 @@ package replication
 import akka.actor.{ActorSystem, FSM}
 import akka.stream.{ActorMaterializer, Materializer}
 import common.persistence.Serializer
-import common.rpc.{BroadcastTask, RPCTask, RPCTaskHandler, ReplyTask}
+import common.rpc._
 import common.time._
 import membership.MembershipActor
 import membership.api.Membership
@@ -11,7 +11,7 @@ import replication.RaftServiceImpl.createGRPCSettings
 import replication.eventlog.ReplicatedLog
 import replication.roles.RaftRole.MessageResult
 import replication.roles._
-import replication.state.{RaftEvent, RaftGlobalTimeoutKey, RaftGlobalTimeoutTick, RaftIndividualTimeoutKey, RaftIndividualTimeoutTick, RaftMessage, RaftRequest, RaftResult, RaftState, RaftTimeoutKey, RaftTimeoutTick, RaftTimeouts}
+import replication.state._
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
@@ -156,13 +156,19 @@ private[replication] abstract class RaftActor[Command <: Serializable](
    * @param rpcTask the RPC task
    */
   override def processRPCTask(rpcTask: RPCTask[RaftMessage]): Unit = rpcTask match {
-    case ReplyTask(reply) => sender ! reply
-    case BroadcastTask(message) => message match {
+    case BroadcastTask(task) => task match {
       case request: RaftRequest => broadcast(request).foreach(_.onComplete {
         case Success(event)  => self ! event
         case Failure(reason) => log.debug(s"RPC reply failed: ${reason.getLocalizedMessage}")
       })
     }
+    case RequestTask(task, node) => task match {
+      case request: RaftRequest => message(request, node).onComplete {
+        case Success(event)  => self ! event
+        case Failure(reason) => log.debug(s"RPC reply failed: ${reason.getLocalizedMessage}")
+      }
+    }
+    case ReplyTask(reply) => sender ! reply
   }
 
   /**

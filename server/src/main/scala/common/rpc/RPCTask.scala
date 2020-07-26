@@ -1,6 +1,6 @@
 package common.rpc
 
-import com.risksense.ipaddr.IpAddress
+import membership.api.Membership
 
 
 /**
@@ -52,7 +52,7 @@ case class BroadcastTask[RPCObject](task: RPCObject) extends RPCTask[RPCObject]
  * @tparam RPCObject the RPC object associated with the task (eg. request
  *                   parameters for an RPC)
  */
-case class RequestTask[RPCObject](task: RPCObject, recipient: IpAddress) extends RPCTask[RPCObject]
+case class RequestTask[RPCObject](task: RPCObject, recipient: Membership) extends RPCTask[RPCObject]
 
 
 /**

@@ -52,7 +52,7 @@ private[replication] case object Leader extends RaftRole {
         state.commitIndex
       )
 
-      MessageResult(RequestTask(appendEntriesRequest, node.ipAddress), ContinueTimer, None)
+      MessageResult(RequestTask(appendEntriesRequest, node), ContinueTimer, None)
     }
 
     log.error("Current term was undefined! Invalid state")
@@ -121,7 +121,7 @@ private[replication] case object Leader extends RaftRole {
           state.commitIndex
         )
 
-        MessageResult(RequestTask(appendEntriesRequest, node.ipAddress), ContinueTimer, None)
+        MessageResult(RequestTask(appendEntriesRequest, node), ContinueTimer, None)
       }
     }
 

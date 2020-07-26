@@ -48,11 +48,7 @@ override def processRaftGlobalTimeout(state: RaftState): Option[RaftRole] = Some
         state.replicatedLog.lastLogTerm()
       )
 
-      MessageResult(
-        RequestTask(voteRequest, node.ipAddress),
-        ResetTimer(RaftIndividualTimeoutKey(node)),
-        None
-      )
+      MessageResult(RequestTask(voteRequest, node), ResetTimer(RaftIndividualTimeoutKey(node)), None)
     }
 
     log.error("Current term was undefined! Invalid state")
