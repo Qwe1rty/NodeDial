@@ -86,8 +86,8 @@ private[replication] abstract class RaftActor[Command <: Serializable](
         processRPCTask(BroadcastTask(RequestVoteRequest(
           currentTerm,
           MembershipActor.nodeID,
-          nextStateData.replicatedLog.lastLogIndex(),
-          nextStateData.replicatedLog.lastLogTerm()
+          nextStateData.log.lastLogIndex(),
+          nextStateData.log.lastLogTerm()
         )))
       })
 
@@ -108,12 +108,14 @@ private[replication] abstract class RaftActor[Command <: Serializable](
       nextStateData.currentTerm.read().foreach(currentTerm => {
         log.info(s"Election won, becoming leader of term $currentTerm")
 
+        nextStateData.leaderState = RaftLeaderState(nextStateData.cluster(), nextStateData.log.size())
+
         processTimerTask(CancelTimer(RaftGlobalTimeoutKey))
         processRPCTask(BroadcastTask(AppendEntriesRequest(
           currentTerm,
           MembershipActor.nodeID,
-          nextStateData.replicatedLog.lastLogIndex(),
-          nextStateData.replicatedLog.lastLogTerm(),
+          nextStateData.log.lastLogIndex(),
+          nextStateData.log.lastLogTerm(),
           Seq.empty,
           nextStateData.commitIndex
         )))
@@ -159,13 +161,13 @@ private[replication] abstract class RaftActor[Command <: Serializable](
     case BroadcastTask(task) => task match {
       case request: RaftRequest => broadcast(request).foreach(_.onComplete {
         case Success(event)  => self ! event
-        case Failure(reason) => log.debug(s"RPC reply failed: ${reason.getLocalizedMessage}")
+        case Failure(reason) => log.debug(s"RPC request failed: ${reason.getLocalizedMessage}")
       })
     }
     case RequestTask(task, node) => task match {
       case request: RaftRequest => message(request, node).onComplete {
         case Success(event)  => self ! event
-        case Failure(reason) => log.debug(s"RPC reply failed: ${reason.getLocalizedMessage}")
+        case Failure(reason) => log.debug(s"RPC request failed: ${reason.getLocalizedMessage}")
       }
     }
     case ReplyTask(reply) => sender ! reply

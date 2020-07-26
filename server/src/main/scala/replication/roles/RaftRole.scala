@@ -113,8 +113,8 @@ private[replication] trait RaftRole {
 
       // If the log entries don't match up, then reject entries, and it indicates logs prior to this entry are inconsistent
       else if (
-        state.replicatedLog.lastLogIndex() < appendRequest.prevLogIndex ||
-        state.replicatedLog.termOf(appendRequest.prevLogIndex) != appendRequest.prevLogTerm) {
+        state.log.lastLogIndex() < appendRequest.prevLogIndex ||
+        state.log.termOf(appendRequest.prevLogIndex) != appendRequest.prevLogTerm) {
 
         rejectEntry(currentTerm, nextRole)
       }
@@ -123,16 +123,16 @@ private[replication] trait RaftRole {
       else {
         
         // If the new entry conflicts with existing follower log entries, then rollback follower log
-        if (state.replicatedLog.lastLogIndex() > appendRequest.prevLogIndex) {
-          state.replicatedLog.rollback(appendRequest.prevLogIndex + 1)
+        if (state.log.lastLogIndex() > appendRequest.prevLogIndex) {
+          state.log.rollback(appendRequest.prevLogIndex + 1)
         } 
 
         // Append entries and send success message, implying follower & leader logs are now fully in sync
         for (entry <- appendRequest.entries) {
-          state.replicatedLog.append(appendRequest.leaderTerm, entry.logEntry.toByteArray)
+          state.log.append(appendRequest.leaderTerm, entry.logEntry.toByteArray)
         }
         if (appendRequest.leaderCommitIndex > state.commitIndex) {
-          state.commitIndex = Math.min(state.replicatedLog.lastLogIndex(), appendRequest.leaderCommitIndex)
+          state.commitIndex = Math.min(state.log.lastLogIndex(), appendRequest.leaderCommitIndex)
         }
 
         // TODO start commit task?
@@ -177,8 +177,8 @@ private[replication] trait RaftRole {
 
       // If this follower's log is more up-to-date, then refuse vote
       else if (
-        voteRequest.lastLogTerm < state.replicatedLog.lastLogTerm() ||
-        voteRequest.lastLogTerm == state.replicatedLog.lastLogTerm() && voteRequest.lastLogIndex < state.replicatedLog.lastLogIndex()) {
+        voteRequest.lastLogTerm < state.log.lastLogTerm() ||
+        voteRequest.lastLogTerm == state.log.lastLogTerm() && voteRequest.lastLogIndex < state.log.lastLogIndex()) {
 
         refuseVote(currentTerm, nextRole)
       }

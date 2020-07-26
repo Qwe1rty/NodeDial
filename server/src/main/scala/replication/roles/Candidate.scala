@@ -44,8 +44,8 @@ override def processRaftGlobalTimeout(state: RaftState): Option[RaftRole] = Some
       val voteRequest = RequestVoteRequest(
         currentTerm,
         MembershipActor.nodeID,
-        state.replicatedLog.lastLogIndex(),
-        state.replicatedLog.lastLogTerm()
+        state.log.lastLogIndex(),
+        state.log.lastLogTerm()
       )
 
       MessageResult(RequestTask(voteRequest, node), ResetTimer(RaftIndividualTimeoutKey(node)), None)

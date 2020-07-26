@@ -1,5 +1,6 @@
 package replication.roles
 
+import common.persistence.ProtobufSerializer
 import common.rpc.{NoTask, RequestTask}
 import common.time.{ContinueTimer, ResetTimer}
 import membership.MembershipActor
@@ -9,11 +10,16 @@ import replication._
 import replication.roles.RaftRole.MessageResult
 import replication.state.RaftLeaderState.LogIndexState
 import replication.state.{RaftIndividualTimeoutKey, RaftState}
+import scalapb.GeneratedMessageCompanion
+
+import scala.util.{Failure, Success, Try}
 
 
-private[replication] case object Leader extends RaftRole {
+private[replication] case object Leader extends RaftRole with ProtobufSerializer[LogEntry] {
 
   protected val log: Logger = LoggerFactory.getLogger(Leader.getClass)
+
+  override val messageCompanion: GeneratedMessageCompanion[LogEntry] = LogEntry
 
   /** Used for logging */
   override val roleName: String = "Leader"
@@ -40,23 +46,7 @@ private[replication] case object Leader extends RaftRole {
   override def processRaftIndividualTimeout(node: Membership, state: RaftState): MessageResult = {
 
     // For leaders, individual timeouts mean a node has not received a heartbeat/request in a while
-    state.currentTerm.read().foreach { currentTerm =>
-
-      val followerPrevIndex = state.leaderState(node.nodeID).nextIndex - 1
-      val appendEntriesRequest = AppendEntriesRequest(
-        currentTerm,
-        MembershipActor.nodeID,
-        followerPrevIndex,
-        state.replicatedLog.termOf(followerPrevIndex),
-        Seq.empty,
-        state.commitIndex
-      )
-
-      MessageResult(RequestTask(appendEntriesRequest, node), ContinueTimer, None)
-    }
-
-    log.error("Current term was undefined! Invalid state")
-    throw new IllegalStateException("Current Raft term value was undefined")
+    MessageResult(RequestTask(createAppendEntriesRequest(node.nodeID, state), node), ContinueTimer, None)
   }
 
   /**
@@ -88,45 +78,28 @@ private[replication] case object Leader extends RaftRole {
    */
   override def processAppendEntryResult(appendReply: AppendEntriesResult)(node: Membership, state: RaftState): MessageResult = {
 
-    state.currentTerm.read().foreach { currentTerm =>
-      val nextRole = determineStepDown(appendReply.currentTerm)(state)
-
-      // Due to things like network partitions, a new leader of higher term may exist. We step down in this case
-      if (nextRole.contains(Follower)) {
-        return MessageResult(NoTask, ContinueTimer, nextRole)
-      }
-
-      // If successful, we're guaranteed that the follower log is consistent with the leader log, and we need to update
-      // the known up-to-dateness
-      if (appendReply.success) {
-        state.leaderState = state.leaderState.patch(node.nodeID, currentIndexState => LogIndexState(
-          currentIndexState.nextIndex + 1,
-          currentIndexState.nextIndex
-        ))
-
-        MessageResult(NoTask, ResetTimer(RaftIndividualTimeoutKey(node)), None)
-      }
-
-      // Otherwise, follower log is inconsistent with leader log, so we roll back one entry and retry
-      else {
-        state.leaderState.patchNextIndex(node.nodeID, _ - 1)
-
-        val followerPrevIndex = state.leaderState(node.nodeID).nextIndex - 1
-        val appendEntriesRequest = AppendEntriesRequest(
-          currentTerm,
-          MembershipActor.nodeID,
-          followerPrevIndex,
-          state.replicatedLog.termOf(followerPrevIndex),
-          Seq.empty,
-          state.commitIndex
-        )
-
-        MessageResult(RequestTask(appendEntriesRequest, node), ContinueTimer, None)
-      }
+    // Due to things like network partitions, a new leader of higher term may exist. We step down in this case
+    val nextRole = determineStepDown(appendReply.currentTerm)(state)
+    if (nextRole.contains(Follower)) {
+      return MessageResult(NoTask, ContinueTimer, nextRole)
     }
 
-    log.error("Current term was undefined! Invalid state")
-    throw new IllegalStateException("Current Raft term value was undefined")
+    // If successful, we're guaranteed that the follower log is consistent with the leader log, and we need to update
+    // the known up-to-dateness
+    if (appendReply.success) {
+      state.leaderState = state.leaderState.patch(node.nodeID, currentIndexState => LogIndexState(
+        currentIndexState.nextIndex + 1,
+        currentIndexState.nextIndex
+      ))
+
+      MessageResult(NoTask, ResetTimer(RaftIndividualTimeoutKey(node)), None)
+    }
+
+    // Otherwise, follower log is inconsistent with leader log, so we roll back one entry and retry the request
+    else {
+      state.leaderState.patchNextIndex(node.nodeID, _ - 1)
+      MessageResult(RequestTask(createAppendEntriesRequest(node.nodeID, state), node), ContinueTimer, None)
+    }
   }
 
   /**
@@ -148,4 +121,37 @@ private[replication] case object Leader extends RaftRole {
    */
   override def processRequestVoteResult(voteReply: RequestVoteResult)(node: Membership, state: RaftState): MessageResult =
     super.processRequestVoteResult(voteReply)(node, state)
+
+  def createAppendEntriesRequest(nodeID: String, state: RaftState): AppendEntriesRequest = {
+
+    // Get the next log entry that the follower needs, if it's not caught up
+    val logEntries: Try[Seq[LogEntry]] =
+      if (state.log.lastLogIndex() < state.leaderState(nodeID).nextIndex) Success(Seq.empty)
+      else {
+        deserialize(state.log(state.leaderState(nodeID).nextIndex))
+          .map(Seq[LogEntry](_))
+      }
+
+    logEntries match {
+      case Success(entries) =>
+
+        // Start building the append request
+        val appendEntries = entries.map(AppendEntryEvent(_, None)) // TODO see if this needs uuid tagging
+        val followerPrevIndex = state.leaderState(nodeID).nextIndex - 1
+
+        AppendEntriesRequest(
+          state.currentTerm.read().getOrElse(0),
+          MembershipActor.nodeID,
+          followerPrevIndex,
+          state.log.termOf(followerPrevIndex),
+          appendEntries,
+          state.commitIndex
+        )
+
+      case Failure(exception) =>
+        log.error(s"could not deserialize log entry: ${exception.getLocalizedMessage}")
+        throw exception
+    }
+  }
+
 }
