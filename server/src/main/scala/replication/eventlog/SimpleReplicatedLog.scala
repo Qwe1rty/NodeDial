@@ -14,8 +14,8 @@ private[this] object SimpleReplicatedLog {
 
   private object LogMetadata extends JavaSerializer[LogMetadata] {
 
-    def apply(): LogMetadata =
-      new LogMetadata(0, mutable.ListBuffer[LogIndex]())
+    def apply(elems: LogIndex*): LogMetadata =
+      new LogMetadata(0, mutable.ListBuffer[LogIndex](elems: _*))
   }
 
   @SerialVersionUID(100L)
@@ -39,6 +39,8 @@ private[this] object SimpleReplicatedLog {
     length: Int,
     term: Long,
   )
+
+  val INIT_LOG_INDEX: LogIndex = LogIndex(0, 0, 0)
 }
 
 
@@ -50,11 +52,22 @@ class SimpleReplicatedLog(
 
   import SimpleReplicatedLog._
 
-  dataFile.createFileIfNotExists()
-
-  private val metadata: LogMetadata = loadMetadata()
-  private val dataAccess: RandomAccessFile =
+  private val dataAccess: RandomAccessFile = {
+    dataFile.createFileIfNotExists()
     dataFile.newRandomAccess(File.RandomAccessMode.readWriteContentSynchronous)
+  }
+
+  private val metadata: LogMetadata = {
+    if (indexFile.exists) LogMetadata.deserialize(indexFile.loadBytes) match {
+      case Success(metadata)  => metadata
+      case Failure(exception) => throw exception
+    }
+    else {
+      val newMetadata = LogMetadata(INIT_LOG_INDEX)
+      saveMetadata(newMetadata)
+      newMetadata
+    }
+  }
 
 
   override def apply(index: Int): Array[Byte] = {
@@ -124,14 +137,6 @@ class SimpleReplicatedLog(
   override def termOf(index: Int): Long =
     metadata.offsetIndex(index).term
 
-
-  private def loadMetadata(): LogMetadata = {
-    if (indexFile.exists) LogMetadata.deserialize(indexFile.loadBytes) match {
-      case Success(metadata)  => metadata
-      case Failure(exception) => throw exception
-    }
-    else LogMetadata()
-  }
 
   private def saveMetadata(metadata: LogMetadata): Unit = {
     LogMetadata.serialize(metadata) match {

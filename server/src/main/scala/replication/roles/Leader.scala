@@ -1,12 +1,13 @@
 package replication.roles
 
-import common.rpc.RequestTask
-import common.time.ResetTimer
+import common.rpc.{NoTask, RequestTask}
+import common.time.{ContinueTimer, ResetTimer}
 import membership.MembershipActor
 import membership.api.Membership
 import org.slf4j.{Logger, LoggerFactory}
 import replication._
 import replication.roles.RaftRole.MessageResult
+import replication.state.RaftLeaderState.LogIndexState
 import replication.state.{RaftIndividualTimeoutKey, RaftState}
 
 
@@ -41,20 +42,17 @@ private[replication] case object Leader extends RaftRole {
     // For leaders, individual timeouts mean a node has not received a heartbeat/request in a while
     state.currentTerm.read().foreach { currentTerm =>
 
+      val followerPrevIndex = state.leaderState(node.nodeID).nextIndex - 1
       val appendEntriesRequest = AppendEntriesRequest(
         currentTerm,
         MembershipActor.nodeID,
-        state.replicatedLog.lastLogIndex(),
-        state.replicatedLog.lastLogTerm(),
+        followerPrevIndex,
+        state.replicatedLog.termOf(followerPrevIndex),
         Seq.empty,
         state.commitIndex
       )
 
-      MessageResult(
-        RequestTask(appendEntriesRequest, node.ipAddress),
-        ResetTimer(RaftIndividualTimeoutKey(node)),
-        None
-      )
+      MessageResult(RequestTask(appendEntriesRequest, node.ipAddress), ContinueTimer, None)
     }
 
     log.error("Current term was undefined! Invalid state")
@@ -89,7 +87,46 @@ private[replication] case object Leader extends RaftRole {
    * @return the event result
    */
   override def processAppendEntryResult(appendReply: AppendEntriesResult)(node: Membership, state: RaftState): MessageResult = {
-    ???
+
+    state.currentTerm.read().foreach { currentTerm =>
+      val nextRole = determineStepDown(appendReply.currentTerm)(state)
+
+      // Due to things like network partitions, a new leader of higher term may exist. We step down in this case
+      if (nextRole.contains(Follower)) {
+        return MessageResult(NoTask, ContinueTimer, nextRole)
+      }
+
+      // If successful, we're guaranteed that the follower log is consistent with the leader log, and we need to update
+      // the known up-to-dateness
+      if (appendReply.success) {
+        state.leaderState = state.leaderState.patch(node.nodeID, currentIndexState => LogIndexState(
+          currentIndexState.nextIndex + 1,
+          currentIndexState.nextIndex
+        ))
+
+        MessageResult(NoTask, ResetTimer(RaftIndividualTimeoutKey(node)), None)
+      }
+
+      // Otherwise, follower log is inconsistent with leader log, so we roll back one entry and retry
+      else {
+        state.leaderState.patchNextIndex(node.nodeID, _ - 1)
+
+        val followerPrevIndex = state.leaderState(node.nodeID).nextIndex - 1
+        val appendEntriesRequest = AppendEntriesRequest(
+          currentTerm,
+          MembershipActor.nodeID,
+          followerPrevIndex,
+          state.replicatedLog.termOf(followerPrevIndex),
+          Seq.empty,
+          state.commitIndex
+        )
+
+        MessageResult(RequestTask(appendEntriesRequest, node.ipAddress), ContinueTimer, None)
+      }
+    }
+
+    log.error("Current term was undefined! Invalid state")
+    throw new IllegalStateException("Current Raft term value was undefined")
   }
 
   /**

@@ -27,8 +27,7 @@ object RaftState {
 
 
 class RaftState(val selfInfo: Membership, val replicatedLog: ReplicatedLog)
-  extends RaftCluster(selfInfo)
-  with RaftLeaderState {
+  extends RaftCluster(selfInfo) {
 
   import RaftState._
 
@@ -38,6 +37,9 @@ class RaftState(val selfInfo: Membership, val replicatedLog: ReplicatedLog)
 
   var commitIndex: Long = 0
   var lastApplied: Long = 0
+
+  // Leader-only state variables
+  var leaderState: RaftLeaderState = RaftLeaderState(cluster(), replicatedLog.size())
 
 
   if (!currentTerm.exists()) currentTerm.write(0)

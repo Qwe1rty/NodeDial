@@ -20,7 +20,7 @@ private[replication] object RaftRole {
   case class MessageResult(
     rpcTask:   RPCTask[RaftMessage],
     timerTask: TimerTask[RaftTimeoutKey],
-    nextRole:   Option[RaftRole]
+    nextRole:  Option[RaftRole]
   )
 }
 
