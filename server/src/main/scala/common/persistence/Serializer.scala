@@ -41,8 +41,8 @@ trait JavaSerializer[T <: Serializable] extends Serializer[T] {
     bytes.toByteArray
   }
 
-  override def deserialize(bytes: Array[Byte]): Try[T] = Try {
-    val bytes = new ByteArrayInputStream(bytes)
+  override def deserialize(serial: Array[Byte]): Try[T] = Try {
+    val bytes = new ByteArrayInputStream(serial)
     val obj = new ObjectInputStream(bytes)
     val value = obj.readObject().asInstanceOf[T]
     bytes.close()
@@ -71,7 +71,7 @@ trait ProtobufSerializer[T <: GeneratedMessage with Message[T]] extends Serializ
     value.toByteArray
   }
 
-  override def deserialize(bytes: Array[Byte]): Try[T] = Try {
-    messageCompanion.parseFrom(bytes)
+  override def deserialize(serial: Array[Byte]): Try[T] = Try {
+    messageCompanion.parseFrom(serial)
   }
 }

@@ -3,7 +3,7 @@ package replication.state
 import membership.api.Membership
 import replication.state.RaftLeaderState.LogIndexState
 
-import scala.collection.View
+import scala.collection.{SortedSet, View}
 
 
 object RaftLeaderState {
@@ -44,5 +44,8 @@ private[replication] case class RaftLeaderState private(
 
   def patchMatchIndex(nodeID: String, f: Int => Int): RaftLeaderState =
     patch(nodeID, currentState => currentState.copy(matchIndex = f(currentState.matchIndex)))
+
+  def matches(): Iterable[Int] =
+    logIndexState.values.map(_.matchIndex)
 
 }

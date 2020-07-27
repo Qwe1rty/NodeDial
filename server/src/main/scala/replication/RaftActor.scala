@@ -111,7 +111,7 @@ private[replication] abstract class RaftActor[Command <: Serializable](
         nextStateData.leaderState = RaftLeaderState(nextStateData.cluster(), nextStateData.log.size())
 
         processTimerTask(CancelTimer(RaftGlobalTimeoutKey))
-        processRPCTask(BroadcastTask(AppendEntriesRequest(
+      processRPCTask(BroadcastTask(AppendEntriesRequest(
           currentTerm,
           MembershipActor.nodeID,
           nextStateData.log.lastLogIndex(),
@@ -135,12 +135,22 @@ private[replication] abstract class RaftActor[Command <: Serializable](
   private def onReceive[CurrentRole <: RaftRole](currentRole: CurrentRole): StateFunction = {
     case Event(receive: Any, state: RaftState) =>
 
+      val initialCommitIndex = state.commitIndex
+
       val MessageResult(rpcTask, timerTask, newRole) = receive match {
         case event: RaftEvent         => currentRole.processRaftEvent(event, state)
         case timeout: RaftTimeoutTick => currentRole.processRaftTimeout(timeout, state)
         case x =>
           log.error(s"Raft role FSM encountered unhandled event error, received ${x.getClass}")
           throw new IllegalArgumentException(s"Unknown type ${x.getClass} received by Raft FSM")
+      }
+
+      if (state.commitIndex > initialCommitIndex) {
+        for (index <- (initialCommitIndex + 1) until (state.commitIndex + 1)) deserialize(state.log(index)) match {
+          case Success(logEntry) => commit(logEntry)
+          case Failure(exception) =>
+            log.error(s"Deserialization error occurred when committing log entry: ${exception.getLocalizedMessage}")
+        }
       }
 
       processRPCTask(rpcTask)

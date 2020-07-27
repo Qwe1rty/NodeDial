@@ -10,7 +10,7 @@ import scala.collection.mutable
 import scala.util.{Failure, Success}
 
 
-private[this] object SimpleReplicatedLog {
+private object SimpleReplicatedLog {
 
   private object LogMetadata extends JavaSerializer[LogMetadata] {
 

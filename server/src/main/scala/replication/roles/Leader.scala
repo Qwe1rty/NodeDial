@@ -12,6 +12,7 @@ import replication.state.RaftLeaderState.LogIndexState
 import replication.state.{RaftIndividualTimeoutKey, RaftState}
 import scalapb.GeneratedMessageCompanion
 
+import scala.annotation.tailrec
 import scala.util.{Failure, Success, Try}
 
 
@@ -92,6 +93,10 @@ private[replication] case object Leader extends RaftRole with ProtobufSerializer
         currentIndexState.nextIndex
       ))
 
+      // Now that the match index is updated, we can check to see if any entries are majority committed
+      val sortedMatchIndexes = state.leaderState.matches().toSeq.sorted
+      state.commitIndex = sortedMatchIndexes((sortedMatchIndexes.size - 1) / 2)
+
       MessageResult(NoTask, ResetTimer(RaftIndividualTimeoutKey(node)), None)
     }
 
@@ -122,6 +127,13 @@ private[replication] case object Leader extends RaftRole with ProtobufSerializer
   override def processRequestVoteResult(voteReply: RequestVoteResult)(node: Membership, state: RaftState): MessageResult =
     super.processRequestVoteResult(voteReply)(node, state)
 
+  /**
+   * Creates an AppendEntriesRequest for a given follower, based on the follower's current log length and match index.
+   *
+   * @param nodeID the ID of the follower
+   * @param state current raft state
+   * @return the append entries request body
+   */
   def createAppendEntriesRequest(nodeID: String, state: RaftState): AppendEntriesRequest = {
 
     // Get the next log entry that the follower needs, if it's not caught up
@@ -132,10 +144,10 @@ private[replication] case object Leader extends RaftRole with ProtobufSerializer
           .map(Seq[LogEntry](_))
       }
 
+    // Start building the append request if the log entry could be deserialized
     logEntries match {
       case Success(entries) =>
 
-        // Start building the append request
         val appendEntries = entries.map(AppendEntryEvent(_, None)) // TODO see if this needs uuid tagging
         val followerPrevIndex = state.leaderState(nodeID).nextIndex - 1
 

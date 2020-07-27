@@ -35,8 +35,8 @@ class RaftState(val selfInfo: Membership, val log: ReplicatedLog)
   val currentTerm: PersistentLong = PersistentLong(RAFT_DIR/"currentTerm"/RAFT_STATE_EXTENSION)
   val votedFor: PersistentString = PersistentString(RAFT_DIR/"votedFor"/RAFT_STATE_EXTENSION)
 
-  var commitIndex: Long = 0
-  var lastApplied: Long = 0
+  var commitIndex: Int = 0
+  var lastApplied: Int = 0
 
   // Leader-only state variables
   var leaderState: RaftLeaderState = RaftLeaderState(cluster(), log.size())
