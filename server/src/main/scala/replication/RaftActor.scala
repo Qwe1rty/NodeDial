@@ -14,7 +14,7 @@ import replication.roles._
 import replication.state._
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 
 /**
@@ -48,13 +48,16 @@ private[replication] abstract class RaftActor[Command <: Serializable](
 
   /**
    * The commit function is called after the Raft process has determined a majority of the
-   * servers have agreed to append the log entry, and now needs to be interpreted by the
-   * user code
+   * servers have agreed to append the log entry, and now needs to be applied to the state
+   * machine as dictated by user code
    */
-  type Commit = Function[Command, Unit]
+  type CommitResult = Unit
+  type Commit = Function[Command, Future[CommitResult]]
   def commit: Commit
 
+  private[this] case class RaftCommitTick(commitResult: Try[CommitResult])
 
+  // Akka objects init
   implicit val materializer: Materializer = ActorMaterializer()
   implicit val executionContext: ExecutionContext = actorSystem.dispatcher
 
@@ -111,7 +114,7 @@ private[replication] abstract class RaftActor[Command <: Serializable](
         nextStateData.leaderState = RaftLeaderState(nextStateData.cluster(), nextStateData.log.size())
 
         processTimerTask(CancelTimer(RaftGlobalTimeoutKey))
-      processRPCTask(BroadcastTask(AppendEntriesRequest(
+        processRPCTask(BroadcastTask(AppendEntriesRequest(
           currentTerm,
           MembershipActor.nodeID,
           nextStateData.log.lastLogIndex(),
@@ -135,27 +138,37 @@ private[replication] abstract class RaftActor[Command <: Serializable](
   private def onReceive[CurrentRole <: RaftRole](currentRole: CurrentRole): StateFunction = {
     case Event(receive: Any, state: RaftState) =>
 
-      val initialCommitIndex = state.commitIndex
-
+      // Handle event message, one of 3 types: Raft message event, timeout event, or commit event
       val MessageResult(rpcTask, timerTask, newRole) = receive match {
-        case event: RaftEvent         => currentRole.processRaftEvent(event, state)
+        case event:   RaftEvent       => currentRole.processRaftEvent(event, state)
         case timeout: RaftTimeoutTick => currentRole.processRaftTimeout(timeout, state)
+        case persist: RaftCommitTick  => state.commitInProgress = false
+          persist.commitResult match {
+            case Success(_)         => state.lastApplied += 1
+            case Failure(exception) => log.info(s"Commit result failure: ${exception.getLocalizedMessage}")
+          }
         case x =>
           log.error(s"Raft role FSM encountered unhandled event error, received ${x.getClass}")
           throw new IllegalArgumentException(s"Unknown type ${x.getClass} received by Raft FSM")
       }
 
-      if (state.commitIndex > initialCommitIndex) {
-        for (index <- (initialCommitIndex + 1) until (state.commitIndex + 1)) deserialize(state.log(index)) match {
-          case Success(logEntry) => commit(logEntry)
-          case Failure(exception) =>
-            log.error(s"Deserialization error occurred when committing log entry: ${exception.getLocalizedMessage}")
-        }
-      }
-
+      // Handle any network or timer-related tasks as a result of applying the message
       processRPCTask(rpcTask)
       processTimerTask(timerTask)
 
+      // If there are still entries to commit, and there isn't one in progress (as we need to ensure
+      // they are executed sequentially), then commit the next entry to the state machine
+      if (!state.commitInProgress && state.lastApplied < state.commitIndex) {
+        state.commitInProgress = true
+        deserialize(state.log(state.lastApplied + 1)) match {
+          case Success(logEntry)  => commit(logEntry).onComplete(self ! RaftCommitTick(_))
+          case Failure(exception) =>
+            log.error(s"Deserialization error occurred when committing log entry: ${exception.getLocalizedMessage}")
+            self ! RaftCommitTick(Failure(exception))
+        }
+      }
+
+      // Switch roles, triggered as a result of timeouts or significant Raft events
       newRole match {
         case Some(role) => goto(role)
         case None       => stay
@@ -223,18 +236,16 @@ private[replication] abstract class RaftActor[Command <: Serializable](
       timeoutRange = TimeRange(timeout, timeout)
       startSingleTimer(ELECTION_TIMER_NAME, RaftGlobalTimeoutTick, timeout)
 
+    case CancelTimer(key) => key match {
+      case RaftGlobalTimeoutKey           => cancelTimer(ELECTION_TIMER_NAME)
+      case RaftIndividualTimeoutKey(node) => cancelTimer(node.nodeID)
+    }
+
     case ResetTimer(key) => key match {
       case RaftGlobalTimeoutKey =>
         startSingleTimer(ELECTION_TIMER_NAME, RaftGlobalTimeoutTick, timeoutRange.random())
       case RaftIndividualTimeoutKey(node) =>
         startSingleTimer(node.nodeID, RaftIndividualTimeoutTick(node), INDIVIDUAL_NODE_TIMEOUT)
-    }
-
-    case CancelTimer(key) => key match {
-      case RaftGlobalTimeoutKey =>
-        cancelTimer(ELECTION_TIMER_NAME)
-      case RaftIndividualTimeoutKey(node) =>
-        cancelTimer(node.nodeID)
     }
 
     case ContinueTimer => () // no need to do anything

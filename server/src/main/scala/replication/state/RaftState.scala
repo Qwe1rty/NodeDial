@@ -38,6 +38,8 @@ class RaftState(val selfInfo: Membership, val log: ReplicatedLog)
   var commitIndex: Int = 0
   var lastApplied: Int = 0
 
+  var commitInProgress: Boolean = false
+
   // Leader-only state variables
   var leaderState: RaftLeaderState = RaftLeaderState(cluster(), log.size())
 

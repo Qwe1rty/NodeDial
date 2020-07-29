@@ -99,8 +99,8 @@ class ReplicationActor(
 
   /**
    * The commit function is called after the Raft process has determined a majority of the
-   * servers have agreed to append the log entry, and now needs to be interpreted by the
-   * user code
+   * servers have agreed to append the log entry, and now needs to be applied to the state
+   * machine as dictated by user code
    */
   override def commit: Commit = { case ReplicatedOp(operation) => operation match {
 
@@ -122,7 +122,7 @@ class ReplicationActor(
     case OperationType.Delete(DeleteOp(key, uuid)) =>
       log.info(s"Delete entry with key $key and UUID ${uuid: String} will now attempt to be committed")
 
-      val requestActor = pendingRequestActors.get(uuid)
+    val requestActor = pendingRequestActors.get(uuid)
       persistenceActor ! DeleteTask(requestActor, byteStringToString(key).sha256)
 
     case OperationType.Empty =>
