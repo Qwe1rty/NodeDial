@@ -12,7 +12,6 @@ import replication.state.RaftLeaderState.LogIndexState
 import replication.state.{RaftIndividualTimeoutKey, RaftState}
 import scalapb.GeneratedMessageCompanion
 
-import scala.annotation.tailrec
 import scala.util.{Failure, Success, Try}
 
 

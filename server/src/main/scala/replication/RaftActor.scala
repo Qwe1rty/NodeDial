@@ -181,18 +181,21 @@ private[replication] abstract class RaftActor[Command <: Serializable](
    * @param rpcTask the RPC task
    */
   override def processRPCTask(rpcTask: RPCTask[RaftMessage]): Unit = rpcTask match {
+
     case BroadcastTask(task) => task match {
       case request: RaftRequest => broadcast(request).foreach(_.onComplete {
         case Success(event)  => self ! event
         case Failure(reason) => log.debug(s"RPC request failed: ${reason.getLocalizedMessage}")
       })
     }
+
     case RequestTask(task, node) => task match {
       case request: RaftRequest => message(request, node).onComplete {
         case Success(event)  => self ! event
         case Failure(reason) => log.debug(s"RPC request failed: ${reason.getLocalizedMessage}")
       }
     }
+
     case ReplyTask(reply) => sender ! reply
   }
 

@@ -105,16 +105,11 @@ override def processRaftGlobalTimeout(state: RaftState): Option[RaftRole] = Some
    */
   override def processRequestVoteResult(voteReply: RequestVoteResult)(node: Membership, state: RaftState): MessageResult = {
 
-    val nextRole = determineStepDown(voteReply.currentTerm)(state)
+    val nextRole = determineStepDown(voteReply.currentTerm)(state).orElse {
 
-    // If we haven't stepped down as a result of the new message, and the vote was given, register reply and check
-    // to see if we've won the election
-    if (nextRole.isEmpty && voteReply.voteGiven) {
-      state.registerReply(node)
-
-      if (state.hasQuorum) {
-        return MessageResult(NoTask, CancelTimer(RaftIndividualTimeoutKey(node)), Some(Leader))
-      }
+      // If we haven't stepped down as a result of the new message, and the vote was given, register reply and check
+      // to see if we've won the election
+      Option.when(voteReply.voteGiven && {state.registerReply(node); state.hasQuorum})(Leader)
     }
 
     MessageResult(NoTask, CancelTimer(RaftIndividualTimeoutKey(node)), nextRole)
