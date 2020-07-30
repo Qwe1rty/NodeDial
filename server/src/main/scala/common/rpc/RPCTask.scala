@@ -52,7 +52,7 @@ case class BroadcastTask[RPCObject](task: RPCObject) extends RPCTask[RPCObject]
  * @tparam RPCObject the RPC object associated with the task (eg. request
  *                   parameters for an RPC)
  */
-case class RequestTask[RPCObject](task: RPCObject, recipient: Membership) extends RPCTask[RPCObject]
+case class RequestTask[RPCObject](task: RPCObject, recipient: Iterable[Membership]) extends RPCTask[RPCObject]
 
 
 /**

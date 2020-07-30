@@ -163,7 +163,7 @@ private[replication] abstract class RaftActor[Command <: Serializable](
         deserialize(state.log(state.lastApplied + 1)) match {
           case Success(logEntry)  => commit(logEntry).onComplete(self ! RaftCommitTick(_))
           case Failure(exception) =>
-            log.error(s"Deserialization error occurred when committing log entry: ${exception.getLocalizedMessage}")
+            log.error(s"Deserialization error for log entry #${state.lastApplied + 1} commit: ${exception.getLocalizedMessage}")
             self ! RaftCommitTick(Failure(exception))
         }
       }
@@ -189,11 +189,11 @@ private[replication] abstract class RaftActor[Command <: Serializable](
       })
     }
 
-    case RequestTask(task, node) => task match {
-      case request: RaftRequest => message(request, node).onComplete {
+    case RequestTask(task, nodes) => task match {
+      case request: RaftRequest => nodes.foreach(message(request, _).onComplete {
         case Success(event)  => self ! event
         case Failure(reason) => log.debug(s"RPC request failed: ${reason.getLocalizedMessage}")
-      }
+      })
     }
 
     case ReplyTask(reply) => sender ! reply

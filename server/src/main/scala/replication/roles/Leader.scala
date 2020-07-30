@@ -1,7 +1,7 @@
 package replication.roles
 
 import common.persistence.ProtobufSerializer
-import common.rpc.{NoTask, RequestTask}
+import common.rpc.{BroadcastTask, NoTask, RequestTask}
 import common.time.{ContinueTimer, ResetTimer}
 import membership.MembershipActor
 import membership.api.Membership
@@ -46,7 +46,7 @@ private[replication] case object Leader extends RaftRole with ProtobufSerializer
   override def processRaftIndividualTimeout(node: Membership, state: RaftState): MessageResult = {
 
     // For leaders, individual timeouts mean a node has not received a heartbeat/request in a while
-    MessageResult(RequestTask(createAppendEntriesRequest(node.nodeID, state), node), ContinueTimer, None)
+    MessageResult(RequestTask(createAppendEntriesRequest(node.nodeID, state), Some(node)), ContinueTimer, None)
   }
 
   /**
@@ -57,7 +57,38 @@ private[replication] case object Leader extends RaftRole with ProtobufSerializer
    * @param state       current raft state
    * @return the event result
    */
-  override def processAppendEntryEvent(appendEvent: AppendEntryEvent)(node: Membership, state: RaftState): MessageResult = ???
+  override def processAppendEntryEvent(appendEvent: AppendEntryEvent)(node: Membership, state: RaftState): MessageResult = {
+
+    val currentTerm = state.currentTerm.read().getOrElse(0)
+
+    serialize(appendEvent.logEntry) match {
+
+      case Success(bytes) =>
+        state.log.append(currentTerm, bytes)
+
+        val appendEntryRequest = AppendEntriesRequest(
+          currentTerm,
+          MembershipActor.nodeID,
+          state.log.lastLogIndex() - 1,
+          state.log.termOf(state.log.lastLogIndex() - 1),
+          Seq(appendEvent),
+          state.commitIndex
+        )
+
+        val matchingFollowers = state.cluster().filter {
+          node => state.leaderState(node.nodeID).matchIndex == state.log.lastLogIndex() - 1
+        }
+
+        MessageResult(RequestTask(appendEntryRequest, matchingFollowers), ContinueTimer, None)
+
+      case Failure(exception) =>
+        log.error(
+          s"Serialization error on append entry ${appendEvent.logEntry.key} and UUID \"${appendEvent.uuid}, on term $currentTerm: " +
+          s"${exception.getLocalizedMessage}"
+        )
+        MessageResult(NoTask, ContinueTimer, None)
+    }
+  }
 
   /**
    * Handle an append entry request received from the leader
@@ -102,7 +133,7 @@ private[replication] case object Leader extends RaftRole with ProtobufSerializer
     // Otherwise, follower log is inconsistent with leader log, so we roll back one entry and retry the request
     else {
       state.leaderState.patchNextIndex(node.nodeID, _ - 1)
-      MessageResult(RequestTask(createAppendEntriesRequest(node.nodeID, state), node), ContinueTimer, None)
+      MessageResult(RequestTask(createAppendEntriesRequest(node.nodeID, state), Some(node)), ContinueTimer, None)
     }
   }
 
