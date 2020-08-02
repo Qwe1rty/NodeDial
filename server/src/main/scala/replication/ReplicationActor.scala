@@ -54,6 +54,9 @@ class ReplicationActor(
   with ProtobufSerializer[ReplicatedOp]
   with Compression {
 
+  // When submitting a task to Raft, it may take an indeterminate amount of time before it returns
+  // back with either a failure, or commit task. In either case, any pending client requests
+  // need to be kept track of by UUID so that Raft results can be
   private var pendingRequestActors = Map[UUID, ActorPath]()
 
 
@@ -81,7 +84,9 @@ class ReplicationActor(
         pendingRequestActors += uuid -> requestActor
 
         compressBytes(value) match {
-          case Success(gzip) => super.receive(AppendEntryEvent(LogEntry(key, gzip), Some(uuid)))
+          case Success(gzip) => super.submit(AppendEntryEvent(LogEntry(key, gzip), Some(uuid))).onComplete {
+
+          }
           case Failure(e) => log.error(s"Compression error for key $key: ${e.getLocalizedMessage}")
         }
 

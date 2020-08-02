@@ -1,13 +1,12 @@
 package replication.roles
 
 import common.persistence.ProtobufSerializer
-import common.rpc.{BroadcastTask, NoTask, RPCTask, ReplyTask, RequestTask}
+import common.rpc.{RPCTask, ReplyTask, RequestTask}
 import common.time.{ContinueTimer, ResetTimer}
 import membership.MembershipActor
 import membership.api.Membership
 import org.slf4j.{Logger, LoggerFactory}
 import replication._
-import replication.roles.Leader.serialize
 import replication.roles.RaftRole.MessageResult
 import replication.state.RaftLeaderState.LogIndexState
 import replication.state.{RaftIndividualTimeoutKey, RaftMessage, RaftState}
@@ -64,8 +63,8 @@ private[replication] case object Leader extends RaftRole with ProtobufSerializer
 
     val appendLogResult = for (
       bytes <- serialize(appendEvent.logEntry);
-      _     <- Try(state.log.append(currentTerm, bytes)))
-    yield {}
+      _     <- Try(state.log.append(currentTerm, bytes))
+    ) yield {}
 
     appendLogResult match {
       case Success(_) =>
@@ -90,8 +89,8 @@ private[replication] case object Leader extends RaftRole with ProtobufSerializer
 
       case Failure(exception) =>
         log.error(
-          s"Serialization error on append entry ${appendEvent.logEntry.key} and UUID \"${appendEvent.uuid}, on term $currentTerm: " +
-            s"${exception.getLocalizedMessage}"
+          s"Serialization error on append entry ${appendEvent.logEntry.key} and UUID \"${appendEvent.uuid}\", on term $currentTerm: " +
+            exception.getLocalizedMessage
         )
         MessageResult(Set(ReplyTask(AppendEntryAck(false))), ContinueTimer, None)
     }

@@ -37,7 +37,7 @@ class RaftState(val selfInfo: Membership, val log: ReplicatedLog) extends RaftCl
   val currentTerm: PersistentLong = PersistentLong(RAFT_DIR/"currentTerm"/RAFT_STATE_EXTENSION)
   val votedFor: PersistentString = PersistentString(RAFT_DIR/"votedFor"/RAFT_STATE_EXTENSION)
 
-  var currentLeader: Option[String] = None
+  var currentLeader: Option[Membership] = None
   var bufferedAppendEvents: Queue[AppendEntryEvent] = Queue[AppendEntryEvent]()
 
   var commitIndex: Int = 0

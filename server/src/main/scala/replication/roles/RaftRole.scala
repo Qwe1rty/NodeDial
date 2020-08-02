@@ -1,6 +1,6 @@
 package replication.roles
 
-import common.rpc.{NoTask, RPCTask, ReplyTask}
+import common.rpc.{NoTask, RPCTask, ReplyFutureTask, ReplyTask}
 import common.time.{ContinueTimer, ResetTimer, TimerTask}
 import membership.MembershipActor
 import membership.api.Membership
@@ -89,11 +89,12 @@ private[replication] trait RaftRole {
    */
   def processAppendEntryEvent(appendEvent: AppendEntryEvent)(node: Membership, state: RaftState): MessageResult = {
 
-    MessageResult()
+    val forwardTask: Set[RPCTask[RaftMessage]] = state.currentLeader
+      .map(ReplyFutureTask(appendEvent, _))
+      .iterator
+      .to(Set)
 
-    state.currentLeader match {
-      case Some(leaderID) =>
-    }
+    MessageResult(forwardTask, ContinueTimer, None)
   }
 
 
@@ -141,8 +142,6 @@ private[replication] trait RaftRole {
         if (appendRequest.leaderCommitIndex > state.commitIndex) {
           state.commitIndex = Math.min(state.log.lastLogIndex(), appendRequest.leaderCommitIndex)
         }
-
-        // TODO start commit task?
 
         acceptEntry(currentTerm, nextRole)
       }

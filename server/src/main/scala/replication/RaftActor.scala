@@ -4,6 +4,9 @@ import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorSystem, FSM}
 import akka.stream.{ActorMaterializer, Materializer}
+import akka.pattern.ask
+import akka.util
+import akka.util.Timeout
 import common.persistence.Serializer
 import common.rpc._
 import common.time._
@@ -139,7 +142,11 @@ private[replication] abstract class RaftActor[Command <: Serializable](
 
 
   def submit(appendEntryEvent: AppendEntryEvent): Future[AppendEntryAck] = {
+    implicit def timeout: util.Timeout = Timeout(NEW_LOG_ENTRY_TIMEOUT)
 
+    (self ? appendEntryEvent)
+      .mapTo[Future[AppendEntryAck]]
+      .flatten
   }
 
   private def onReceive[CurrentRole <: RaftRole](currentRole: CurrentRole): StateFunction = {
@@ -201,6 +208,10 @@ private[replication] abstract class RaftActor[Command <: Serializable](
         case Success(event)  => self ! event
         case Failure(reason) => log.debug(s"RPC request failed: ${reason.getLocalizedMessage}")
       }
+    }
+
+    case ReplyFutureTask(task, node) => task match {
+      case request: RaftRequest => sender ! message(request, node)
     }
 
     case ReplyTask(reply) => sender ! reply

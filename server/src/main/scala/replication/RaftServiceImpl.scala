@@ -91,7 +91,8 @@ class RaftServiceImpl(raftActor: ActorRef)(implicit actorSystem: ActorSystem)
     log.debug(s"New log write event with key ${in.logEntry.key}")
 
     (raftActor ? in)
-      .mapTo[AppendEntryAck]
+      .mapTo[Future[AppendEntryAck]]
+      .flatten
   }
 
 }

@@ -63,7 +63,7 @@ case class RequestTask[RPCObject](task: RPCObject, recipient: Membership) extend
  * @tparam RPCObject the RPC object associated with the task (eg. request
  *                   parameters for an RPC)
  */
-case class RequestAsyncTask[RPCObject](task: RPCObject, recipient: Membership) extends RPCTask[RPCObject]
+case class ReplyFutureTask[RPCObject](task: RPCObject, recipient: Membership) extends RPCTask[RPCObject]
 
 
 /**
