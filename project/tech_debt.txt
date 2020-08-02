@@ -20,6 +20,8 @@ DOCUMENTATION:
 - Document the high-level architecture and modules of the program
 - Document the directory structure of the program, including the build-related stuff
 - Include links to references (within itself to other sections, the wiki, or external docs)
+- Flow diagram of a GET/POST/DELETE request, through all the layers & the datatypes passed between them
+- Flow diagram of a Raft WAL commit process, data transformations, etc.
 
 
 CLIENT:
@@ -49,3 +51,5 @@ PERSISTENCE:
 PARTITIONING:
 - Eventually decouple the hash range join from the membership join through separate gossips
 
+REPLICATION:
+- Modify Raft algorithm to buffer new client requests if the leader is dead, and retry later

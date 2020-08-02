@@ -1,5 +1,7 @@
 package replication
 
+import java.util.concurrent.TimeUnit
+
 import akka.actor.{ActorSystem, FSM}
 import akka.stream.{ActorMaterializer, Materializer}
 import common.persistence.Serializer
@@ -13,6 +15,7 @@ import replication.roles.RaftRole.MessageResult
 import replication.roles._
 import replication.state._
 
+import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
@@ -135,11 +138,15 @@ private[replication] abstract class RaftActor[Command <: Serializable](
   log.info("Randomized Raft election timeout started")
 
 
+  def submit(appendEntryEvent: AppendEntryEvent): Future[AppendEntryAck] = {
+
+  }
+
   private def onReceive[CurrentRole <: RaftRole](currentRole: CurrentRole): StateFunction = {
     case Event(receive: Any, state: RaftState) =>
 
       // Handle event message, one of 3 types: Raft message event, timeout event, or commit event
-      val MessageResult(rpcTask, timerTask, newRole) = receive match {
+      val MessageResult(rpcTasks, timerTask, newRole) = receive match {
         case event:   RaftEvent       => currentRole.processRaftEvent(event, state)
         case timeout: RaftTimeoutTick => currentRole.processRaftTimeout(timeout, state)
         case persist: RaftCommitTick  => state.commitInProgress = false
@@ -153,7 +160,7 @@ private[replication] abstract class RaftActor[Command <: Serializable](
       }
 
       // Handle any network or timer-related tasks as a result of applying the message
-      processRPCTask(rpcTask)
+      rpcTasks.foreach(processRPCTask)
       processTimerTask(timerTask)
 
       // If there are still entries to commit, and there isn't one in progress (as we need to ensure
@@ -189,11 +196,11 @@ private[replication] abstract class RaftActor[Command <: Serializable](
       })
     }
 
-    case RequestTask(task, nodes) => task match {
-      case request: RaftRequest => nodes.foreach(message(request, _).onComplete {
+    case RequestTask(task, node) => task match {
+      case request: RaftRequest => message(request, node).onComplete {
         case Success(event)  => self ! event
         case Failure(reason) => log.debug(s"RPC request failed: ${reason.getLocalizedMessage}")
-      })
+      }
     }
 
     case ReplyTask(reply) => sender ! reply
@@ -209,16 +216,23 @@ private[replication] abstract class RaftActor[Command <: Serializable](
     stateData.cluster().map(message(request, _)).toSet
 
   /**
-   * Send a new RequestVotes or AppendEntries request message to a specific node
+   * Send a new RPC request message to a specific node
    *
    * @param request the request
    * @return a future corresponding to a reply from a node
    */
   private def message(request: RaftRequest, node: Membership): Future[RaftResult] = {
 
-    val client = RaftServiceClient(createGRPCSettings(node.ipAddress, INDIVIDUAL_NODE_TIMEOUT))
+    val client = RaftServiceClient(createGRPCSettings(
+      node.ipAddress,
+      request match {
+        case _: AppendEntryEvent => FiniteDuration(5, TimeUnit.SECONDS)
+        case _                   => INDIVIDUAL_NODE_TIMEOUT
+      }
+    ))
 
     val futureReply = request match {
+      case appendEntryEvent: AppendEntryEvent         => client.newLogWrite(appendEntryEvent)
       case appendEntriesRequest: AppendEntriesRequest => client.appendEntries(appendEntriesRequest)
       case requestVoteRequest: RequestVoteRequest     => client.requestVote(requestVoteRequest)
       case _ =>

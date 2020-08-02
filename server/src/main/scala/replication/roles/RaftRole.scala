@@ -18,7 +18,7 @@ private[replication] object RaftRole {
    *   - the next role state. A Some(...) value triggers role transition functions, None does not
    */
   case class MessageResult(
-    rpcTask:   RPCTask[RaftMessage],
+    rpcTask:   Set[RPCTask[RaftMessage]],
     timerTask: TimerTask[RaftTimeoutKey],
     nextRole:  Option[RaftRole]
   )
@@ -52,7 +52,7 @@ private[replication] trait RaftRole {
   final def processRaftTimeout(raftTimeoutTick: RaftTimeoutTick, state: RaftState): MessageResult = {
     raftTimeoutTick match {
       case RaftIndividualTimeoutTick(node) => processRaftIndividualTimeout(node, state)
-      case RaftGlobalTimeoutTick           => MessageResult(NoTask, ContinueTimer, processRaftGlobalTimeout(state))
+      case RaftGlobalTimeoutTick           => MessageResult(Set(NoTask), ContinueTimer, processRaftGlobalTimeout(state))
     }
   }
 
@@ -87,7 +87,14 @@ private[replication] trait RaftRole {
    * @param state current raft state
    * @return the event result
    */
-  def processAppendEntryEvent(appendEvent: AppendEntryEvent)(node: Membership, state: RaftState): MessageResult
+  def processAppendEntryEvent(appendEvent: AppendEntryEvent)(node: Membership, state: RaftState): MessageResult = {
+
+    MessageResult()
+
+    state.currentLeader match {
+      case Some(leaderID) =>
+    }
+  }
 
 
   // Raft event handler methods (with default implementations)
@@ -212,25 +219,24 @@ private[replication] trait RaftRole {
    * @return new Raft role
    */
   final protected def determineStepDown(receivedTerm: Long)(state: RaftState): Option[RaftRole] = {
-    if (receivedTerm > state.currentTerm.read().get) {
+    Option.when(receivedTerm > state.currentTerm.read().get) {
       state.currentTerm.write(receivedTerm)
-      Some(Follower)
+      Follower
     }
-    else None
   }
 
   final protected def stepDownIfBehind(messageTerm: Long, state: RaftState): MessageResult =
-    MessageResult(NoTask, ContinueTimer, determineStepDown(messageTerm)(state))
+    MessageResult(Set(), ContinueTimer, determineStepDown(messageTerm)(state))
 
   final protected def rejectEntry(currentTerm: Long, nextRole: Option[RaftRole]): MessageResult =
-    MessageResult(ReplyTask(AppendEntriesResult(currentTerm, success = false)), ContinueTimer, nextRole)
+    MessageResult(Set(ReplyTask(AppendEntriesResult(currentTerm, success = false))), ContinueTimer, nextRole)
 
   final protected def acceptEntry(currentTerm: Long, nextRole: Option[RaftRole]): MessageResult =
-    MessageResult(ReplyTask(AppendEntriesResult(currentTerm, success = true)), ResetTimer(RaftGlobalTimeoutKey), nextRole)
+    MessageResult(Set(ReplyTask(AppendEntriesResult(currentTerm, success = true))), ResetTimer(RaftGlobalTimeoutKey), nextRole)
 
   final protected def refuseVote(currentTerm: Long, nextRole: Option[RaftRole]): MessageResult =
-    MessageResult(ReplyTask(RequestVoteResult(currentTerm, voteGiven = false)), ContinueTimer, nextRole)
+    MessageResult(Set(ReplyTask(RequestVoteResult(currentTerm, voteGiven = false))), ContinueTimer, nextRole)
 
   final protected def giveVote(currentTerm: Long, nextRole: Option[RaftRole]): MessageResult =
-    MessageResult(ReplyTask(RequestVoteResult(currentTerm, voteGiven = true)), ResetTimer(RaftGlobalTimeoutKey), nextRole)
+    MessageResult(Set(ReplyTask(RequestVoteResult(currentTerm, voteGiven = true))), ResetTimer(RaftGlobalTimeoutKey), nextRole)
 }

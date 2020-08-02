@@ -6,7 +6,6 @@ import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.http.scaladsl.{Http, HttpConnectionContext}
 import akka.pattern.ask
 import akka.stream.{ActorMaterializer, Materializer}
-import com.google.protobuf.empty.Empty
 import com.risksense.ipaddr.IpAddress
 import common.ServerDefaults.ACTOR_REQUEST_TIMEOUT
 import common.rpc.GRPCSettingsFactory
@@ -88,11 +87,11 @@ class RaftServiceImpl(raftActor: ActorRef)(implicit actorSystem: ActorSystem)
    * broadcast if leader for replication, or redirects it to the leader (if
    * existing).
    */
-  override def newLogWrite(in: AppendEntryEvent): Future[Empty] = {
+  override def newLogWrite(in: AppendEntryEvent): Future[AppendEntryAck] = {
     log.debug(s"New log write event with key ${in.logEntry.key}")
 
-    raftActor ! in
-    Future.successful(Empty())
+    (raftActor ? in)
+      .mapTo[AppendEntryAck]
   }
 
 }

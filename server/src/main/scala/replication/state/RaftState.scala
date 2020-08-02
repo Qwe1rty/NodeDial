@@ -4,8 +4,11 @@ import better.files.File
 import common.ServerConstants
 import common.persistence.{PersistentLong, PersistentString}
 import membership.api.Membership
+import replication.AppendEntryEvent
 import replication.cluster.RaftCluster
 import replication.eventlog.ReplicatedLog
+
+import scala.collection.immutable.Queue
 
 
 /**
@@ -26,14 +29,16 @@ object RaftState {
 }
 
 
-class RaftState(val selfInfo: Membership, val log: ReplicatedLog)
-  extends RaftCluster(selfInfo) {
+class RaftState(val selfInfo: Membership, val log: ReplicatedLog) extends RaftCluster(selfInfo) {
 
   import RaftState._
 
   // Common state variables, for all roles
   val currentTerm: PersistentLong = PersistentLong(RAFT_DIR/"currentTerm"/RAFT_STATE_EXTENSION)
   val votedFor: PersistentString = PersistentString(RAFT_DIR/"votedFor"/RAFT_STATE_EXTENSION)
+
+  var currentLeader: Option[String] = None
+  var bufferedAppendEvents: Queue[AppendEntryEvent] = Queue[AppendEntryEvent]()
 
   var commitIndex: Int = 0
   var lastApplied: Int = 0

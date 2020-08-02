@@ -24,7 +24,7 @@ service RaftService {
     // Handles a new write request from client - starts an AppendEntries
     // broadcast if leader for replication, or redirects it to the leader (if
     // existing).
-    rpc NewLogWrite (AppendEntryEvent) returns (google.protobuf.Empty) {}
+    rpc NewLogWrite (AppendEntryEvent) returns (AppendEntryAck) {}
 }
 
 

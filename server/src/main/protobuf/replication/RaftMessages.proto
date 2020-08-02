@@ -12,7 +12,7 @@ package chordial.replication;
 
 message AppendEntryEvent {
 
-    option (scalapb.message).extends = "replication.state.RaftMessage";
+    option (scalapb.message).extends = "replication.state.RaftRequest";
 
     // The log entry that is actually being replicated under Raft
     required LogEntry log_entry = 1;
@@ -22,6 +22,17 @@ message AppendEntryEvent {
     // Not actually used by the Raft algorithm itself, but it makes client
     // side code much easier by making these trackable.
     optional bytes uuid = 2;
+}
+
+message AppendEntryAck {
+
+    // Object that is returned on receiving an AppendEntryEvent. If the
+    // operation has successfully been acknowledged by the leader and
+    // applied to its WAL, then we return a success.
+
+    required bool success = 1;
+
+    option (scalapb.message).extends = "replication.state.RaftResult";
 }
 
 message AppendEntriesRequest {
@@ -43,7 +54,7 @@ message AppendEntriesRequest {
 
     // The index that specifies the entries that have been successfully
     // committed by a majority
-    required uint64 leader_commit_index = 6;
+    required uint32 leader_commit_index = 6;
 }
 
 message AppendEntriesResult {

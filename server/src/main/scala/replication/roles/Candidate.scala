@@ -48,7 +48,7 @@ override def processRaftGlobalTimeout(state: RaftState): Option[RaftRole] = Some
         state.log.lastLogTerm()
       )
 
-      MessageResult(RequestTask(voteRequest, node), ResetTimer(RaftIndividualTimeoutKey(node)), None)
+      MessageResult(Set(RequestTask(voteRequest, node)), ResetTimer(RaftIndividualTimeoutKey(node)), None)
     }
 
     log.error("Current term was undefined! Invalid state")
@@ -112,7 +112,7 @@ override def processRaftGlobalTimeout(state: RaftState): Option[RaftRole] = Some
       Option.when(voteReply.voteGiven && {state.registerReply(node); state.hasQuorum})(Leader)
     }
 
-    MessageResult(NoTask, CancelTimer(RaftIndividualTimeoutKey(node)), nextRole)
+    MessageResult(Set(), CancelTimer(RaftIndividualTimeoutKey(node)), nextRole)
   }
 
 }

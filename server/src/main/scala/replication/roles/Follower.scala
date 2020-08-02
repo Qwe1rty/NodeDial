@@ -38,7 +38,7 @@ private[replication] case object Follower extends RaftRole {
   override def processRaftIndividualTimeout(node: Membership, state: RaftState): MessageResult = {
 
     // For followers, nothing needs to happen, and occur as holdovers from previous roles
-    MessageResult(NoTask, ContinueTimer, None)
+    MessageResult(Set(), ContinueTimer, None)
   }
 
   /**
