@@ -1,4 +1,4 @@
-package replication.cluster
+package replication.state
 
 import common.persistence.{JavaSerializer, PersistentVal}
 import membership.api.Membership

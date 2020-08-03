@@ -21,25 +21,11 @@ case class ReadTask(valueFile: File)(implicit stateActor: ActorRef) extends IOTa
   }
 }
 
-case class WriteAheadTask(writeAheadFile: File, value: Array[Byte])(implicit stateActor: ActorRef) extends IOTask {
+case class WriteTask(valueFile: File, value: Array[Byte])(implicit stateActor: ActorRef) extends IOTask {
 
   override def execute()(implicit executionContext: ExecutionContext): Unit = {
 
-    val result = Try(writeAheadFile.writeByteArray(value))
-    stateActor ! (
-      result match {
-        case Success(_) => WriteAheadCommitSignal()
-        case Failure(e) => WriteAheadFailureSignal(e)
-      }
-    )
-  }
-}
-
-case class WriteTransferTask(writeAheadFile: File, valueFile: File)(implicit stateActor: ActorRef) extends IOTask {
-
-  override def execute()(implicit executionContext: ExecutionContext): Unit = {
-
-    stateActor ! WriteCompleteSignal(Try(writeAheadFile.copyTo(valueFile, overwrite = true)) match {
+    stateActor ! WriteCompleteSignal(Try(valueFile.writeByteArray(value)) match {
       case Success(_) => Success[Unit]()
       case Failure(e) => Failure(e)
     })

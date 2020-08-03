@@ -5,7 +5,6 @@ import common.ServerConstants
 import common.persistence.{PersistentLong, PersistentString}
 import membership.api.Membership
 import replication.AppendEntryEvent
-import replication.cluster.RaftCluster
 import replication.eventlog.ReplicatedLog
 
 import scala.collection.immutable.Queue

@@ -124,7 +124,7 @@ class KeyStateActor private(
 
     case WriteAheadCommitSignal() =>
       log.debug(tag + "Write ahead commit signal received")
-      schedule(WriteTransferTask(
+      schedule(WriteTask(
         WRITE_AHEAD_EXTENSION,
         VALUE_EXTENSION
       ))
