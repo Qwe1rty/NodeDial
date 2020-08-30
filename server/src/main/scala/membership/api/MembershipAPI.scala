@@ -18,6 +18,6 @@ case class Membership(nodeID: String, ipAddress: IpAddress) {
  * The inheritable trait that defines the set of internal API calls that the membership
  * module needs to fulfill
  */
-private[membership] trait MembershipAPI
+trait MembershipAPI
 
 

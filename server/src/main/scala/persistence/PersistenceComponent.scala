@@ -1,76 +1,105 @@
 package persistence
 
-import akka.actor.{ActorLogging, ActorRef, ActorSystem, Props}
-import akka.pattern.ask
+import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
+import akka.actor.typed.{ActorRef, Behavior}
 import better.files.File
-import common.{DefaultActor, ServerConstants}
-import membership.api.DeclareReadiness
-import persistence.PersistenceComponent.{PERSISTENCE_DIRECTORY, PersistenceData}
-import persistence.io.KeyStateActor.KeyTask
-import persistence.io.{KeyStateActor}
-import persistence.threading.ThreadPartitionActor
+import common.ServerConstants
+import membership.api.{DeclareReadiness, MembershipAPI}
+import persistence.PersistenceComponent.PersistenceTask
+import persistence.io.KeyStateManager
+import persistence.io.KeyStateManager.KeyTask
+import persistence.threading.PartitionedTaskExecutor
 
 import scala.concurrent.{Future, Promise}
 
 
 object PersistenceComponent {
 
+  /**
+   * Represents the data returned from the disk
+   */
   type PersistenceData = Option[Array[Byte]]
+  type PersistenceFuture = Future[PersistenceData]
 
   val PERSISTENCE_DIRECTORY: File = ServerConstants.BASE_DIRECTORY/"data"
+
+  def apply(membershipActor: ActorRef[MembershipAPI]): Behavior[PersistenceTask] =
+    Behaviors.setup(new PersistenceComponent(_, membershipActor))
+
+
+  /** Actor protocol: defines the set of tasks the persistence layer will accept */
+  sealed trait PersistenceTask {
+    val requestActor: ActorRef[PersistenceFuture]
+    val keyHash: String
+  }
+
+  /**
+   * A get request
+   *
+   * @param requestActor the actor to send the result back to, if there is one
+   * @param keyHash the key hash
+   */
+  case class GetTask(
+    requestActor: ActorRef[PersistenceFuture],
+    keyHash: String
+  ) extends PersistenceTask
+
+  /**
+   * A write request
+   *
+   * @param requestActor the actor to send the result back to, if there is one
+   * @param keyHash the key hash
+   * @param value the value to write the value as
+   */
+  case class PostTask(
+    requestActor: ActorRef[PersistenceFuture],
+    keyHash: String,
+    value: Array[Byte]
+  ) extends PersistenceTask
+
+  /**
+   * A delete request, which will be interpreted as a "tombstone" action
+   *
+   * @param requestActor the actor to send the result back to, if there is one
+   * @param keyHash the key hash
+   */
+  case class DeleteTask(
+    requestActor: ActorRef[PersistenceFuture],
+    keyHash: String
+  ) extends PersistenceTask
 }
 
-class PersistenceComponent(membershipActor: ActorRef)(implicit actorSystem: ActorSystem) {
+class PersistenceComponent(context: ActorContext[PersistenceTask], membershipActor: ActorRef[MembershipAPI])
+  extends AbstractBehavior[PersistenceTask](context) {
 
   import PersistenceComponent._
-  import common.ServerDefaults.INTERNAL_REQUEST_TIMEOUT
 
-  private val threadPartitionActor = ThreadPartitionActor()
-  private val persistenceActor = PersistenceActor(threadPartitionActor, membershipActor)
-
-
-  def submitTask(task: PersistenceTask): Future[PersistenceData] = {
-    (persistenceActor ? task)
-      .mapTo[Future[PersistenceData]]
-      .flatten
-  }
-}
-
-
-object PersistenceActor {
-
-  def apply(executorActor: ActorRef, membershipActor: ActorRef)(implicit actorSystem: ActorSystem): ActorRef = actorSystem.actorOf(
-    Props(new PersistenceActor(executorActor, membershipActor)),
-    "persistenceActor"
-  )
-}
-
-class PersistenceActor private(executorActor: ActorRef, membershipActor: ActorRef) extends DefaultActor with ActorLogging {
-
-  private var keyMapping = Map[String, ActorRef]()
+  private val threadPartitionActor = context.spawn(PartitionedTaskExecutor(), "threadPartitionActor")
+  private var keyMapping = Map[String, ActorRef[KeyTask]]()
 
   PERSISTENCE_DIRECTORY.createDirectoryIfNotExists()
-  log.info(s"Directory ${PERSISTENCE_DIRECTORY.toString()} opened")
+  context.log.info(s"Directory ${PERSISTENCE_DIRECTORY.toString()} opened")
 
   membershipActor ! DeclareReadiness
-  log.info("Persistence actor initialized")
+  context.log.info("Persistence actor initialized")
 
 
-  override def receive: Receive = {
+  override def onMessage(task: PersistenceTask): Behavior[PersistenceTask] = {
+    context.log.info(s"Persistence task with hash ${task.keyHash} and request actor path ${task.requestActor} received")
 
-    case task: PersistenceTask =>
-      log.info(s"Persistence task with hash ${task.keyHash} and request actor path ${task.requestActor} received")
+    if (!(keyMapping isDefinedAt task.keyHash)) {
+      keyMapping += task.keyHash -> context.spawn(
+        KeyStateManager(threadPartitionActor, task.keyHash),
+        s"keyStateActor-${task.keyHash}"
+      )
+      context.log.debug(s"No existing state actor found for hash ${task.keyHash} - creating new state actor")
+    }
 
-      if (!(keyMapping isDefinedAt task.keyHash)) {
-        keyMapping += task.keyHash -> KeyStateActor(executorActor, task.keyHash)
-        log.debug(s"No existing state actor found for hash ${task.keyHash} - creating new state actor")
-      }
+    val requestPromise = Promise[PersistenceData]()
+    keyMapping(task.keyHash) ! KeyTask(task, requestPromise)
+    task.requestActor ! requestPromise.future
 
-      val requestPromise = Promise[PersistenceData]()
-      keyMapping(task.keyHash) ! KeyTask(task, requestPromise)
-      sender ! requestPromise.future
-
-    case x => log.error(receivedUnknown(x))
+    this
   }
-}
 
+}

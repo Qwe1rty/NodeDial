@@ -2,7 +2,7 @@ package persistence.io
 
 import akka.actor.typed.ActorRef
 import better.files.File
-import persistence.io.KeyStateActor.{IOSignal, ReadCompleteSignal, WriteCompleteSignal}
+import persistence.io.KeyStateManager.{IOSignal, ReadCompleteSignal, WriteCompleteSignal}
 
 import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success, Try}
@@ -33,6 +33,6 @@ private[persistence] case class WriteTask(valueFile: File, value: Array[Byte])(i
 private[persistence] case class TombstoneTask(valueFile: File)(implicit stateActor: ActorRef[IOSignal]) extends IOTask {
 
   override def execute()(implicit executionContext: ExecutionContext): Unit = {
-    ??? // TODO figure best way to tombstone
+    ??? // TODO implement this
   }
 }

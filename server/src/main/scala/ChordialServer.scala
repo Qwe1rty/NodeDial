@@ -9,7 +9,7 @@ import membership.failureDetection.{FailureDetectorActor, FailureDetectorService
 import membership.{MembershipActor, MembershipServiceImpl}
 import org.slf4j.LoggerFactory
 import persistence.PersistenceActor
-import persistence.threading.ThreadPartitionActor
+import persistence.threading.PartitionedTaskExecutor
 import replication.{RaftServiceImpl, ReplicationActor}
 import schema.LoggingConfiguration
 import service.{ServiceActor, RequestServiceImpl}
@@ -55,7 +55,7 @@ private object ChordialServer extends App {
    */
   log.info("Initializing top-level persistence layer components")
 
-  val threadPartitionActor = ThreadPartitionActor()
+  val threadPartitionActor = PartitionedTaskExecutor()
   val persistenceActor = PersistenceActor(threadPartitionActor, membershipActor)
 
   log.info("Persistence layer components created")

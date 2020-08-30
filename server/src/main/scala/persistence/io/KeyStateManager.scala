@@ -1,13 +1,12 @@
 package persistence.io
 
-import akka.actor.ActorRef
-import akka.actor.typed.Behavior
+import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import better.files.File
-import persistence.PersistenceComponent.PersistenceData
+import persistence.PersistenceComponent.{DeleteTask, GetTask, PersistenceData, PersistenceTask, PostTask}
 import persistence._
-import persistence.io.KeyStateActor.KeyStateAction
-import persistence.threading.ThreadPartitionActor.PartitionedTask
+import persistence.io.KeyStateManager.KeyStateAction
+import persistence.threading.PartitionedTaskExecutor.PartitionedTask
 
 import scala.collection.mutable
 import scala.concurrent.Promise
@@ -15,13 +14,13 @@ import scala.language.implicitConversions
 import scala.util.Try
 
 
-object KeyStateActor {
+object KeyStateManager {
 
   private val WRITE_AHEAD_EXTENSION = ".wal"
   private val VALUE_EXTENSION = ".val"
 
-  def apply(executorActor: ActorRef, hash: String): Behavior[KeyStateAction] =
-    Behaviors.setup(new KeyStateActor(_, executorActor, hash))
+  def apply(taskExecutor: ActorRef[PartitionedTask], hash: String): Behavior[KeyStateAction] =
+    Behaviors.setup(new KeyStateManager(_, taskExecutor, hash))
 
 
   /** Actor protocol */
@@ -42,20 +41,33 @@ object KeyStateActor {
 
   sealed trait IOSignal extends KeyStateAction
 
+  /**
+   * Signal to the key state manager that the disk read job has completed, along with the result
+   *
+   * @param result the result of the disk read
+   */
   private[io] final case class ReadCompleteSignal(
     result: Try[Array[Byte]]
   ) extends IOSignal
 
+  /**
+   * Signal to the key state manager that the disk write job has completed
+   *
+   * @param result the result of the disk write
+   */
   private[io] final case class WriteCompleteSignal(
     result: Try[Unit]
   ) extends IOSignal
 }
 
-
-class KeyStateActor private(context: ActorContext[KeyStateAction], executor: ActorRef, hash: String)
+class KeyStateManager private(
+    context: ActorContext[KeyStateAction],
+    executor: ActorRef[PartitionedTask],
+    hash: String
+  )
   extends AbstractBehavior[KeyStateAction](context) {
 
-  import KeyStateActor._
+  import KeyStateManager._
 
   final private val tag = s"${hash} -> " // TODO patternize this
 
