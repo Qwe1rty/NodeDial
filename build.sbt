@@ -31,11 +31,15 @@ lazy val dependencies =
     val logback     = "ch.qos.logback"        % "logback-classic" % logbackV
 
     // Server-specific libraries
+    val akkaActorV   = "2.6.8"
+    val akkaStreamV  = "2.6.8"
     val betterFilesV = "3.8.0"
     val hasherV      = "1.2.2"
 
-    val betterFiles = "com.github.pathikrit" %% "better-files"  % betterFilesV
-    val hasher      = "com.outr"             %% "hasher"        % hasherV
+    val akkaActor   = "com.typesafe.akka"    %% "akka-actor-typed"  % akkaActorV
+    val akkaStream  = "com.typesafe.akka"    %% "akka-stream-typed" % akkaStreamV
+    val betterFiles = "com.github.pathikrit" %% "better-files"      % betterFilesV
+    val hasher      = "com.outr"             %% "hasher"            % hasherV
 
     // Client-specific libraries
     val scoptV      = "3.7.1"
@@ -112,6 +116,8 @@ lazy val server = (project in file("server"))
     assemblySettings,
     javaAgents += jettyAgent,
     libraryDependencies ++= loggingLibraryGroup ++ Seq(
+      dependencies.akkaActor,
+      dependencies.akkaStream,
       dependencies.betterFiles,
       dependencies.hasher,
       dependencies.uuid,

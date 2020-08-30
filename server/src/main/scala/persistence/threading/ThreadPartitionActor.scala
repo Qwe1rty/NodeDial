@@ -21,9 +21,7 @@ object ThreadPartitionActor {
 }
 
 
-class ThreadPartitionActor private()
-  extends DefaultActor
-  with ActorLogging {
+class ThreadPartitionActor private() extends DefaultActor with ActorLogging {
 
   import ThreadPartitionActor.PartitionedTask
 

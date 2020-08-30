@@ -13,7 +13,7 @@ import service.RequestActor.ResultCallback
 import scala.concurrent.Future
 
 
-object RequestServiceActor {
+object ServiceActor {
 
   def apply(
       requestProcessorActor: ActorRef,
@@ -22,7 +22,7 @@ object RequestServiceActor {
     (implicit actorSystem: ActorSystem): ActorRef = {
 
     actorSystem.actorOf(
-      Props(new RequestServiceActor(requestProcessorActor, membershipActor)),
+      Props(new ServiceActor(requestProcessorActor, membershipActor)),
       "requestServiceActor"
     )
   }
@@ -30,7 +30,7 @@ object RequestServiceActor {
 }
 
 
-class RequestServiceActor private(
+class ServiceActor private(
     requestProcessorActor: ActorRef,
     membershipActor: ActorRef
   )

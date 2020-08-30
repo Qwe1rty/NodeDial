@@ -17,11 +17,7 @@ object SingleThreadActor {
 }
 
 
-class SingleThreadActor(
-    id: Int
-  )
-  extends DefaultActor
-  with ActorLogging {
+class SingleThreadActor(id: Int) extends DefaultActor with ActorLogging {
 
   implicit final private val ec: ExecutionContext = SingleThreadExecutor(id)
 

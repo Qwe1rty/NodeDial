@@ -1,7 +1,5 @@
 package persistence
 
-import akka.actor.ActorPath
-
 
 /**
  * Defines the set of tasks the persistence layer will accept
@@ -10,7 +8,6 @@ sealed trait PersistenceTask {
   val requestActor: Option[ActorPath]
   val keyHash: String
 }
-
 
 /**
  * A get request
@@ -22,7 +19,6 @@ case class GetTask(
   requestActor: Option[ActorPath],
   keyHash: String
 ) extends PersistenceTask
-
 
 /**
  * A write request
@@ -36,7 +32,6 @@ case class PostTask(
   keyHash: String,
   value: Array[Byte]
 ) extends PersistenceTask
-
 
 /**
  * A delete request, which will be interpreted as a "tombstone" action

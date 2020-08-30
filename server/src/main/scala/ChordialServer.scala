@@ -12,7 +12,7 @@ import persistence.PersistenceActor
 import persistence.threading.ThreadPartitionActor
 import replication.{RaftServiceImpl, ReplicationActor}
 import schema.LoggingConfiguration
-import service.{RequestServiceActor, RequestServiceImpl}
+import service.{ServiceActor, RequestServiceImpl}
 
 
 private object ChordialServer extends App {
@@ -25,6 +25,7 @@ private object ChordialServer extends App {
     "akka.io",
     "akka.actor"
   )
+
   val log = LoggerFactory.getLogger(ChordialServer.getClass)
   log.info("Server config loaded")
 
@@ -75,7 +76,7 @@ private object ChordialServer extends App {
    */
   log.info("Initializing external facing gRPC service")
 
-  val requestServiceActor = RequestServiceActor(persistenceActor, membershipActor)
+  val requestServiceActor = ServiceActor(persistenceActor, membershipActor)
   RequestServiceImpl(requestServiceActor, membershipActor)
 
   log.info("Service layer components created")

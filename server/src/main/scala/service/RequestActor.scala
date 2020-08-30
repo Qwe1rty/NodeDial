@@ -13,9 +13,9 @@ import scala.util.{Failure, Success, Try}
 
 object RequestActor {
 
-  type ResultCallback[A <: ResponseTrait] = Function[ResultType, A]
-  type ResultType = Option[Array[Byte]]
-  type Result = Try[ResultType]
+  type ResultCallback[A <: ResponseTrait] = Function[PersistenceData, A]
+
+  type Result = Try[PersistenceData]
 
 
   def apply[A <: ResponseTrait: ClassTag](

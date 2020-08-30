@@ -1,15 +1,18 @@
 package persistence.io
 
-import akka.actor.{ActorContext, ActorLogging, ActorPath, ActorRef, Props}
+import akka.actor.ActorRef
+import akka.actor.typed.Behavior
+import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import better.files.File
-import common.DefaultActor
-import persistence.{PersistenceActor, _}
+import persistence.PersistenceComponent.PersistenceData
+import persistence._
+import persistence.io.KeyStateActor.KeyStateAction
 import persistence.threading.ThreadPartitionActor.PartitionedTask
-import service.RequestActor.Result
 
 import scala.collection.mutable
+import scala.concurrent.Promise
 import scala.language.implicitConversions
-import scala.util.Failure
+import scala.util.Try
 
 
 object KeyStateActor {
@@ -17,34 +20,52 @@ object KeyStateActor {
   private val WRITE_AHEAD_EXTENSION = ".wal"
   private val VALUE_EXTENSION = ".val"
 
+  def apply(executorActor: ActorRef, hash: String): Behavior[KeyStateAction] =
+    Behaviors.setup(new KeyStateActor(_, executorActor, hash))
 
-  def apply(executorActor: ActorRef, hash: String)(implicit actorContext: ActorContext): ActorRef =
-    actorContext.actorOf(
-      Props(new KeyStateActor(executorActor, hash)),
-      s"keyStateActor-${hash}"
-    )
+
+  /** Actor protocol */
+  sealed trait KeyStateAction
+
+  /**
+   * Apply an operation for a specific key - once the operation is done, the result is written
+   * to the provided promise
+   *
+   * @param task persistence task
+   * @param promise the promise to send the result to
+   */
+  private[persistence] final case class KeyTask(
+    task: PersistenceTask,
+    promise: Promise[PersistenceData]
+  ) extends KeyStateAction
+
+
+  sealed trait IOSignal extends KeyStateAction
+
+  private[io] final case class ReadCompleteSignal(
+    result: Try[Array[Byte]]
+  ) extends IOSignal
+
+  private[io] final case class WriteCompleteSignal(
+    result: Try[Unit]
+  ) extends IOSignal
 }
 
 
-class KeyStateActor private(
-    executorActor: ActorRef,
-    hash: String
-  )
-  (implicit actorContext: ActorContext)
-  extends DefaultActor
-  with ActorLogging {
+class KeyStateActor private(context: ActorContext[KeyStateAction], executor: ActorRef, hash: String)
+  extends AbstractBehavior[KeyStateAction](context) {
 
   import KeyStateActor._
 
   final private val tag = s"${hash} -> " // TODO patternize this
 
-  private val requestQueue = mutable.Queue[PersistenceTask]()
   private var exclusiveLocked = false // TODO make this a 2PL
-  private var pendingRequest: Option[ActorPath] = None
+  private var pendingRequest: Option[Promise[PersistenceData]] = None
+  private val requestQueue = mutable.Queue[KeyTask]()
 
 
   implicit private def fileOf(extension: String): File =
-    PersistenceActor.PERSISTENCE_DIRECTORY/(hash + extension)
+    PersistenceComponent.PERSISTENCE_DIRECTORY/(hash + extension)
 
   /**
    * Schedules a task to run in the provided execution context
@@ -52,8 +73,8 @@ class KeyStateActor private(
    * @param task task to schedule
    */
   private def schedule(task: IOTask): Unit = {
-    executorActor ! PartitionedTask(hash, task)
-    log.debug(tag + s"Submitting task to task scheduler")
+    executor ! PartitionedTask(hash, task)
+    context.log.debug(tag + s"Submitting task to task scheduler")
   }
 
   /**
@@ -62,29 +83,31 @@ class KeyStateActor private(
   private def suspend(): Unit = {
     exclusiveLocked = false
     pendingRequest = None
-    log.debug(tag + "Suspending actor")
+    context.log.debug(tag + "Suspending actor")
   }
 
   /**
    * Processes the next task to run, without checking if one exists
    */
   private def process(): Unit = {
-    exclusiveLocked = true
-    pendingRequest = requestQueue.head.requestActor
+    val nextTask = requestQueue.head
 
-    schedule(requestQueue.dequeue() match {
+    exclusiveLocked = true
+    pendingRequest = Some(nextTask.promise)
+
+    schedule(nextTask.task match {
 
       case _: GetTask =>
-        log.info(tag + "Signalling read task")
-        ReadTask(VALUE_EXTENSION)
+        context.log.info(tag + "Signalling read task")
+        ReadTask(VALUE_EXTENSION)(context.self)
 
       case post: PostTask =>
-        log.info(tag + "Signalling write ahead task")
-        WriteAheadTask(WRITE_AHEAD_EXTENSION, post.value)
+        context.log.info(tag + "Signalling write ahead task")
+        WriteTask(WRITE_AHEAD_EXTENSION, post.value)(context.self)
 
       case _: DeleteTask =>
-        log.info(tag + "Signalling tombstone task")
-        TombstoneTask(VALUE_EXTENSION)
+        context.log.info(tag + "Signalling tombstone task")
+        TombstoneTask(VALUE_EXTENSION)(context.self)
     })
   }
 
@@ -92,7 +115,7 @@ class KeyStateActor private(
    * Executes the next task, if there is one
    */
   private def poll(): Unit = {
-    log.debug(tag + "Polling next operation")
+    context.log.debug(tag + "Polling next operation")
     if (requestQueue.isEmpty) suspend() else process()
   }
 
@@ -101,40 +124,28 @@ class KeyStateActor private(
    *
    * @param result the request result
    */
-  private def complete(result: Result): Unit =
-    pendingRequest.foreach(actorContext.actorSelection(_) ! result)
+  private def complete(result: Try[PersistenceData]): Unit =
+    pendingRequest.get.complete(result)
 
 
-  override def receive: Receive = {
+  override def onMessage(action: KeyStateAction): Behavior[KeyStateAction] = {
+    action match {
+      case task: KeyTask =>
+        context.log.info(tag + s"Persistence task received")
+        requestQueue.enqueue(task)
+        if (!exclusiveLocked) process()
 
-    case task: PersistenceTask =>
-      log.info(tag + s"Operation request received")
-      requestQueue.enqueue(task)
-      if (!exclusiveLocked) process()
+      case ReadCompleteSignal(result) =>
+        context.log.debug(tag + "Read complete signal received")
+        complete(result.map(Some(_)))
+        poll()
 
-    case ReadCompleteSignal(result) =>
-      log.debug(tag + "Read complete signal received")
-      complete(result.map(Some(_)))
-      poll()
-
-    case WriteCompleteSignal(result) =>
-      log.debug(tag + "Write complete signal received")
-      complete(result.map(_ => None))
-      poll()
-
-    case WriteAheadCommitSignal() =>
-      log.debug(tag + "Write ahead commit signal received")
-      schedule(WriteTask(
-        WRITE_AHEAD_EXTENSION,
-        VALUE_EXTENSION
-      ))
-
-    case WriteAheadFailureSignal(e) =>
-      log.debug(tag + "Write ahead failure signal received")
-      complete(Failure(e))
-      poll()
-
-    case x => log.error(receivedUnknown(x))
-
+      case WriteCompleteSignal(result) =>
+        context.log.debug(tag + "Write complete signal received")
+        complete(result.map(_ => None))
+        poll()
+    }
+    this
   }
+
 }
