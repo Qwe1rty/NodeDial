@@ -6,7 +6,7 @@ import better.files.File
 import persistence.PersistenceComponent.{DeleteTask, GetTask, PersistenceData, PersistenceTask, PostTask}
 import persistence._
 import persistence.io.KeyStateManager.KeyStateAction
-import persistence.threading.PartitionedTaskExecutor.PartitionedTask
+import persistence.execution.PartitionedTaskExecutor.PartitionedTask
 
 import scala.collection.mutable
 import scala.concurrent.Promise

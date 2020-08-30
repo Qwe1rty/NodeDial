@@ -40,7 +40,6 @@ object RaftServiceImpl extends GRPCSettingsFactory {
 class RaftServiceImpl(raftActor: ActorRef)(implicit actorSystem: ActorSystem)
   extends RaftService {
 
-  implicit val materializer: Materializer = ActorMaterializer()
   implicit val executionContext: ExecutionContext = actorSystem.dispatcher
 
   final private val log = LoggerFactory.getLogger(RaftServiceImpl.getClass)

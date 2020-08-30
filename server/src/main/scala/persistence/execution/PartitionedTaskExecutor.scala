@@ -1,9 +1,9 @@
-package persistence.threading
+package persistence.execution
 
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior}
 import persistence.io.IOTask
-import persistence.threading.PartitionedTaskExecutor.PartitionedTask
+import persistence.execution.PartitionedTaskExecutor.PartitionedTask
 
 
 object PartitionedTaskExecutor {

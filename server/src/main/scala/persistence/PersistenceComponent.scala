@@ -8,16 +8,13 @@ import membership.api.{DeclareReadiness, MembershipAPI}
 import persistence.PersistenceComponent.PersistenceTask
 import persistence.io.KeyStateManager
 import persistence.io.KeyStateManager.KeyTask
-import persistence.threading.PartitionedTaskExecutor
+import persistence.execution.PartitionedTaskExecutor
 
 import scala.concurrent.{Future, Promise}
 
 
 object PersistenceComponent {
 
-  /**
-   * Represents the data returned from the disk
-   */
   type PersistenceData = Option[Array[Byte]]
   type PersistenceFuture = Future[PersistenceData]
 

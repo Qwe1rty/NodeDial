@@ -81,7 +81,7 @@ private[replication] trait RaftRole {
 
   /**
    * Handle a direct append entry request received by this server. Only in the leader role is this
-   * actually processed - otherwise it should be redirected to the current leader
+   * actually processed - otherwise it should be redirected to the current leader if a leader exists
    *
    * @param appendEvent the append entry event
    * @param state current raft state

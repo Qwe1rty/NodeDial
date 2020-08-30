@@ -27,8 +27,8 @@ lazy val dependencies =
     val akkaSLF4jV = "2.6.0"
     val logbackV   = "1.2.3"
 
-    val akkaSLF4j   = "com.typesafe.akka"    %% "akka-slf4j"      % akkaSLF4jV
-    val logback     = "ch.qos.logback"        % "logback-classic" % logbackV
+    val akkaSLF4j = "com.typesafe.akka" %% "akka-slf4j"      % akkaSLF4jV
+    val logback   = "ch.qos.logback"     % "logback-classic" % logbackV
 
     // Server-specific libraries
     val akkaActorV   = "2.6.8"
@@ -42,9 +42,9 @@ lazy val dependencies =
     val hasher      = "com.outr"             %% "hasher"            % hasherV
 
     // Client-specific libraries
-    val scoptV      = "3.7.1"
+    val scoptV = "3.7.1"
 
-    val scopt       = "com.github.scopt"     %% "scopt" % scoptV
+    val scopt = "com.github.scopt" %% "scopt" % scoptV
   }
 
 lazy val ipAddresses = /* Temporary solution for now */

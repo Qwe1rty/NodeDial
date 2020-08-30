@@ -12,6 +12,7 @@ import common.rpc._
 import common.time._
 import membership.MembershipActor
 import membership.api.Membership
+import replication.Raft.{Commit, CommitConfirmation}
 import replication.RaftServiceImpl.createGRPCSettings
 import replication.eventlog.ReplicatedLog
 import replication.roles.RaftRole.MessageResult
@@ -34,9 +35,10 @@ import scala.util.{Failure, Success, Try}
  * @param actorSystem the actor system
  * @tparam Command the serializable type that will be replicated in the Raft log
  */
-private[replication] abstract class RaftActor[Command <: Serializable](
-    private val selfInfo: Membership,
-    private val replicatedLog: ReplicatedLog
+private[replication] class RaftActor[Command <: Serializable](
+    private val initialState: RaftState,
+    private val commitCallback: Commit[Command],
+    private val serializer: Serializer[Command]
   )(
     implicit
     actorSystem: ActorSystem
@@ -46,34 +48,28 @@ private[replication] abstract class RaftActor[Command <: Serializable](
   with TimerTaskHandler[RaftTimeoutKey]
   with RaftTimeouts {
 
-  /**
-   * The serializer is used to convert the log entry bytes to the command object, for when
-   * Raft determines an entry needs to be committed
-   */
-  this: Serializer[Command] =>
-
-  /**
-   * The commit function is called after the Raft process has determined a majority of the
-   * servers have agreed to append the log entry, and now needs to be applied to the state
-   * machine as dictated by user code
-   */
-  type CommitResult = Unit
-  type Commit = Function[Command, Future[CommitResult]]
-  def commit: Commit
-
-  private[this] case class RaftCommitTick(commitResult: Try[CommitResult])
+  private[this] case class RaftCommitTick(commitResult: Try[CommitConfirmation]) // TODO move this elsewhere
 
   // Akka objects init
-  implicit val materializer: Materializer = ActorMaterializer()
   implicit val executionContext: ExecutionContext = actorSystem.dispatcher
 
-  private var timeoutRange: TimeRange = ELECTION_TIMEOUT_RANGE
+  /**
+   * Defines the upper and lower bounds of the randomized election timer. Defaults to the
+   * publicly defined timeout range
+   */
+  private var TIMEOUT_RANGE: TimeRange = Raft.ELECTION_TIMEOUT_RANGE
+
+  /**
+   * The FSM timers use a string as a timer key, so the default election timer key name
+   * is defined here
+   */
+  private val ELECTION_TIMER_NAME = "raftGlobalTimer"
 
 
   // Will always start off as a Follower on startup, even if it was a Candidate or Leader before.
   // All volatile raft state variables will be zero-initialized, but persisted states will
   // be read from file and restored.
-  startWith(Follower, RaftState(selfInfo, replicatedLog))
+  startWith(Follower, initialState)
 
   // Define the event handling for all Raft roles, along with an error handling case
   when(Follower)(onReceive(Follower))
@@ -109,7 +105,7 @@ private[replication] abstract class RaftActor[Command <: Serializable](
       nextStateData.currentTerm.read().foreach(currentTerm => {
         log.info(s"Stepping down from Leader w/ term $currentTerm")
 
-        processTimerTask(SetRandomTimer(RaftGlobalTimeoutKey, ELECTION_TIMEOUT_RANGE))
+        processTimerTask(SetRandomTimer(RaftGlobalTimeoutKey, Raft.ELECTION_TIMEOUT_RANGE))
         processTimerTask(ResetTimer(RaftGlobalTimeoutKey))
       })
 
@@ -141,14 +137,6 @@ private[replication] abstract class RaftActor[Command <: Serializable](
   log.info("Randomized Raft election timeout started")
 
 
-  def submit(appendEntryEvent: AppendEntryEvent): Future[AppendEntryAck] = {
-    implicit def timeout: util.Timeout = Timeout(NEW_LOG_ENTRY_TIMEOUT)
-
-    (self ? appendEntryEvent)
-      .mapTo[Future[AppendEntryAck]]
-      .flatten
-  }
-
   private def onReceive[CurrentRole <: RaftRole](currentRole: CurrentRole): StateFunction = {
     case Event(receive: Any, state: RaftState) =>
 
@@ -174,8 +162,8 @@ private[replication] abstract class RaftActor[Command <: Serializable](
       // they are executed sequentially), then commit the next entry to the state machine
       if (!state.commitInProgress && state.lastApplied < state.commitIndex) {
         state.commitInProgress = true
-        deserialize(state.log(state.lastApplied + 1)) match {
-          case Success(logEntry)  => commit(logEntry).onComplete(self ! RaftCommitTick(_))
+        serializer.deserialize(state.log(state.lastApplied + 1)) match {
+          case Success(logEntry)  => commitCallback(logEntry).onComplete(self ! RaftCommitTick(_))
           case Failure(exception) =>
             log.error(s"Deserialization error for log entry #${state.lastApplied + 1} commit: ${exception.getLocalizedMessage}")
             self ! RaftCommitTick(Failure(exception))
@@ -238,7 +226,7 @@ private[replication] abstract class RaftActor[Command <: Serializable](
       node.ipAddress,
       request match {
         case _: AppendEntryEvent => FiniteDuration(5, TimeUnit.SECONDS)
-        case _                   => INDIVIDUAL_NODE_TIMEOUT
+        case _                   => Raft.INDIVIDUAL_NODE_TIMEOUT
       }
     ))
 
@@ -250,18 +238,18 @@ private[replication] abstract class RaftActor[Command <: Serializable](
         Future.failed(new IllegalArgumentException("unknown Raft request type"))
     }
 
-    startSingleTimer(node.nodeID, RaftIndividualTimeoutTick(node), INDIVIDUAL_NODE_TIMEOUT)
+    startSingleTimer(node.nodeID, RaftIndividualTimeoutTick(node), Raft.INDIVIDUAL_NODE_TIMEOUT)
     futureReply
   }
 
   override def processTimerTask(timerTask: TimerTask[RaftTimeoutKey]): Unit = timerTask match {
 
     case SetRandomTimer(RaftGlobalTimeoutKey, timeRange) =>
-      timeoutRange = timeRange
-      startSingleTimer(ELECTION_TIMER_NAME, RaftGlobalTimeoutTick, timeoutRange.random())
+      TIMEOUT_RANGE = timeRange
+      startSingleTimer(ELECTION_TIMER_NAME, RaftGlobalTimeoutTick, TIMEOUT_RANGE.random())
 
     case SetFixedTimer(RaftGlobalTimeoutKey, timeout) =>
-      timeoutRange = TimeRange(timeout, timeout)
+      TIMEOUT_RANGE = TimeRange(timeout, timeout)
       startSingleTimer(ELECTION_TIMER_NAME, RaftGlobalTimeoutTick, timeout)
 
     case CancelTimer(key) => key match {
@@ -271,9 +259,9 @@ private[replication] abstract class RaftActor[Command <: Serializable](
 
     case ResetTimer(key) => key match {
       case RaftGlobalTimeoutKey =>
-        startSingleTimer(ELECTION_TIMER_NAME, RaftGlobalTimeoutTick, timeoutRange.random())
+        startSingleTimer(ELECTION_TIMER_NAME, RaftGlobalTimeoutTick, TIMEOUT_RANGE.random())
       case RaftIndividualTimeoutKey(node) =>
-        startSingleTimer(node.nodeID, RaftIndividualTimeoutTick(node), INDIVIDUAL_NODE_TIMEOUT)
+        startSingleTimer(node.nodeID, RaftIndividualTimeoutTick(node), Raft.INDIVIDUAL_NODE_TIMEOUT)
     }
 
     case ContinueTimer => () // no need to do anything

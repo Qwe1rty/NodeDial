@@ -9,7 +9,7 @@ import membership.failureDetection.{FailureDetectorActor, FailureDetectorService
 import membership.{MembershipActor, MembershipServiceImpl}
 import org.slf4j.LoggerFactory
 import persistence.PersistenceActor
-import persistence.threading.PartitionedTaskExecutor
+import persistence.execution.PartitionedTaskExecutor
 import replication.{RaftServiceImpl, ReplicationActor}
 import schema.LoggingConfiguration
 import service.{ServiceActor, RequestServiceImpl}

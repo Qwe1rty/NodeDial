@@ -85,14 +85,14 @@ private[replication] case object Leader extends RaftRole with ProtobufSerializer
             .map(RequestTask(appendEntryRequest, _))
             .toSet
 
-        MessageResult(matchingFollowers + ReplyTask(AppendEntryAck(true)), ContinueTimer, None)
+        MessageResult(matchingFollowers + ReplyTask(AppendEntryAck(success = true)), ContinueTimer, None)
 
       case Failure(exception) =>
         log.error(
           s"Serialization error on append entry ${appendEvent.logEntry.key} and UUID \"${appendEvent.uuid}\", on term $currentTerm: " +
             exception.getLocalizedMessage
         )
-        MessageResult(Set(ReplyTask(AppendEntryAck(false))), ContinueTimer, None)
+        MessageResult(Set(ReplyTask(AppendEntryAck(success = false))), ContinueTimer, None)
     }
 
   }
