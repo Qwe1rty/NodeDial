@@ -5,7 +5,7 @@ import common.ServerConstants._
 import common.membership.types.NodeState
 import membership.addresser.KubernetesAddresser
 import membership.api.DeclareEvent
-import membership.failureDetection.{FailureDetectorActor, FailureDetectorGRPCService}
+import membership.failureDetection.{FailureDetector, FailureDetectorGRPCService}
 import membership.{Administration, Membership, MembershipGRPCService}
 import org.slf4j.LoggerFactory
 import persistence.PersistenceActor

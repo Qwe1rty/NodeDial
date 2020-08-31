@@ -10,8 +10,8 @@ import common.membership.types.NodeState.{ALIVE, DEAD, SUSPECT}
 import common.membership.types.{NodeInfo, NodeState}
 import membership.Administration.AdministrationAPI
 import membership.addresser.AddressRetriever
-import membership.gossip.GossipActor.PublishRequest
-import membership.gossip.{GossipActor, GossipKey, GossipPayload}
+import membership.gossip.Gossip.PublishRequest
+import membership.gossip.{Gossip, GossipKey, GossipPayload}
 import membership.impl.InternalRequestDispatcher
 import org.slf4j.LoggerFactory
 import schema.ImplicitDataConversions._
@@ -35,7 +35,7 @@ class Administration private(
   implicit private val executionContext: ExecutionContext = actorSystem.executionContext
 
   private val gossipActor =
-    context.spawn(GossipActor[Event](context.self, 200.millisecond), "gossipActor-administration")
+    context.spawn(Gossip[Event](context.self, 200.millisecond), "gossipActor-administration")
   context.log.info(s"Gossip actor affiliated with administration initialized")
 
   protected var readiness: Boolean = false
