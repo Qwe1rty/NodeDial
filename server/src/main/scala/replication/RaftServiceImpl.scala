@@ -5,7 +5,6 @@ import akka.grpc.GrpcClientSettings
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.http.scaladsl.{Http, HttpConnectionContext}
 import akka.pattern.ask
-import akka.stream.{ActorMaterializer, Materializer}
 import com.risksense.ipaddr.IpAddress
 import common.ServerDefaults.ACTOR_REQUEST_TIMEOUT
 import common.rpc.GRPCSettingsFactory

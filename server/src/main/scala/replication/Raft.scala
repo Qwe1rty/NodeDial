@@ -12,7 +12,7 @@ import io.jvm.uuid._
 import membership.MembershipActor
 import membership.addresser.AddressRetriever
 import membership.api.Membership
-import replication.Raft.Commit
+import replication.Raft.CommitFunction
 import replication.eventlog.SimpleReplicatedLog
 import replication.state.RaftState
 
@@ -23,13 +23,14 @@ import scala.concurrent.duration.FiniteDuration
 /**
  * The external API for Raft.
  *
- * @param addresser the address retriever so Raft can check its own IP
- * @param commitCallback the function that Raft calls to commit a log entry to the state machine, after it has
- *                       successfully been replicated on a majority of WALs
- * @param actorSystem the actor system
- * @tparam Command the command to be applied to the state machine
+ * @param addresser      the address retriever so Raft can check its own IP
+ * @param commitCallback the function that the Raft process calls after it has determined that a
+ *                       majority of the cluster has agreed to append the log entry, and now needs to be
+ *                       applied to the state machine as dictated by user code
+ * @param actorSystem    the actor system
+ * @tparam Command the command type to be applied to the state machine
  */
-class Raft[Command <: Serializable](addresser: AddressRetriever, commitCallback: Commit[Command])(implicit actorSystem: ActorSystem) {
+class Raft[Command <: Serializable](addresser: AddressRetriever, commitCallback: CommitFunction[Command])(implicit actorSystem: ActorSystem) {
 
   /**
    * The serializer is used to convert the log entry bytes to the command object, for when
@@ -67,7 +68,7 @@ object Raft {
    * machine as dictated by user code
    */
   type CommitConfirmation = Unit
-  type Commit[Command] = Function[Command, Future[CommitConfirmation]]
+  type CommitFunction[Command] = Function[Command, Future[CommitConfirmation]]
 
   val ELECTION_TIMEOUT_LOWER_BOUND: FiniteDuration = FiniteDuration(150, TimeUnit.MILLISECONDS)
   val ELECTION_TIMEOUT_UPPER_BOUND: FiniteDuration = FiniteDuration(325, TimeUnit.MILLISECONDS)

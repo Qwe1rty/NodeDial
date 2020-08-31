@@ -24,22 +24,8 @@ object KeyStateManager {
 
 
   /** Actor protocol */
-  sealed trait KeyStateAction
-
-  /**
-   * Apply an operation for a specific key - once the operation is done, the result is written
-   * to the provided promise
-   *
-   * @param task persistence task
-   * @param promise the promise to send the result to
-   */
-  private[persistence] final case class KeyTask(
-    task: PersistenceTask,
-    promise: Promise[PersistenceData]
-  ) extends KeyStateAction
-
-
-  sealed trait IOSignal extends KeyStateAction
+  type KeyStateAction = Either[PersistenceTask, IOSignal]
+  sealed trait IOSignal
 
   /**
    * Signal to the key state manager that the disk read job has completed, along with the result
@@ -73,7 +59,7 @@ class KeyStateManager private(
 
   private var exclusiveLocked = false // TODO make this a 2PL
   private var pendingRequest: Option[Promise[PersistenceData]] = None
-  private val requestQueue = mutable.Queue[KeyTask]()
+  private val requestQueue = mutable.Queue[PersistenceTask]()
 
 
   implicit private def fileOf(extension: String): File =
@@ -105,9 +91,9 @@ class KeyStateManager private(
     val nextTask = requestQueue.head
 
     exclusiveLocked = true
-    pendingRequest = Some(nextTask.promise)
+    pendingRequest = Some(nextTask.requestPromise)
 
-    schedule(nextTask.task match {
+    schedule(nextTask match {
 
       case _: GetTask =>
         context.log.info(tag + "Signalling read task")
@@ -140,13 +126,14 @@ class KeyStateManager private(
     pendingRequest.get.complete(result)
 
 
-  override def onMessage(action: KeyStateAction): Behavior[KeyStateAction] = {
-    action match {
-      case task: KeyTask =>
-        context.log.info(tag + s"Persistence task received")
-        requestQueue.enqueue(task)
-        if (!exclusiveLocked) process()
+  override def onMessage(action: KeyStateAction): Behavior[KeyStateAction] = action match {
+    case Left(persistenceTask) =>
+      context.log.info(tag + s"Persistence task received")
+      requestQueue.enqueue(persistenceTask)
+      if (!exclusiveLocked) process()
+      this
 
+    case Right(signal) => signal match {
       case ReadCompleteSignal(result) =>
         context.log.debug(tag + "Read complete signal received")
         complete(result.map(Some(_)))
@@ -156,8 +143,8 @@ class KeyStateManager private(
         context.log.debug(tag + "Write complete signal received")
         complete(result.map(_ => None))
         poll()
-    }
-    this
+      }
+      this
   }
 
 }

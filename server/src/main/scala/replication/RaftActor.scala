@@ -12,7 +12,7 @@ import common.rpc._
 import common.time._
 import membership.MembershipActor
 import membership.api.Membership
-import replication.Raft.{Commit, CommitConfirmation}
+import replication.Raft.{CommitFunction, CommitConfirmation}
 import replication.RaftServiceImpl.createGRPCSettings
 import replication.eventlog.ReplicatedLog
 import replication.roles.RaftRole.MessageResult
@@ -37,7 +37,7 @@ import scala.util.{Failure, Success, Try}
  */
 private[replication] class RaftActor[Command <: Serializable](
     private val initialState: RaftState,
-    private val commitCallback: Commit[Command],
+    private val commitCallback: CommitFunction[Command],
     private val serializer: Serializer[Command]
   )(
     implicit

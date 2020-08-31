@@ -1,5 +1,6 @@
 package replication
 
+import akka.actor.ActorSystem
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import better.files.File
@@ -7,19 +8,19 @@ import com.roundeights.hasher.Implicits._
 import common.ServerConstants
 import common.persistence.{Compression, ProtobufSerializer}
 import io.jvm.uuid
-import io.jvm.uuid._
 import membership.MembershipActor
 import membership.addresser.AddressRetriever
 import membership.api.{Membership, MembershipAPI}
-import persistence.PersistenceComponent.{GetTask, PersistenceTask}
-import persistence.{DeleteTask, GetTask, PersistenceComponent, PostTask}
+import persistence.PersistenceComponent.{DeleteTask, GetTask, PersistenceData, PersistenceFuture, PersistenceTask, PostTask}
+import persistence.PersistenceComponent
+import replication.Raft.CommitConfirmation
 import replication.ReplicatedOp.OperationType
-import replication.eventcontext.log.SimpleReplicatedcontext.log
 import scalapb.GeneratedMessageCompanion
 import schema.ImplicitGrpcConversions._
 import schema.service.Request
 import service.OperationPackage
 
+import scala.concurrent.{ExecutionContext, Promise}
 import scala.util.{Failure, Success}
 
 
@@ -47,17 +48,39 @@ class ReplicationActor(
     addressRetriever: AddressRetriever,
   )
   extends AbstractBehavior[OperationPackage](context)
-  //  extends RaftActor[ReplicatedOp](
-  //    Membership(MembershipActor.nodeID, addressRetriever.selfIP),
-  //    new SimpleReplicatedcontext.log(ReplicationActor.REPLICATED_context.log_INDEX, ReplicationActor.REPLICATED_context.log_DATA)
-  //  )
-  with ProtobufSerializer[ReplicatedOp]
   with Compression {
 
-//  val raft:
+  implicit private val classicSystem: ActorSystem = context.system.classicSystem
+  implicit private val executionContext: ExecutionContext = context.system.executionContext
 
+  private val raft = new Raft[ReplicatedOp](addressRetriever, { commit =>
+    val commitPromise = Promise[PersistenceData]()
 
-  override val messageCompanion: GeneratedMessageCompanion[ReplicatedOp] = ReplicatedOp
+    commit.operationType match {
+      case OperationType.Read(ReadOp(key, uuid, _)) =>
+        context.log.info(s"Get entry with key $key and UUID ${uuid: String} has been received as Raft commit")
+        persistenceActor ! GetTask(commitPromise, byteStringToString(key).sha256)
+
+      case OperationType.Write(WriteOp(key, compressedValue, uuid, _)) =>
+        context.log.info(s"Write entry with key $key and UUID ${uuid: String} will now attempt to be committed")
+        decompressBytes(compressedValue) match {
+          case Success(value) => persistenceActor ! PostTask(commitPromise, byteStringToString(key).sha256, value)
+          case Failure(e) => context.log.error(s"Decompression error for key $key for reason: ${e.getLocalizedMessage}")
+        }
+
+      case OperationType.Delete(DeleteOp(key, uuid, _)) =>
+        context.log.info(s"Delete entry with key $key and UUID ${uuid: String} will now attempt to be committed")
+        persistenceActor ! DeleteTask(commitPromise, byteStringToString(key).sha256)
+
+      case OperationType.Empty =>
+        context.log.error("Received empty replicated operation type!")
+    }
+    commitPromise.future.map(_ => ())
+
+  }) with ProtobufSerializer[ReplicatedOp] {
+    override val messageCompanion: GeneratedMessageCompanion[ReplicatedOp] = ReplicatedOp
+  }
+
 
   /**
    * Receives messages upstream client CRUD requests
@@ -70,7 +93,13 @@ class ReplicationActor(
 
       // Get requests do not need to go through raft, so it directly goes to the persistence layer
       context.log.debug(s"Get request received with UUID ${uuid.string}")
-      persistenceActor ! GetTask(Some(requestActor), key.sha256)
+
+//      context.ask(persistenceActor, (ref: ActorRef[PersistenceFuture]) => GetTask(ref, key.sha256)) {
+//
+//      }
+
+
+      persistenceActor ! GetTask(context, key.sha256)
 
     case Request.PostRequest(key, value) =>
 
@@ -93,37 +122,5 @@ class ReplicationActor(
 
       super.receive(AppendEntryEvent(context.logEntry(key, Array[Byte]()), Some(uuid)))
   }
-
-  /**
-   * The commit function is called after the Raft process has determined a majority of the
-   * servers have agreed to append the context.log entry, and now needs to be applied to the state
-   * machine as dictated by user code
-   */
-  override def commit: Commit = { case ReplicatedOp(operation) => operation match {
-
-    case OperationType.Read(ReadOp(key, uuid)) =>
-      context.log.info(s"Get entry with key $key and UUID ${uuid: String} has been received as Raft commit")
-
-      val requestActor = pendingRequestActors.get(uuid)
-      persistenceActor ! GetTask(requestActor, byteStringToString(key).sha256)
-
-    case OperationType.Write(WriteOp(key, compressedValue, uuid)) =>
-      context.log.info(s"Write entry with key $key and UUID ${uuid: String} will now attempt to be committed")
-
-      val requestActor = pendingRequestActors.get(uuid)
-      decompressBytes(compressedValue) match {
-        case Success(value) => persistenceActor ! PostTask(requestActor, byteStringToString(key).sha256, value)
-        case Failure(e) => context.log.error(s"Decompression error for key $key for reason: ${e.getLocalizedMessage}")
-      }
-
-    case OperationType.Delete(DeleteOp(key, uuid)) =>
-      context.log.info(s"Delete entry with key $key and UUID ${uuid: String} will now attempt to be committed")
-
-    val requestActor = pendingRequestActors.get(uuid)
-      persistenceActor ! DeleteTask(requestActor, byteStringToString(key).sha256)
-
-    case OperationType.Empty =>
-      context.log.error("Received empty replicated operation type!")
-  }}
 
 }

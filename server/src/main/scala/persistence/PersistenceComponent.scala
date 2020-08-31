@@ -7,7 +7,7 @@ import common.ServerConstants
 import membership.api.{DeclareReadiness, MembershipAPI}
 import persistence.PersistenceComponent.PersistenceTask
 import persistence.io.KeyStateManager
-import persistence.io.KeyStateManager.KeyTask
+import persistence.io.KeyStateManager.{KeyStateAction, KeyTask}
 import persistence.execution.PartitionedTaskExecutor
 
 import scala.concurrent.{Future, Promise}
@@ -26,30 +26,30 @@ object PersistenceComponent {
 
   /** Actor protocol: defines the set of tasks the persistence layer will accept */
   sealed trait PersistenceTask {
-    val requestActor: ActorRef[PersistenceFuture]
+    val requestPromise: Promise[PersistenceData]
     val keyHash: String
   }
 
   /**
    * A get request
    *
-   * @param requestActor the actor to send the result back to, if there is one
+   * @param requestPromise the actor to send the result back to, if there is one
    * @param keyHash the key hash
    */
   case class GetTask(
-    requestActor: ActorRef[PersistenceFuture],
+    requestPromise: Promise[PersistenceData],
     keyHash: String
   ) extends PersistenceTask
 
   /**
    * A write request
    *
-   * @param requestActor the actor to send the result back to, if there is one
+   * @param requestPromise the actor to send the result back to, if there is one
    * @param keyHash the key hash
    * @param value the value to write the value as
    */
   case class PostTask(
-    requestActor: ActorRef[PersistenceFuture],
+    requestPromise: Promise[PersistenceData],
     keyHash: String,
     value: Array[Byte]
   ) extends PersistenceTask
@@ -57,11 +57,11 @@ object PersistenceComponent {
   /**
    * A delete request, which will be interpreted as a "tombstone" action
    *
-   * @param requestActor the actor to send the result back to, if there is one
+   * @param requestPromise the actor to send the result back to, if there is one
    * @param keyHash the key hash
    */
   case class DeleteTask(
-    requestActor: ActorRef[PersistenceFuture],
+    requestPromise: Promise[PersistenceData],
     keyHash: String
   ) extends PersistenceTask
 }
@@ -72,7 +72,7 @@ class PersistenceComponent(context: ActorContext[PersistenceTask], membershipAct
   import PersistenceComponent._
 
   private val threadPartitionActor = context.spawn(PartitionedTaskExecutor(), "threadPartitionActor")
-  private var keyMapping = Map[String, ActorRef[KeyTask]]()
+  private var keyMapping = Map[String, ActorRef[KeyStateAction]]()
 
   PERSISTENCE_DIRECTORY.createDirectoryIfNotExists()
   context.log.info(s"Directory ${PERSISTENCE_DIRECTORY.toString()} opened")
@@ -82,7 +82,7 @@ class PersistenceComponent(context: ActorContext[PersistenceTask], membershipAct
 
 
   override def onMessage(task: PersistenceTask): Behavior[PersistenceTask] = {
-    context.log.info(s"Persistence task with hash ${task.keyHash} and request actor path ${task.requestActor} received")
+    context.log.info(s"Persistence task with hash ${task.keyHash} and request actor path ${task.requestPromise} received")
 
     if (!(keyMapping isDefinedAt task.keyHash)) {
       keyMapping += task.keyHash -> context.spawn(
@@ -92,10 +92,7 @@ class PersistenceComponent(context: ActorContext[PersistenceTask], membershipAct
       context.log.debug(s"No existing state actor found for hash ${task.keyHash} - creating new state actor")
     }
 
-    val requestPromise = Promise[PersistenceData]()
-    keyMapping(task.keyHash) ! KeyTask(task, requestPromise)
-    task.requestActor ! requestPromise.future
-
+    keyMapping(task.keyHash) ! Left(task)
     this
   }
 
