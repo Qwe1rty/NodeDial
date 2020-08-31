@@ -6,6 +6,7 @@ option java_outer_classname = "ChordialMembershipMessages";
 
 import "membership/NodeInfo.proto";
 import "partitioning/PartitioningMessages.proto";
+import "scalapb/scalapb.proto";
 
 package chordial.membership;
 
@@ -16,6 +17,9 @@ package chordial.membership;
  * cluster, or the failure detector reporting a failure, etc.
  */
 message Event {
+
+    // This is needed to add this event type to the administration component's actor protocol
+    option (scalapb.message).extends = "membership.AdministrationComponent.AdministrationAPI";
 
     required string node_id = 1;
 

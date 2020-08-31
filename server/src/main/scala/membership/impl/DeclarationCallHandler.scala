@@ -5,8 +5,8 @@ import akka.stream.ActorMaterializer
 import common.membership.Event.{Failure, Join, Suspect}
 import common.membership.types.NodeState
 import common.membership.{Event, FullSyncRequest, MembershipServiceClient}
-import membership.MembershipActor
-import membership.MembershipActor.nodeID
+import membership.Administration
+import membership.Administration.nodeID
 import membership.api.{DeclarationCall, DeclareEvent, DeclareReadiness, SeedResponse}
 import partitioning.PartitionHashes
 import schema.ImplicitDataConversions._
@@ -21,7 +21,7 @@ import scala.util.Success
  * broadcasted to the rest of the cluster
  */
 private[impl] trait DeclarationCallHandler {
-  this: MembershipActor =>
+  this: Administration =>
 
   def receiveDeclarationCall: Function[DeclarationCall, Unit] = {
 
@@ -34,10 +34,10 @@ private[impl] trait DeclarationCallHandler {
         log.debug("Starting initialization sequence to establish readiness")
 
         // Only if the seed node is defined will there be any synchronization calls
-        clusterAddresses.seedIP match {
+        addressRetriever.seedIP match {
 
           case Some(seedIP) =>
-            if (seedIP != clusterAddresses.selfIP) {
+            if (seedIP != addressRetriever.selfIP) {
               log.info("Contacting seed node for membership listing")
 
               implicit val ec: ExecutionContext = actorSystem.dispatcher
@@ -48,7 +48,7 @@ private[impl] trait DeclarationCallHandler {
               )
 
               MembershipServiceClient(grpcClientSettings)(ActorMaterializer()(context), ec)
-                .fullSync(FullSyncRequest(nodeID, clusterAddresses.selfIP))
+                .fullSync(FullSyncRequest(nodeID, addressRetriever.selfIP))
                 .onComplete(self ! SeedResponse(_))
             }
             else {
@@ -88,7 +88,7 @@ private[impl] trait DeclarationCallHandler {
         readiness = true
         log.info("Successful full sync response received from seed node")
 
-        publishExternally(Event(nodeID).withJoin(Join(clusterAddresses.selfIP, PartitionHashes(Nil))))
+        publishExternally(Event(nodeID).withJoin(Join(addressRetriever.selfIP, PartitionHashes(Nil))))
         log.info("Broadcasting join event to other nodes")
 
       case scala.util.Failure(e) =>

@@ -4,6 +4,7 @@ import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior}
 import better.files.File
 import common.ServerConstants
+import membership.Administration.{AdministrationAPI, DeclareReadiness}
 import membership.api.{DeclareReadiness, MembershipAPI}
 import persistence.PersistenceComponent.PersistenceTask
 import persistence.execution.PartitionedTaskExecutor
@@ -20,7 +21,7 @@ object PersistenceComponent {
 
   val PERSISTENCE_DIRECTORY: File = ServerConstants.BASE_DIRECTORY/"data"
 
-  def apply(membershipActor: ActorRef[MembershipAPI]): Behavior[PersistenceTask] =
+  def apply(membershipActor: ActorRef[AdministrationAPI]): Behavior[PersistenceTask] =
     Behaviors.setup(new PersistenceComponent(_, membershipActor))
 
 
@@ -66,7 +67,7 @@ object PersistenceComponent {
   ) extends PersistenceTask
 }
 
-class PersistenceComponent(context: ActorContext[PersistenceTask], membershipActor: ActorRef[MembershipAPI])
+class PersistenceComponent(private val context: ActorContext[PersistenceTask], membershipActor: ActorRef[AdministrationAPI])
   extends AbstractBehavior[PersistenceTask](context) {
 
   import PersistenceComponent._

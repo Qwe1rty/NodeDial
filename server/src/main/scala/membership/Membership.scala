@@ -1,4 +1,4 @@
-package membership.api
+package membership
 
 import com.risksense.ipaddr.IpAddress
 
@@ -13,11 +13,3 @@ case class Membership(nodeID: String, ipAddress: IpAddress) {
 
   override def toString: String = s"[${nodeID}, ${ipAddress}]"
 }
-
-/**
- * The inheritable trait that defines the set of internal API calls that the membership
- * module needs to fulfill
- */
-trait MembershipAPI
-
-

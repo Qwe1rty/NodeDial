@@ -2,7 +2,7 @@ package membership
 
 import better.files.File
 import com.roundeights.hasher.Implicits._
-import membership.MembershipActor.rejoin
+import membership.Administration.rejoin
 import schema.ImplicitGrpcConversions._
 
 

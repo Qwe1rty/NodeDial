@@ -9,8 +9,8 @@ import common.membership.failureDetection.{DirectMessage, FailureDetectorService
 import common.membership.types.NodeState
 import common.utils.ActorTimers.Tick
 import common.utils.ActorTimers
-import membership.MembershipActor
-import membership.api.{DeclareEvent, GetRandomNode, GetRandomNodes, Membership}
+import membership.{Administration, Membership}
+import membership.api.{DeclareEvent, GetRandomNode, GetRandomNodes}
 import membership.failureDetection.FailureDetectorConstants._
 import membership.failureDetection.FailureDetectorSignal._
 import schema.ImplicitDataConversions._
@@ -64,7 +64,7 @@ class FailureDetectorActor private
       case Success(requestResult) => requestResult.foreach { target =>
 
         // Make the check if there's not one pending already and it's not calling itself
-        if (!pendingDirectChecks.contains(target) && target.nodeID != MembershipActor.nodeID) {
+        if (!pendingDirectChecks.contains(target) && target.nodeID != Administration.nodeID) {
 
           val grpcClient = FailureDetectorServiceClient(createGRPCSettings(target.ipAddress, SUSPICION_DEADLINE))
           pendingDirectChecks += target
@@ -109,7 +109,7 @@ class FailureDetectorActor private
 
         requestResult.foreach { member =>
 
-          if (member.nodeID != MembershipActor.nodeID) {
+          if (member.nodeID != Administration.nodeID) {
             val grpcClient = FailureDetectorServiceClient(createGRPCSettings(member.ipAddress, DEATH_DEADLINE))
 
             log.debug(s"Calling ${member} for indirect check on ${target}")

@@ -1,7 +1,7 @@
 package replication.state
 
 import common.persistence.{JavaSerializer, PersistentVal}
-import membership.api.Membership
+import membership.Membership
 import replication.state.RaftState._
 
 import scala.collection.View

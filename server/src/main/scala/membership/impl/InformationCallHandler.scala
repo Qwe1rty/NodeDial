@@ -1,12 +1,12 @@
 package membership.impl
 
 import common.membership.SyncInfo
-import membership.MembershipActor
-import membership.api.{GetClusterInfo, GetClusterSize, GetRandomNode, GetRandomNodes, GetReadiness, InformationCall, Membership}
+import membership.Administration
+import membership.api.{GetClusterInfo, GetClusterSize, GetRandomNode, GetRandomNodes, GetReadiness, InformationCall}
 
 
 private[impl] trait InformationCallHandler {
-  this: MembershipActor =>
+  this: Administration =>
 
   /**
    * Handle membership info get requests

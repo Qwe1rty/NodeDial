@@ -3,7 +3,7 @@ package replication.state
 import better.files.File
 import common.ServerConstants
 import common.persistence.{PersistentLong, PersistentString}
-import membership.api.Membership
+import membership.Membership
 import replication.AppendEntryEvent
 import replication.eventlog.ReplicatedLog
 

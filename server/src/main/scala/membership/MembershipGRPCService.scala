@@ -4,30 +4,21 @@ import akka.actor.{ActorRef, ActorSystem}
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.http.scaladsl.{Http, HttpConnectionContext}
 import akka.pattern.ask
-import akka.stream.{ActorMaterializer, Materializer}
 import com.risksense.ipaddr.IpAddress
 import common.ServerDefaults.ACTOR_REQUEST_TIMEOUT
 import common.membership._
-import membership.api.{GetClusterInfo, MembershipAPI}
+import membership.api.GetClusterInfo
 import org.slf4j.LoggerFactory
 import schema.PortConfiguration.MEMBERSHIP_PORT
 
 import scala.concurrent.{ExecutionContext, Future}
 
 
-object MembershipServiceImpl {
+class MembershipGRPCService(membershipActor: ActorRef)(implicit actorSystem: ActorSystem) extends MembershipService {
 
-  def apply(membershipActor: ActorRef)(implicit actorSystem: ActorSystem): MembershipService =
-    new MembershipServiceImpl(membershipActor)
-}
-
-
-class MembershipServiceImpl(membershipActor: ActorRef)(implicit actorSystem: ActorSystem) extends MembershipService {
-
-  implicit val materializer: Materializer = ActorMaterializer()
   implicit val executionContext: ExecutionContext = actorSystem.dispatcher
 
-  final private val log = LoggerFactory.getLogger(MembershipServiceImpl.getClass)
+  final private val log = LoggerFactory.getLogger(MembershipGRPCService.getClass)
   final private val service: HttpRequest => Future[HttpResponse] = MembershipServiceHandler(this)
 
   Http()
@@ -66,4 +57,10 @@ class MembershipServiceImpl(membershipActor: ActorRef)(implicit actorSystem: Act
    * Pull-based synchronization RPC, for passive updates
    */
   override def updateSync(in: UpdateRequest): Future[SyncResponse] = ???
+}
+
+object MembershipGRPCService {
+
+  def apply(membershipActor: ActorRef)(implicit actorSystem: ActorSystem): MembershipService =
+    new MembershipGRPCService(membershipActor)
 }

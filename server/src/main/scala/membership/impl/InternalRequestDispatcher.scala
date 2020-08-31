@@ -1,6 +1,6 @@
 package membership.impl
 
-import membership.MembershipActor
+import membership.Administration
 import membership.api.{DeclarationCall, InformationCall, MembershipAPI, SubscriptionCall}
 
 
@@ -17,7 +17,7 @@ private[membership] trait InternalRequestDispatcher
   with InformationCallHandler
   with SubscriptionCallHandler {
 
-  this: MembershipActor =>
+  this: Administration =>
 
   def receiveAPICall: Function[MembershipAPI, Unit] = {
 

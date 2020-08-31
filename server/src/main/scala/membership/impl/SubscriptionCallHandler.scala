@@ -1,11 +1,11 @@
 package membership.impl
 
-import membership.MembershipActor
+import membership.Administration
 import membership.api.{Subscribe, SubscriptionCall, Unsubscribe}
 
 
 private[impl] trait SubscriptionCallHandler {
-  this: MembershipActor =>
+  this: Administration =>
 
   /**
    * Handle subscription requests for observers to be informed of membership changes

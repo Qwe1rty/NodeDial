@@ -13,14 +13,14 @@ private[persistence] sealed trait IOTask {
   def execute()(implicit executionContext: ExecutionContext): Unit
 }
 
-private[persistence] case class ReadTask(valueFile: File)(implicit stateActor: ActorRef[KeyStateAction]) extends IOTask {
+private[persistence] case class ReadIOTask(valueFile: File)(implicit stateActor: ActorRef[KeyStateAction]) extends IOTask {
 
   override def execute()(implicit executionContext: ExecutionContext): Unit = {
     stateActor ! Right(ReadCompleteSignal(Try(valueFile.loadBytes)))
   }
 }
 
-private[persistence] case class WriteTask(valueFile: File, value: Array[Byte])(implicit stateActor: ActorRef[KeyStateAction]) extends IOTask {
+private[persistence] case class WriteIOTask(valueFile: File, value: Array[Byte])(implicit stateActor: ActorRef[KeyStateAction]) extends IOTask {
 
   override def execute()(implicit executionContext: ExecutionContext): Unit = {
     stateActor ! Right(WriteCompleteSignal(Try(valueFile.writeByteArray(value)) match {
@@ -30,7 +30,7 @@ private[persistence] case class WriteTask(valueFile: File, value: Array[Byte])(i
   }
 }
 
-private[persistence] case class TombstoneTask(valueFile: File)(implicit stateActor: ActorRef[KeyStateAction]) extends IOTask {
+private[persistence] case class TombstoneIOTask(valueFile: File)(implicit stateActor: ActorRef[KeyStateAction]) extends IOTask {
 
   override def execute()(implicit executionContext: ExecutionContext): Unit = {
     ??? // TODO implement this

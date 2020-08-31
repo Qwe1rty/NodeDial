@@ -1,6 +1,6 @@
 package replication.state
 
-import membership.api.Membership
+import membership.Membership
 
 
 /** Actor protocol for Raft timeouts */

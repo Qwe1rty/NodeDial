@@ -2,8 +2,7 @@ package replication.roles
 
 import common.rpc.{NoTask, RequestTask}
 import common.time.{CancelTimer, ResetTimer}
-import membership.MembershipActor
-import membership.api.Membership
+import membership.{Administration, Membership}
 import org.slf4j.{Logger, LoggerFactory}
 import replication._
 import replication.roles.RaftRole.MessageResult
@@ -43,7 +42,7 @@ override def processRaftGlobalTimeout(state: RaftState): Option[RaftRole] = Some
 
       val voteRequest = RequestVoteRequest(
         currentTerm,
-        MembershipActor.nodeID,
+        Administration.nodeID,
         state.log.lastLogIndex(),
         state.log.lastLogTerm()
       )

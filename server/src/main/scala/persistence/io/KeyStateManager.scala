@@ -97,15 +97,15 @@ class KeyStateManager private(
 
       case _: GetTask =>
         context.log.info(tag + "Signalling read task")
-        ReadTask(VALUE_EXTENSION)(context.self)
+        ReadIOTask(VALUE_EXTENSION)(context.self)
 
       case post: WriteTask =>
         context.log.info(tag + "Signalling write ahead task")
-        WriteTask(WRITE_AHEAD_EXTENSION, post.value)(context.self)
+        WriteIOTask(WRITE_AHEAD_EXTENSION, post.value)(context.self)
 
       case _: DeleteTask =>
         context.log.info(tag + "Signalling tombstone task")
-        TombstoneTask(VALUE_EXTENSION)(context.self)
+        TombstoneIOTask(VALUE_EXTENSION)(context.self)
     })
   }
 

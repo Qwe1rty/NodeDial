@@ -9,9 +9,8 @@ import akka.util.Timeout
 import common.persistence.Serializer
 import common.time.TimeRange
 import io.jvm.uuid._
-import membership.MembershipActor
+import membership.{Administration, Membership}
 import membership.addresser.AddressRetriever
-import membership.api.Membership
 import replication.Raft.CommitFunction
 import replication.eventlog.SimpleReplicatedLog
 import replication.state.RaftState
@@ -41,7 +40,7 @@ class Raft[Command <: Serializable](addresser: AddressRetriever, commitCallback:
   private val raft = actorSystem.actorOf(
     Props(new RaftFSM[Command](
       RaftState(
-        Membership(MembershipActor.nodeID, addresser.selfIP),
+        membership.Membership(Administration.nodeID, addresser.selfIP),
         new SimpleReplicatedLog(ReplicationComponent.REPLICATED_LOG_INDEX, ReplicationComponent.REPLICATED_LOG_DATA)
       ),
       commitCallback,

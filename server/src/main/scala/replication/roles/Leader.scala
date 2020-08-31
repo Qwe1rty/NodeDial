@@ -3,8 +3,7 @@ package replication.roles
 import common.persistence.ProtobufSerializer
 import common.rpc.{RPCTask, ReplyTask, RequestTask}
 import common.time.{ContinueTimer, ResetTimer}
-import membership.MembershipActor
-import membership.api.Membership
+import membership.{Administration, Membership}
 import org.slf4j.{Logger, LoggerFactory}
 import replication._
 import replication.roles.RaftRole.MessageResult
@@ -71,7 +70,7 @@ private[replication] case object Leader extends RaftRole with ProtobufSerializer
 
         val appendEntryRequest = AppendEntriesRequest(
           currentTerm,
-          MembershipActor.nodeID,
+          Administration.nodeID,
           state.log.lastLogIndex() - 1,
           state.log.termOf(state.log.lastLogIndex() - 1),
           Seq(appendEvent),
@@ -190,7 +189,7 @@ private[replication] case object Leader extends RaftRole with ProtobufSerializer
 
         AppendEntriesRequest(
           state.currentTerm.read().getOrElse(0),
-          MembershipActor.nodeID,
+          Administration.nodeID,
           followerPrevIndex,
           state.log.termOf(followerPrevIndex),
           appendEntries,

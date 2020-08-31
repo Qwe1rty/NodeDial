@@ -1,19 +1,20 @@
 package membership.gossip
 
-import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
+import akka.actor.ActorSystem
+import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
+import akka.actor.typed.{ActorRef, Behavior}
 import akka.grpc.GrpcClientSettings
-import akka.pattern.ask
-import akka.stream.{ActorMaterializer, Materializer}
 import akka.util.Timeout
 import com.risksense.ipaddr.IpAddress
-import common.{DefaultActor, ServerDefaults}
-import GossipSignal.{ClusterSizeReceived, SendRPC}
+import common.ServerDefaults
 import common.membership.types.NodeState
 import common.rpc.GRPCSettingsFactory
-import common.utils.ActorTimers.Tick
 import common.utils.ActorTimers
-import membership.MembershipActor
-import membership.api.{GetClusterSize, GetRandomNode, Membership}
+import common.utils.ActorTimers.Tick
+import membership.{Administration, Membership}
+import membership.Administration.{AdministrationAPI, GetClusterSize, GetRandomNode}
+import membership.api.{GetClusterSize, GetRandomNode}
+import membership.gossip.GossipActor.GossipSignal
 import schema.ImplicitDataConversions._
 import schema.PortConfiguration.MEMBERSHIP_PORT
 
@@ -21,81 +22,75 @@ import scala.collection.mutable
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 
 object GossipActor extends GRPCSettingsFactory {
 
-  private case class PayloadTracker(payload: GossipPayload, var count: Int, cooldown: Int) {
-
-    def apply(grpcClientSettings: GrpcClientSettings)(implicit mat: Materializer, ec: ExecutionContext): Unit = {
-      payload.rpc(grpcClientSettings)(mat, ec)
-      count -= 1
-    }
-  }
-
-
   def apply[KeyType: ClassTag]
-      (membershipActor: ActorRef, delay: FiniteDuration, affiliation: String)
-      (implicit actorSystem: ActorSystem): ActorRef = {
-
-    actorSystem.actorOf(
-      Props(new GossipActor[KeyType](membershipActor, delay, affiliation)),
-      s"gossipActor-${affiliation}"
-    )
-  }
+    (administration: ActorRef[AdministrationAPI], delay: FiniteDuration): Behavior[GossipSignal[KeyType]] =
+    Behaviors.setup(new GossipActor[KeyType](_, administration, delay))
 
   override def createGRPCSettings
-    (ipAddress: IpAddress, timeout: FiniteDuration)
-    (implicit actorSystem: ActorSystem): GrpcClientSettings = {
+    (ipAddress: IpAddress, timeout: FiniteDuration)(implicit actorSystem: ActorSystem): GrpcClientSettings = {
 
-    GrpcClientSettings
-      .connectToServiceAt(
-        ipAddress,
-        MEMBERSHIP_PORT
-      )
-      .withDeadline(timeout)
+    GrpcClientSettings.connectToServiceAt(ipAddress,MEMBERSHIP_PORT).withDeadline(timeout)
   }
+
+  /** Actor protocol */
+  sealed trait GossipSignal[+KeyType]
+
+  /**
+   * Signal the gossip actor to publish a value to other random nodes for some
+   * defined number of gossip cycles
+   *
+   * @param key key associated with publish task
+   * @param payload the gRPC payload function to be called on
+   */
+  case class PublishRequest[+KeyType](key: GossipKey[KeyType], payload: GossipPayload) extends GossipSignal[KeyType]
+
+  private case class SendRPC[KeyType](
+    key: GossipKey[KeyType],
+    randomMemberRequest: Try[Option[Membership]]
+  ) extends GossipSignal[KeyType]
+
+  private case class ClusterSizeReceived[KeyType](key: GossipKey[KeyType],
+    payload: GossipPayload,
+    clusterSizeRequest: Try[Int]
+  ) extends GossipSignal[KeyType]
+
 }
 
-
 class GossipActor[KeyType: ClassTag] private(
-    membershipActor: ActorRef,
-    delay:           FiniteDuration,
-    affiliation:     String
-  )(
-    implicit
-    actorSystem: ActorSystem
+    override private val context: ActorContext[GossipSignal[KeyType]],
+    administration: ActorRef[AdministrationAPI],
+    delay: FiniteDuration,
   )
-  extends DefaultActor
-  with ActorLogging
+  extends AbstractBehavior[GossipSignal[KeyType]](context)
   with ActorTimers {
 
   import GossipActor._
 
   implicit private val membershipAskTimeout: Timeout = delay // Semi-synchronous, can be bounded by cycle length
-  implicit private val materializer: ActorMaterializer = ActorMaterializer()(context)
-  implicit private val executionContext: ExecutionContext = actorSystem.dispatcher
+  implicit private val executionContext: ExecutionContext = context.system.classicSystem.dispatcher
 
   private val keyTable = mutable.Map[GossipKey[KeyType], PayloadTracker]()
 
   startPeriodic(delay)
-
-  log.info(s"Gossip actor affiliated with ${affiliation} initialized")
 
 
   override def receive: Receive = {
 
     case Tick => keyTable.foreach { gossipEntry =>
 
-      (membershipActor ? GetRandomNode(NodeState.ALIVE))
+      (administration ? GetRandomNode(NodeState.ALIVE))
         .mapTo[Option[Membership]]
         .onComplete(randomMemberRequest => self ! SendRPC(gossipEntry._1, randomMemberRequest))
     }
 
     case SendRPC(key: GossipKey[KeyType], randomMemberRequest) => randomMemberRequest match {
 
-      case Success(requestResult) => requestResult.foreach(member => if (member.nodeID != MembershipActor.nodeID) {
+      case Success(requestResult) => requestResult.foreach(member => if (member.nodeID != Administration.nodeID) {
         val payload = keyTable(key)
 
         payload.count -= 1
@@ -103,14 +98,14 @@ class GossipActor[KeyType: ClassTag] private(
         if (payload.count <= payload.cooldown) keyTable -= key
       })
 
-      case Failure(e) => log.error(s"Error encountered on membership node request: ${e}")
+      case Failure(e) => context.log.error(s"Error encountered on membership node request: ${e}")
     }
 
 
-    case GossipAPI.PublishRequest(key: GossipKey[KeyType], payload) => {
-      log.debug(s"Gossip request received with key ${key}")
+    case PublishRequest(key: GossipKey[KeyType], payload) => {
+      context.log.debug(s"Gossip request received with key ${key}")
 
-      (membershipActor ? GetClusterSize)
+      (administration ? GetClusterSize)
         .mapTo[Int]
         .onComplete(self ! ClusterSizeReceived(key, payload, _))
     }
@@ -120,14 +115,11 @@ class GossipActor[KeyType: ClassTag] private(
       case Success(clusterSize) => if (!keyTable.contains(key)) {
         val bufferCapacity = ServerDefaults.bufferCapacity(clusterSize)
 
-        log.debug(s"Cluster size detected as ${clusterSize}, setting gossip round buffer to ${bufferCapacity}")
+        context.log.debug(s"Cluster size detected as ${clusterSize}, setting gossip round buffer to ${bufferCapacity}")
         keyTable += key -> PayloadTracker(payload, bufferCapacity, -5 * bufferCapacity)
       }
 
-      case Failure(e) => log.error(s"Cluster size request could not be completed: ${e}")
+      case Failure(e) => context.log.error(s"Cluster size request could not be completed: ${e}")
     }
-
-
-    case x => log.error(receivedUnknown(x))
   }
 }

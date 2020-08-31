@@ -1,6 +1,6 @@
 package common.rpc
 
-import membership.api.Membership
+import membership.Membership
 
 
 /**

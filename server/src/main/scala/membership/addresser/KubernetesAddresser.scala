@@ -3,7 +3,7 @@ package membership.addresser
 import java.net.InetAddress
 
 import com.risksense.ipaddr.IpAddress
-import membership.MembershipActor
+import membership.Administration
 import org.slf4j.LoggerFactory
 import schema.ImplicitDataConversions._
 
@@ -57,7 +57,7 @@ object KubernetesAddresser extends AddressRetriever {
    */
   override def seedIP: Option[IpAddress] = {
 
-    lazy val log = LoggerFactory.getLogger(MembershipActor.getClass)
+    lazy val log = LoggerFactory.getLogger(Administration.getClass)
 
     sys.env.get("SEED_HOSTNAME") match {
 

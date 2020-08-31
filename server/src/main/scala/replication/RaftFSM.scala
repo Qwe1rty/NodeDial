@@ -6,10 +6,9 @@ import akka.actor.{ActorSystem, FSM}
 import common.persistence.Serializer
 import common.rpc._
 import common.time._
-import membership.MembershipActor
-import membership.api.Membership
+import membership.{Administration, Membership}
 import replication.Raft.{CommitConfirmation, CommitFunction}
-import replication.RaftServiceImpl.createGRPCSettings
+import replication.RaftGRPCService.createGRPCSettings
 import replication.roles.RaftRole.MessageResult
 import replication.roles._
 import replication.state._
@@ -79,13 +78,13 @@ private[replication] class RaftFSM[Command <: Serializable](
       nextStateData.currentTerm.read().foreach(currentTerm => {
         log.info(s"Starting leader election for new term: $currentTerm")
 
-        nextStateData.votedFor.write(MembershipActor.nodeID)
+        nextStateData.votedFor.write(Administration.nodeID)
         nextStateData.resetQuorum()
 
         processTimerTask(ResetTimer(RaftGlobalTimeoutKey))
         processRPCTask(BroadcastTask(RequestVoteRequest(
           currentTerm,
-          MembershipActor.nodeID,
+          Administration.nodeID,
           nextStateData.log.lastLogIndex(),
           nextStateData.log.lastLogTerm()
         )))
@@ -113,7 +112,7 @@ private[replication] class RaftFSM[Command <: Serializable](
         processTimerTask(CancelTimer(RaftGlobalTimeoutKey))
         processRPCTask(BroadcastTask(AppendEntriesRequest(
           currentTerm,
-          MembershipActor.nodeID,
+          Administration.nodeID,
           nextStateData.log.lastLogIndex(),
           nextStateData.log.lastLogTerm(),
           Seq.empty,
@@ -125,7 +124,7 @@ private[replication] class RaftFSM[Command <: Serializable](
   initialize()
   log.debug("Raft role FSM has been initialized")
 
-  RaftServiceImpl(self)
+  RaftGRPCService(self)
   log.info("Raft API service has been initialized")
 
   processTimerTask(ResetTimer(RaftGlobalTimeoutKey))

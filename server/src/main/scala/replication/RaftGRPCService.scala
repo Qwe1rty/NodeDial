@@ -16,32 +16,24 @@ import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
 
 
-object RaftServiceImpl extends GRPCSettingsFactory {
+object RaftGRPCService extends GRPCSettingsFactory {
 
   def apply(raftActor: ActorRef)(implicit actorSystem: ActorSystem): RaftService = {
-    new RaftServiceImpl(raftActor)
+    new RaftGRPCService(raftActor)
   }
 
   override def createGRPCSettings
-    (ipAddress: IpAddress, timeout: FiniteDuration)
-    (implicit actorSystem: ActorSystem): GrpcClientSettings = {
-
-    GrpcClientSettings
-      .connectToServiceAt(
-        ipAddress,
-        REPLICATION_PORT
-      )
-      .withDeadline(timeout)
+    (ipAddress: IpAddress, timeout: FiniteDuration)(implicit actorSystem: ActorSystem): GrpcClientSettings = {
+    GrpcClientSettings.connectToServiceAt(ipAddress, REPLICATION_PORT).withDeadline(timeout)
   }
 }
 
 
-class RaftServiceImpl(raftActor: ActorRef)(implicit actorSystem: ActorSystem)
-  extends RaftService {
+class RaftGRPCService(raftActor: ActorRef)(implicit actorSystem: ActorSystem) extends RaftService {
 
   implicit val executionContext: ExecutionContext = actorSystem.dispatcher
 
-  final private val log = LoggerFactory.getLogger(RaftServiceImpl.getClass)
+  final private val log = LoggerFactory.getLogger(RaftGRPCService.getClass)
   final private val service: HttpRequest => Future[HttpResponse] = RaftServiceHandler(this)
 
   Http()

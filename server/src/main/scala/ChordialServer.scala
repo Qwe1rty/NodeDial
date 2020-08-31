@@ -4,15 +4,15 @@ import com.typesafe.config.ConfigFactory
 import common.ServerConstants._
 import common.membership.types.NodeState
 import membership.addresser.KubernetesAddresser
-import membership.api.{DeclareEvent, Membership}
+import membership.api.DeclareEvent
 import membership.failureDetection.{FailureDetectorActor, FailureDetectorServiceImpl}
-import membership.{MembershipActor, MembershipServiceImpl}
+import membership.{Administration, Membership, MembershipGRPCService}
 import org.slf4j.LoggerFactory
 import persistence.PersistenceActor
 import persistence.execution.PartitionedTaskExecutor
-import replication.{RaftServiceImpl, ReplicationComponent}
+import replication.{RaftGRPCService, ReplicationComponent}
 import schema.LoggingConfiguration
-import service.{ServiceActor, RequestServiceImpl}
+import service.{RequestServiceImpl, ServiceActor}
 
 
 private object ChordialServer extends App {
@@ -41,7 +41,7 @@ private object ChordialServer extends App {
 
   val addressRetriever = KubernetesAddresser
 
-  val membershipActor = MembershipActor(addressRetriever, REQUIRED_TRIGGERS)
+  val membershipActor = Administration(addressRetriever, REQUIRED_TRIGGERS)
   MembershipServiceImpl(membershipActor)
 
   val failureDetectorActor = FailureDetectorActor(membershipActor)
@@ -84,6 +84,6 @@ private object ChordialServer extends App {
 
   scala.sys.addShutdownHook(membershipActor ! DeclareEvent(
     NodeState.DEAD,
-    Membership(MembershipActor.nodeID, addressRetriever.selfIP)
+    Membership(Administration.nodeID, addressRetriever.selfIP)
   ))
 }

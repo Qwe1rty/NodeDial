@@ -2,8 +2,7 @@ package replication.roles
 
 import common.rpc.{NoTask, RPCTask, ReplyFutureTask, ReplyTask}
 import common.time.{ContinueTimer, ResetTimer, TimerTask}
-import membership.MembershipActor
-import membership.api.Membership
+import membership.{Administration, Membership}
 import org.slf4j.Logger
 import replication.roles.RaftRole.MessageResult
 import replication.state.{RaftEvent, RaftGlobalTimeoutKey, RaftGlobalTimeoutTick, RaftIndividualTimeoutTick, RaftMessage, RaftState, RaftTimeoutKey, RaftTimeoutTick}
@@ -177,7 +176,7 @@ private[replication] trait RaftRole {
       val nextRole = determineStepDown(voteRequest.candidateTerm)(state)
 
       // If candidate's term is outdated, or we voted for someone else already
-      if (voteRequest.candidateTerm < currentTerm || !state.votedFor.read().contains(MembershipActor.nodeID)) {
+      if (voteRequest.candidateTerm < currentTerm || !state.votedFor.read().contains(Administration.nodeID)) {
         refuseVote(currentTerm, nextRole)
       }
 

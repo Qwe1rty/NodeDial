@@ -8,6 +8,7 @@ import com.roundeights.hasher.Implicits._
 import common.ServerConstants
 import common.persistence.{Compression, ProtobufSerializer}
 import io.jvm.uuid._
+import membership.Administration.AdministrationAPI
 import membership.addresser.AddressRetriever
 import membership.api.MembershipAPI
 import persistence.PersistenceComponent._
@@ -21,8 +22,8 @@ import scala.util.{Failure, Success}
 
 
 class ReplicationComponent(
-    context: ActorContext[ClientOperation],
-    membershipActor: ActorRef[MembershipAPI],
+    private val context: ActorContext[ClientOperation],
+    membershipActor: ActorRef[AdministrationAPI],
     persistenceActor: ActorRef[PersistenceTask],
     addressRetriever: AddressRetriever,
   )
@@ -108,7 +109,7 @@ object ReplicationComponent {
   val REPLICATED_LOG_DATA: File  = REPLICATION_DIR/"log.data"
 
   def apply(
-    membershipActor: ActorRef[MembershipAPI],
+    membershipActor: ActorRef[AdministrationAPI],
     persistenceActor: ActorRef[PersistenceTask],
     addressRetriever: AddressRetriever
   ): Behavior[ClientOperation] =
