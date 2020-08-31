@@ -10,7 +10,7 @@ import membership.{MembershipActor, MembershipServiceImpl}
 import org.slf4j.LoggerFactory
 import persistence.PersistenceActor
 import persistence.execution.PartitionedTaskExecutor
-import replication.{RaftServiceImpl, ReplicationActor}
+import replication.{RaftServiceImpl, ReplicationComponent}
 import schema.LoggingConfiguration
 import service.{ServiceActor, RequestServiceImpl}
 

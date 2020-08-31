@@ -3,7 +3,7 @@ package persistence.io
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import better.files.File
-import persistence.PersistenceComponent.{DeleteTask, GetTask, PersistenceData, PersistenceTask, PostTask}
+import persistence.PersistenceComponent.{DeleteTask, GetTask, PersistenceData, PersistenceTask, WriteTask}
 import persistence._
 import persistence.io.KeyStateManager.KeyStateAction
 import persistence.execution.PartitionedTaskExecutor.PartitionedTask
@@ -99,7 +99,7 @@ class KeyStateManager private(
         context.log.info(tag + "Signalling read task")
         ReadTask(VALUE_EXTENSION)(context.self)
 
-      case post: PostTask =>
+      case post: WriteTask =>
         context.log.info(tag + "Signalling write ahead task")
         WriteTask(WRITE_AHEAD_EXTENSION, post.value)(context.self)
 

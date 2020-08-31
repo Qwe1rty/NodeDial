@@ -6,9 +6,9 @@ import better.files.File
 import common.ServerConstants
 import membership.api.{DeclareReadiness, MembershipAPI}
 import persistence.PersistenceComponent.PersistenceTask
-import persistence.io.KeyStateManager
-import persistence.io.KeyStateManager.{KeyStateAction, KeyTask}
 import persistence.execution.PartitionedTaskExecutor
+import persistence.io.KeyStateManager
+import persistence.io.KeyStateManager.KeyStateAction
 
 import scala.concurrent.{Future, Promise}
 
@@ -48,7 +48,7 @@ object PersistenceComponent {
    * @param keyHash the key hash
    * @param value the value to write the value as
    */
-  case class PostTask(
+  case class WriteTask(
     requestPromise: Promise[PersistenceData],
     keyHash: String,
     value: Array[Byte]

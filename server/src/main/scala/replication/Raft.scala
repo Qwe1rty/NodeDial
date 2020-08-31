@@ -39,10 +39,10 @@ class Raft[Command <: Serializable](addresser: AddressRetriever, commitCallback:
   this: Serializer[Command] =>
 
   private val raft = actorSystem.actorOf(
-    Props(new RaftActor[Command](
+    Props(new RaftFSM[Command](
       RaftState(
         Membership(MembershipActor.nodeID, addresser.selfIP),
-        new SimpleReplicatedLog(ReplicationActor.REPLICATED_LOG_INDEX, ReplicationActor.REPLICATED_LOG_DATA)
+        new SimpleReplicatedLog(ReplicationComponent.REPLICATED_LOG_INDEX, ReplicationComponent.REPLICATED_LOG_DATA)
       ),
       commitCallback,
       this

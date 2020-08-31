@@ -1,9 +1,5 @@
 package service
 
-import akka.actor.ActorPath
-import io.jvm.uuid._
-import schema.RequestTrait
-
 
 /**
  * This class is the service layer's representation of a client request. It is
@@ -13,10 +9,10 @@ import schema.RequestTrait
  * @param requestActor actor that manages this request
  * @param operation the request body
  */
-case class OperationPackage(
-  requestActor: ActorPath,
-  uuid:         UUID,
-  operation:    RequestTrait
-)
+//case class OperationPackage(
+//  requestActor: ActorPath,
+//  uuid:         UUID,
+//  operation:    RequestTrait
+//)
 
 

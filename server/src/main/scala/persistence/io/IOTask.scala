@@ -2,7 +2,7 @@ package persistence.io
 
 import akka.actor.typed.ActorRef
 import better.files.File
-import persistence.io.KeyStateManager.{IOSignal, KeyStateAction, ReadCompleteSignal, WriteCompleteSignal}
+import persistence.io.KeyStateManager.{KeyStateAction, ReadCompleteSignal, WriteCompleteSignal}
 
 import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success, Try}

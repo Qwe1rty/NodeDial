@@ -3,18 +3,13 @@ package replication
 import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorSystem, FSM}
-import akka.stream.{ActorMaterializer, Materializer}
-import akka.pattern.ask
-import akka.util
-import akka.util.Timeout
 import common.persistence.Serializer
 import common.rpc._
 import common.time._
 import membership.MembershipActor
 import membership.api.Membership
-import replication.Raft.{CommitFunction, CommitConfirmation}
+import replication.Raft.{CommitConfirmation, CommitFunction}
 import replication.RaftServiceImpl.createGRPCSettings
-import replication.eventlog.ReplicatedLog
 import replication.roles.RaftRole.MessageResult
 import replication.roles._
 import replication.state._
@@ -35,7 +30,7 @@ import scala.util.{Failure, Success, Try}
  * @param actorSystem the actor system
  * @tparam Command the serializable type that will be replicated in the Raft log
  */
-private[replication] class RaftActor[Command <: Serializable](
+private[replication] class RaftFSM[Command <: Serializable](
     private val initialState: RaftState,
     private val commitCallback: CommitFunction[Command],
     private val serializer: Serializer[Command]

@@ -4,7 +4,6 @@ import akka.actor.{ActorRef, ActorSystem}
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.http.scaladsl.{Http, HttpConnectionContext}
 import akka.pattern.ask
-import akka.stream.{ActorMaterializer, Materializer}
 import membership.api.GetReadiness
 import org.slf4j.LoggerFactory
 import schema.PortConfiguration.EXTERNAL_REQUEST_PORT
@@ -35,7 +34,6 @@ class RequestServiceImpl(
   (implicit actorSystem: ActorSystem)
   extends RequestService {
 
-  implicit val materializer: Materializer = ActorMaterializer()
   implicit val executionContext: ExecutionContext = actorSystem.dispatcher
 
   final private val log = LoggerFactory.getLogger(RequestServiceImpl.getClass)
