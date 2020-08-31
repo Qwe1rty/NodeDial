@@ -21,7 +21,7 @@ import scala.util.{Failure, Success, Try}
 
 class FailureDetectorActor private(
     private val context: ActorContext[FailureDetectorSignal],
-    private val timer: TimerScheduler[FailureCheckTick],
+    private val timer: TimerScheduler[FailureDetectorSignal],
     administration: ActorRef[AdministrationAPI]
   )
   extends AbstractBehavior[FailureDetectorSignal](context) {
@@ -34,7 +34,7 @@ class FailureDetectorActor private(
   private var pendingDirectChecks: Set[Membership] = Set[Membership]()
   private var pendingFollowupChecks: Map[Membership, Int] = Map[Membership, Int]()
 
-  // Initiate the failure detection cycle on a random node by triggering a direct check
+  // Periodically initiate the failure detection cycle on a random node by triggering a direct check
   timer.startTimerAtFixedRate(DirectCheckTrigger, 1500.millisecond)
 
 
@@ -114,11 +114,11 @@ class FailureDetectorActor private(
             scheduledDirectChecks -= 1
             pendingDirectChecks -= target
             pendingFollowupChecks -= target
+
             administration ! DeclareEvent(NodeState.SUSPECT, target)
             context.log.info(s"Target ${target} seen as suspect, verifying with membership service")
-
             context.system.scheduler.scheduleOnce(DEATH_DEADLINE, new Runnable {
-              def run(): Unit = context.self ! DeclareDeath(target)
+              override def run(): Unit = context.self ! DeclareDeath(target)
             })
           }
       }

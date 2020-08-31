@@ -1,7 +1,6 @@
 TODO LIST:
 
 GENERAL:
-- Formalize the "tag" pattern when making logs from a duplicate actor
 - Configure the logging backend to be async?
 - Some form of proper environment variable/configuration/dependency injection
 - Document everything both in the code and on Github
@@ -35,11 +34,7 @@ GOSSIP:
 - If the membership actor random call returns None, don't place it on cooldown
 
 SERVICE:
-- Replace the ActorMaterializer instance with the system wide one
 - Reorganize service layer so its initialization in Chordial.class matches the others
-- Reorganize the templating of the different request types, so that RequestServiceActor isn't
-  responsible for the different request types and their handling
-- Encapsulate the promise/future tie-in so that the .flatten doesn't need to be there
 
 PERSISTENCE:
 - Change PersistenceActor map to some form of cache

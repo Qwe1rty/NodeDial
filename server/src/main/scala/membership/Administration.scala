@@ -181,7 +181,7 @@ object Administration {
    * "countdown" for the membership to start join procedure)
    * Does not return anything
    */
-  case object DeclareReadiness extends DeclarationCall
+  final case object DeclareReadiness extends DeclarationCall
 
   /**
    * Signals the membership actor to broadcast the declaration across to the other nodes and
@@ -191,7 +191,7 @@ object Administration {
    * @param nodeState state of the node
    * @param membershipPair node identifier
    */
-  case class DeclareEvent(nodeState: NodeState, membershipPair: Membership) extends DeclarationCall
+  final case class DeclareEvent(nodeState: NodeState, membershipPair: Membership) extends DeclarationCall
 
   /**
    * A struct that represents the response received from the contacted seed node.
@@ -207,19 +207,19 @@ object Administration {
    * Asks the membership actor whether or not the node is ready to receive client requests
    * Returns a `Boolean` value
    */
-  case object GetReadiness extends InformationCall
+  final case object GetReadiness extends InformationCall
 
   /**
    * Get the current size of the cluster.
    * Returns an `Int` value
    */
-  case object GetClusterSize extends InformationCall
+  final case class GetClusterSize(replyTo: ActorRef[Int]) extends InformationCall
 
   /**
    * Get the full set of cluster information.
    * Returns a `Seq[NodeInfo]`
    */
-  case class GetClusterInfo(replyTo: ActorRef[Seq[SyncInfo]])
+  final case class GetClusterInfo(replyTo: ActorRef[Seq[SyncInfo]])
     extends InformationCall
 
   /**
@@ -229,7 +229,7 @@ object Administration {
    *
    * @param nodeState the state that the random node will be drawn from
    */
-  case class GetRandomNode(nodeState: NodeState = NodeState.ALIVE, replyTo: ActorRef[Option[Membership]])
+  final case class GetRandomNode(nodeState: NodeState = NodeState.ALIVE, replyTo: ActorRef[Option[Membership]])
     extends InformationCall
 
   /**
@@ -242,7 +242,7 @@ object Administration {
    * @param number requested number of other random nodes
    * @param nodeState the state that the random nodes will be drawn from
    */
-  case class GetRandomNodes(nodeState: NodeState = NodeState.ALIVE, number: Int = 1, replyTo: ActorRef[Set[Membership]])
+  final case class GetRandomNodes(nodeState: NodeState = NodeState.ALIVE, number: Int = 1, replyTo: ActorRef[Set[Membership]])
     extends InformationCall
 
   /** Actor protocol sub-class */
@@ -253,7 +253,7 @@ object Administration {
    *
    * @param actorRef actor reference
    */
-  case class Subscribe(actorRef: ActorRef) extends SubscriptionCall
+  final case class Subscribe(actorRef: ActorRef) extends SubscriptionCall
 
   object Subscribe {
 
@@ -266,7 +266,7 @@ object Administration {
    *
    * @param actorRef actor reference
    */
-  case class Unsubscribe(actorRef: ActorRef) extends SubscriptionCall
+  final case class Unsubscribe(actorRef: ActorRef) extends SubscriptionCall
 
   object Unsubscribe {
 
@@ -282,5 +282,5 @@ object Administration {
    * after type erasure, this ensures that they are actually different as there's effectively
    * a new parameter
    */
-  implicit object Disambiguate
+  implicit final object Disambiguate
 }
