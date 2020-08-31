@@ -1,8 +1,7 @@
 package membership
 
-import akka.actor.ActorRef
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
-import akka.actor.typed.{ActorSystem, Behavior}
+import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 import common.ServerConstants
 import common.membership.Event.EventType.Empty
 import common.membership.Event.{EventType, Refute}
@@ -11,7 +10,6 @@ import common.membership.types.NodeState.{ALIVE, DEAD, SUSPECT}
 import common.membership.types.{NodeInfo, NodeState}
 import membership.Administration.AdministrationAPI
 import membership.addresser.AddressRetriever
-import membership.api._
 import membership.gossip.GossipActor.PublishRequest
 import membership.gossip.{GossipActor, GossipKey, GossipPayload}
 import membership.impl.InternalRequestDispatcher
@@ -143,7 +141,8 @@ class Administration private(
   }
 
   override def onMessage(msg: AdministrationAPI): Behavior[AdministrationAPI] = {
-
+    // TODO
+    this
   }
 
 //  override def receive: Receive = {
@@ -220,7 +219,8 @@ object Administration {
    * Get the full set of cluster information.
    * Returns a `Seq[NodeInfo]`
    */
-  case object GetClusterInfo extends InformationCall
+  case class GetClusterInfo(replyTo: ActorRef[Seq[SyncInfo]])
+    extends InformationCall
 
   /**
    * Requests a random node of the specified node state.
@@ -229,7 +229,8 @@ object Administration {
    *
    * @param nodeState the state that the random node will be drawn from
    */
-  case class GetRandomNode(nodeState: NodeState = NodeState.ALIVE) extends InformationCall
+  case class GetRandomNode(nodeState: NodeState = NodeState.ALIVE, replyTo: ActorRef[Option[Membership]])
+    extends InformationCall
 
   /**
    * Requests multiple random nodes of the specified node state.
@@ -241,7 +242,8 @@ object Administration {
    * @param number requested number of other random nodes
    * @param nodeState the state that the random nodes will be drawn from
    */
-  case class GetRandomNodes(nodeState: NodeState = NodeState.ALIVE, number: Int = 1) extends InformationCall
+  case class GetRandomNodes(nodeState: NodeState = NodeState.ALIVE, number: Int = 1, replyTo: ActorRef[Set[Membership]])
+    extends InformationCall
 
   /** Actor protocol sub-class */
   private[membership] sealed trait SubscriptionCall extends AdministrationAPI
@@ -255,7 +257,7 @@ object Administration {
 
   object Subscribe {
 
-    def apply()(implicit actorRef: ActorRef, d: SubscriptionCall.Disambiguate.type): Subscribe =
+    def apply()(implicit actorRef: ActorRef, d: Disambiguate.type): Subscribe =
       Subscribe(actorRef)
   }
 
@@ -268,20 +270,17 @@ object Administration {
 
   object Unsubscribe {
 
-    def apply()(implicit actorRef: ActorRef, d: SubscriptionCall.Disambiguate.type): Unsubscribe =
+    def apply()(implicit actorRef: ActorRef, d: Disambiguate.type): Unsubscribe =
       Unsubscribe(actorRef)
   }
 
-  private object SubscriptionCall {
-
-    /**
-     * An object that allows for the creation of the Subscribe and Unsubscribe objects through
-     * implicit passing of the "self" field in an actor
-     *
-     * Since the companion object's "apply" function appears the same as the class constructors
-     * after type erasure, this ensures that they are actually different as there's effectively
-     * a new parameter
-     */
-    implicit object Disambiguate
-  }
+  /**
+   * An object that allows for the creation of the Subscribe and Unsubscribe objects through
+   * implicit passing of the "self" field in an actor
+   *
+   * Since the companion object's "apply" function appears the same as the class constructors
+   * after type erasure, this ensures that they are actually different as there's effectively
+   * a new parameter
+   */
+  implicit object Disambiguate
 }

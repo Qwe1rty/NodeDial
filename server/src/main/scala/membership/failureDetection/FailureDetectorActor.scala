@@ -1,162 +1,163 @@
 package membership.failureDetection
 
-import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
-import akka.pattern.ask
-import akka.stream.ActorMaterializer
-import common.DefaultActor
-import common.ServerDefaults.ACTOR_REQUEST_TIMEOUT
-import common.membership.failureDetection.{DirectMessage, FailureDetectorServiceClient, FollowupMessage}
+import akka.actor
+import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors, TimerScheduler}
+import akka.actor.typed.{ActorRef, Behavior}
+import akka.util.Timeout
+import common.ServerDefaults
+import common.membership.failureDetection.{Confirmation, DirectMessage, FailureDetectorServiceClient, FollowupMessage}
 import common.membership.types.NodeState
-import common.utils.ActorTimers.Tick
-import common.utils.ActorTimers
-import membership.{Administration, Membership}
-import membership.api.{DeclareEvent, GetRandomNode, GetRandomNodes}
+import membership.Administration.{AdministrationAPI, DeclareEvent, GetRandomNode, GetRandomNodes}
+import membership.failureDetection.FailureDetectorActor._
 import membership.failureDetection.FailureDetectorConstants._
-import membership.failureDetection.FailureDetectorSignal._
+import membership.{Administration, Membership}
 import schema.ImplicitDataConversions._
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import scala.language.implicitConversions
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 
-object FailureDetectorActor {
+class FailureDetectorActor private(
+    private val context: ActorContext[FailureDetectorSignal],
+    private val timer: TimerScheduler[FailureCheckTick],
+    administration: ActorRef[AdministrationAPI]
+  )
+  extends AbstractBehavior[FailureDetectorSignal](context) {
 
-  def apply(membershipActor: ActorRef)(implicit actorSystem: ActorSystem): ActorRef =
-    actorSystem.actorOf(
-      Props(new FailureDetectorActor(membershipActor)),
-      "failureDetectorActor"
-    )
-}
-
-
-class FailureDetectorActor private
-    (membershipActor: ActorRef)
-    (implicit actorSystem: ActorSystem)
-  extends DefaultActor
-  with ActorLogging
-  with ActorTimers {
-
-  implicit private val materializer: ActorMaterializer = ActorMaterializer()(context)
-  implicit private val executionContext: ExecutionContext = actorSystem.dispatcher
+  implicit private val classicSystem: actor.ActorSystem = context.system.classicSystem
+  implicit private val executionContext: ExecutionContext = context.system.executionContext
+  implicit private val administrationTimeout: Timeout = ServerDefaults.ACTOR_REQUEST_TIMEOUT
 
   private var scheduledDirectChecks: Int = 0 // Counting variable, acts as publish "semaphore"
-
   private var pendingDirectChecks: Set[Membership] = Set[Membership]()
   private var pendingFollowupChecks: Map[Membership, Int] = Map[Membership, Int]()
 
-  startPeriodic(1500.millisecond)
+  // Initiate the failure detection cycle on a random node by triggering a direct check
+  timer.startTimerAtFixedRate(DirectCheckTrigger, 1500.millisecond)
 
 
-  override def receive: Receive = {
+  override def onMessage(signal: FailureDetectorSignal): Behavior[FailureDetectorSignal] = {
+    signal match {
 
-    case Tick => if (scheduledDirectChecks <= DIRECT_CONNECTIONS_LIMIT) {
-      scheduledDirectChecks += 1
+      case DirectCheckTrigger => if (scheduledDirectChecks <= DIRECT_CONNECTIONS_LIMIT) {
+        scheduledDirectChecks += 1
+        context.ask(administration, GetRandomNode(NodeState.ALIVE, _: ActorRef[Option[Membership]])) {
+          case Success(node) => DirectRequest(node)
+          case Failure(e) =>
+            context.log.error(s"Error encountered on membership random node request: ${e}")
+            scheduledDirectChecks -= 1
+            DirectRequest(None)
+        }
+      }
 
-      (membershipActor ? GetRandomNode(NodeState.ALIVE))
-        .mapTo[Option[Membership]]
-        .onComplete(self ! DirectRequest(_))
-    }
-
-    case DirectRequest(potentialTarget) => potentialTarget match {
-
-      case Success(requestResult) => requestResult.foreach { target =>
+      case DirectRequest(potentialTarget) => potentialTarget.foreach { target =>
 
         // Make the check if there's not one pending already and it's not calling itself
         if (!pendingDirectChecks.contains(target) && target.nodeID != Administration.nodeID) {
-
-          val grpcClient = FailureDetectorServiceClient(createGRPCSettings(target.ipAddress, SUSPICION_DEADLINE))
           pendingDirectChecks += target
-
-          grpcClient.directCheck(DirectMessage()).onComplete {
-            self ! DirectResponse(target, _)
-          }
+          FailureDetectorServiceClient(createGRPCSettings(target.ipAddress, SUSPICION_DEADLINE))
+            .directCheck(DirectMessage())
+            .onComplete(context.self ! DirectResponse(target, _))
         }
         else scheduledDirectChecks -= 1
       }
 
-      case Failure(e) => {
-        log.error(s"Error encountered on membership random node request: ${e}")
-        scheduledDirectChecks -= 1
+      case DirectResponse(target, directResult) => directResult match {
+        case Failure(_) => context.self ! FollowupCheckTrigger(target) // Perform indirect followup checks to confirm node death
+        case Success(_) =>
+          context.log.debug(s"Target ${target} successfully passed initial direct failure check")
+          scheduledDirectChecks -= 1
+          pendingDirectChecks -= target
       }
-    }
 
-    case DirectResponse(target, directResult) => directResult match {
+      case FollowupCheckTrigger(target) =>
+        context.ask(administration, GetRandomNodes(NodeState.ALIVE, FOLLOWUP_TEAM_SIZE, _: ActorRef[Set[Membership]])) {
+          case Success(followupTeam) => FollowupRequest(target, followupTeam)
+          case Failure(e) =>
+            context.log.error(s"Error encountered on ${FOLLOWUP_TEAM_SIZE} random node request: ${e}")
+            FollowupRequest(target, Set())
+        }
 
-      case Success(_) =>
-        log.debug(s"Target ${target} successfully passed initial direct failure check")
-        scheduledDirectChecks -= 1
-        pendingDirectChecks -= target
+      case FollowupRequest(target, followupTeam) =>
+        context.log.debug(s"Attempting to followup on suspected dead node ${target} with team size ${followupTeam.size}")
+        pendingFollowupChecks += target -> followupTeam.size
 
-      case Failure(_) =>
-        self ! FollowupTrigger(target)
-    }
-
-
-    case FollowupTrigger(target) => {
-
-      (membershipActor ? GetRandomNodes(NodeState.ALIVE, FOLLOWUP_TEAM_SIZE))
-        .mapTo[Set[Membership]]
-        .onComplete(self ! FollowupRequest(target, _))
-    }
-
-    case FollowupRequest(target, followupTeam) => followupTeam match {
-
-      case Success(requestResult) =>
-        log.debug(s"Attempting to followup on suspected dead node ${target} with team size ${requestResult.size}")
-        pendingFollowupChecks += target -> requestResult.size
-
-        requestResult.foreach { member =>
-
+        for (member <- followupTeam) {
           if (member.nodeID != Administration.nodeID) {
-            val grpcClient = FailureDetectorServiceClient(createGRPCSettings(member.ipAddress, DEATH_DEADLINE))
-
-            log.debug(s"Calling ${member} for indirect check on ${target}")
-            grpcClient.followupCheck(FollowupMessage(target.ipAddress)).onComplete {
-              self ! FollowupResponse(member, _)
-            }
+            context.log.debug(s"Calling ${member} for indirect check on ${target}")
+            FailureDetectorServiceClient(createGRPCSettings(member.ipAddress, DEATH_DEADLINE))
+              .followupCheck(FollowupMessage(target.ipAddress))
+              .onComplete(context.self ! FollowupResponse(member, _))
           }
           else {
             // TODO remove this condition when MembershipTable can be selective on non-self
-
-            log.debug(s"Self detected in followup team for ${target}")
+            context.log.debug(s"Self detected in followup team for ${target}")
             pendingFollowupChecks += target -> (pendingFollowupChecks(target) - 1)
           }
         }
 
-      case Failure(e) => log.error(s"Error encountered on ${FOLLOWUP_TEAM_SIZE} random node request: ${e}")
-    }
+      case FollowupResponse(target, followupResult) => followupResult match {
 
-    case FollowupResponse(target, followupResult) => followupResult match {
-
-      case Success(_) =>
-        scheduledDirectChecks -= 1
-        pendingDirectChecks -= target
-        pendingFollowupChecks -= target
-        log.debug(s"Followup on target ${target} successful, removing suspicion status")
-
-      case Failure(_) =>
-        pendingFollowupChecks += target -> (pendingFollowupChecks(target) - 1)
-        log.debug(s"Followup failure on target ${target}, ")
-
-        if (pendingFollowupChecks(target) <= 0) {
+        case Success(_) =>
           scheduledDirectChecks -= 1
           pendingDirectChecks -= target
           pendingFollowupChecks -= target
-          membershipActor ! DeclareEvent(NodeState.SUSPECT, target)
-          log.info(s"Target ${target} seen as suspect, verifying with membership service")
+          context.log.debug(s"Followup on target ${target} successful, removing suspicion status")
 
-          actorSystem.scheduler.scheduleOnce(DEATH_DEADLINE)(self ! DeclareDeath(target))
-        }
+        case Failure(_) =>
+          pendingFollowupChecks += target -> (pendingFollowupChecks(target) - 1)
+          context.log.debug(s"Followup failure on target ${target}, ")
+
+          if (pendingFollowupChecks(target) <= 0) {
+            scheduledDirectChecks -= 1
+            pendingDirectChecks -= target
+            pendingFollowupChecks -= target
+            administration ! DeclareEvent(NodeState.SUSPECT, target)
+            context.log.info(s"Target ${target} seen as suspect, verifying with membership service")
+
+            context.system.scheduler.scheduleOnce(DEATH_DEADLINE, new Runnable {
+              def run(): Unit = context.self ! DeclareDeath(target)
+            })
+          }
+      }
+
+      case DeclareDeath(target) =>
+        administration ! DeclareEvent(NodeState.DEAD, target)
+        context.log.info(s"Death timer run out for ${target}, verifying with membership service for possible declaration")
     }
-
-
-    case DeclareDeath(target) => {
-      membershipActor ! DeclareEvent(NodeState.DEAD, target)
-      log.info(s"Death timer run out for ${target}, verifying with membership service for possible declaration")
-    }
-
-    case x => log.error(receivedUnknown(x))
+    this
   }
+
+}
+
+object FailureDetectorActor {
+
+  def apply(administration: ActorRef[AdministrationAPI]): Behavior[FailureDetectorSignal] =
+    Behaviors.setup(context => {
+      Behaviors.withTimers(timer => {
+        new FailureDetectorActor(context, timer, administration)
+      })
+    })
+
+  /** Actor protocol */
+  private sealed trait FailureDetectorSignal
+
+  private final case object DirectCheckTrigger extends FailureDetectorSignal
+  private final case class DirectRequest(potentialTarget: Option[Membership]) extends FailureDetectorSignal
+  private final case class DirectResponse(target: Membership, directResult: Try[Confirmation]) extends FailureDetectorSignal
+
+  private final case class FollowupCheckTrigger(target: Membership) extends FailureDetectorSignal
+  private final case class FollowupRequest(target: Membership, followupTeam: Set[Membership]) extends FailureDetectorSignal
+  private final case class FollowupResponse(target: Membership, followupResult: Try[Confirmation]) extends FailureDetectorSignal
+
+  /**
+   * Trigger the failure detector to notify the membership actor that the node is dead.
+   * If the membership actor has already received an event stating that the node refuted
+   * the suspicion, then this message is discarded
+   *
+   * @param target the target node
+   */
+  private final case class DeclareDeath(target: Membership) extends FailureDetectorSignal
 }

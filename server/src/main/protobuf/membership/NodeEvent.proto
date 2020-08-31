@@ -19,7 +19,7 @@ package chordial.membership;
 message Event {
 
     // This is needed to add this event type to the administration component's actor protocol
-    option (scalapb.message).extends = "membership.AdministrationComponent.AdministrationAPI";
+    option (scalapb.message).extends = "membership.Administration.AdministrationAPI";
 
     required string node_id = 1;
 

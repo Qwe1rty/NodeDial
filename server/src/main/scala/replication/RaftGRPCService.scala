@@ -37,14 +37,8 @@ class RaftGRPCService(raftActor: ActorRef)(implicit actorSystem: ActorSystem) ex
   final private val service: HttpRequest => Future[HttpResponse] = RaftServiceHandler(this)
 
   Http()
-    .bindAndHandleAsync(
-      service,
-      interface = "0.0.0.0",
-      port = REPLICATION_PORT,
-      connectionContext = HttpConnectionContext())
-    .foreach(
-      binding => log.info(s"Raft service bound to ${binding.localAddress}")
-    )
+    .bindAndHandleAsync(service, interface = "0.0.0.0", port = REPLICATION_PORT, HttpConnectionContext())
+    .foreach(binding => log.info(s"Raft service bound to ${binding.localAddress}"))
 
 
   /**

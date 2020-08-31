@@ -10,7 +10,6 @@ import common.persistence.{Compression, ProtobufSerializer}
 import io.jvm.uuid._
 import membership.Administration.AdministrationAPI
 import membership.addresser.AddressRetriever
-import membership.api.MembershipAPI
 import persistence.PersistenceComponent._
 import replication.ReplicatedOp.OperationType
 import replication.ReplicationComponent.ClientOperation

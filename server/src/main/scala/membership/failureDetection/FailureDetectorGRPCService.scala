@@ -15,14 +15,7 @@ import service.RequestServiceImpl
 import scala.concurrent.{ExecutionContext, Future}
 
 
-object FailureDetectorServiceImpl {
-
-  def apply()(implicit actorSystem: ActorSystem): FailureDetectorService =
-    new FailureDetectorServiceImpl()
-}
-
-
-class FailureDetectorServiceImpl(implicit actorSystem: ActorSystem) extends FailureDetectorService {
+class FailureDetectorGRPCService(implicit actorSystem: ActorSystem) extends FailureDetectorService {
 
   implicit private val materializer: ActorMaterializer = ActorMaterializer()
   implicit private val executionContext: ExecutionContext = actorSystem.dispatcher
@@ -63,4 +56,10 @@ class FailureDetectorServiceImpl(implicit actorSystem: ActorSystem) extends Fail
     FailureDetectorServiceClient(createGRPCSettings(ipAddress, SUSPICION_DEADLINE))
       .directCheck(DirectMessage())
   }
+}
+
+object FailureDetectorGRPCService {
+
+  def apply()(implicit actorSystem: ActorSystem): FailureDetectorService =
+    new FailureDetectorGRPCService()
 }

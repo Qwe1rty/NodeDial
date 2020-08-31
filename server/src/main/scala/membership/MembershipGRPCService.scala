@@ -1,35 +1,29 @@
 package membership
 
-import akka.actor.{ActorRef, ActorSystem}
+import akka.actor.typed.scaladsl.AskPattern._
+import akka.actor.typed.{ActorRef, ActorSystem}
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.http.scaladsl.{Http, HttpConnectionContext}
-import akka.pattern.ask
 import com.risksense.ipaddr.IpAddress
 import common.ServerDefaults.ACTOR_REQUEST_TIMEOUT
 import common.membership._
-import membership.api.GetClusterInfo
+import membership.Administration.{AdministrationAPI, GetClusterInfo}
 import org.slf4j.LoggerFactory
 import schema.PortConfiguration.MEMBERSHIP_PORT
 
 import scala.concurrent.{ExecutionContext, Future}
 
 
-class MembershipGRPCService(membershipActor: ActorRef)(implicit actorSystem: ActorSystem) extends MembershipService {
+class MembershipGRPCService(administration: ActorRef[AdministrationAPI])(implicit actorSystem: ActorSystem[_]) extends MembershipService {
 
-  implicit val executionContext: ExecutionContext = actorSystem.dispatcher
+  implicit val executionContext: ExecutionContext = actorSystem.executionContext
 
   final private val log = LoggerFactory.getLogger(MembershipGRPCService.getClass)
   final private val service: HttpRequest => Future[HttpResponse] = MembershipServiceHandler(this)
 
-  Http()
-    .bindAndHandleAsync(
-      service,
-      interface = "0.0.0.0",
-      port = MEMBERSHIP_PORT,
-      connectionContext = HttpConnectionContext())
-    .foreach(
-      binding => log.info(s"Membership service bound to ${binding.localAddress}")
-    )
+  Http()(actorSystem.classicSystem)
+    .bindAndHandleAsync(service, interface = "0.0.0.0", port = MEMBERSHIP_PORT, HttpConnectionContext())
+    .foreach(binding => log.info(s"Membership service bound to ${binding.localAddress}"))
 
 
   /**
@@ -38,7 +32,7 @@ class MembershipGRPCService(membershipActor: ActorRef)(implicit actorSystem: Act
   override def publish(event: Event): Future[EventReply] = {
     log.debug(s"Event received from ${event.nodeId}, forwarding to membership actor")
 
-    membershipActor ! event
+    administration ! event
     Future.successful(EventReply())
   }
 
@@ -48,8 +42,8 @@ class MembershipGRPCService(membershipActor: ActorRef)(implicit actorSystem: Act
   override def fullSync(in: FullSyncRequest): Future[SyncResponse] = {
     log.info(s"Full sync requested from node ${in.nodeId} with IP ${IpAddress(in.ipAddress).toString}")
 
-    (membershipActor ? GetClusterInfo)
-      .mapTo[Seq[SyncInfo]]
+    administration
+      .ask((ref: ActorRef[Seq[SyncInfo]]) => GetClusterInfo(ref))
       .map(SyncResponse(_))
   }
 
@@ -61,6 +55,6 @@ class MembershipGRPCService(membershipActor: ActorRef)(implicit actorSystem: Act
 
 object MembershipGRPCService {
 
-  def apply(membershipActor: ActorRef)(implicit actorSystem: ActorSystem): MembershipService =
-    new MembershipGRPCService(membershipActor)
+  def apply(administration: ActorRef[AdministrationAPI])(implicit actorSystem: ActorSystem[_]): MembershipService =
+    new MembershipGRPCService(administration)
 }
