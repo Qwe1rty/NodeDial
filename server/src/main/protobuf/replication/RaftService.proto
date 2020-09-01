@@ -5,7 +5,6 @@ option java_package = "replication";
 option java_outer_classname = "ChordialRaftService";
 
 import "replication/RaftMessages.proto";
-import "google/protobuf/empty.proto";
 
 package chordial.replication;
 

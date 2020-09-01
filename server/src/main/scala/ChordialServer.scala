@@ -1,7 +1,7 @@
 import administration.{Administration, Membership}
 import administration.addresser.KubernetesAddresser
 import administration.failureDetection.FailureDetectorGRPCService
-import akka.actor.ActorSystem
+import akka.actor.typed.ActorSystem
 import ch.qos.logback.classic.Level
 import com.typesafe.config.ConfigFactory
 import common.ServerConstants._
@@ -11,7 +11,6 @@ import persistence.PersistenceActor
 import persistence.execution.PartitionedTaskExecutor
 import replication.{RaftGRPCService, ReplicationComponent}
 import schema.LoggingConfiguration
-import service.ServiceActor
 
 
 private object ChordialServer extends App {
@@ -29,7 +28,7 @@ private object ChordialServer extends App {
   log.info("Server config loaded")
 
   log.info("Initializing actor system")
-  implicit val actorSystem: ActorSystem = ActorSystem("ChordialServer", config)
+  implicit val actorSystem: ActorSystem[Nothing] = ActorSystem(new "ChordialServer", config)
 
 
   /**

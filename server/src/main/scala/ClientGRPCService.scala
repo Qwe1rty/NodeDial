@@ -3,11 +3,12 @@ import akka.actor.typed.scaladsl.AskPattern._
 import akka.actor.typed.{ActorRef, ActorSystem}
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.http.scaladsl.{Http, HttpConnectionContext}
+import akka.stream.Materializer
 import com.google.protobuf.ByteString
 import io.jvm.uuid.UUID
 import org.slf4j.LoggerFactory
 import persistence.PersistenceComponent.PersistenceData
-import replication.ReplicationComponent.{ClientOperation, DeleteOperation, ReadOperation, ReplicatedConfirmation}
+import replication.ReplicationComponent.{ClientOperation, DeleteOperation, ReadOperation, ReplicatedConfirmation, WriteOperation}
 import schema.ImplicitGrpcConversions._
 import schema.PortConfiguration.EXTERNAL_REQUEST_PORT
 import schema.service.Request.{DeleteRequest, GetRequest, PostRequest}
@@ -46,10 +47,7 @@ class ClientGRPCService(
     else {
       val readPromise = Promise[PersistenceData]()
       replicationComponent ! ReadOperation(readPromise, in.key, uuid)
-      readPromise.future.map(data => GetResponse(data match {
-        case Some(bytes) => bytes
-        case None => ByteString.EMPTY
-      }))
+      readPromise.future.map(data => GetResponse(data.map(byteArrayToByteString)))
     }
   }
 
