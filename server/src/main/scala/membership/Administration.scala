@@ -2,41 +2,41 @@ package membership
 
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
+import akka.grpc.GrpcClientSettings
 import common.ServerConstants
 import common.membership.Event.EventType.Empty
-import common.membership.Event.{EventType, Refute}
+import common.membership.Event.{EventType, Failure, Join, Refute, Suspect}
 import common.membership._
 import common.membership.types.NodeState.{ALIVE, DEAD, SUSPECT}
 import common.membership.types.{NodeInfo, NodeState}
-import membership.Administration.AdministrationAPI
+import membership.Administration.AdministrationMessage
 import membership.addresser.AddressRetriever
 import membership.gossip.Gossip.PublishRequest
 import membership.gossip.{Gossip, GossipKey, GossipPayload}
-import membership.impl.InternalRequestDispatcher
 import org.slf4j.LoggerFactory
+import partitioning.PartitionHashes
 import schema.ImplicitDataConversions._
+import schema.PortConfiguration.MEMBERSHIP_PORT
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
-import scala.util.Try
+import scala.util.{Success, Try}
 
 
 class Administration private(
-    private val context: ActorContext[AdministrationAPI],
+    private val context: ActorContext[AdministrationMessage],
     protected val addressRetriever: AddressRetriever,
     protected var initializationCount: Int
   )
-  extends AbstractBehavior[AdministrationAPI](context)
-  with InternalRequestDispatcher {
+  extends AbstractBehavior[AdministrationMessage](context) {
 
   import Administration._
 
   implicit private val actorSystem: ActorSystem[Nothing] = context.system
   implicit private val executionContext: ExecutionContext = actorSystem.executionContext
 
-  private val gossipActor =
-    context.spawn(Gossip[Event](context.self, 200.millisecond), "gossipActor-administration")
-  context.log.info(s"Gossip actor affiliated with administration initialized")
+  private val gossipActor = context.spawn(Gossip[Event](context.self, 200.millisecond), "gossipActor-administration")
+  context.log.info(s"Gossip component affiliated with administration initialized")
 
   protected var readiness: Boolean = false
   protected var subscribers: Set[ActorRef] = Set[ActorRef]()
@@ -44,7 +44,7 @@ class Administration private(
     MembershipTable(NodeInfo(nodeID, addressRetriever.selfIP, 0, NodeState.ALIVE))
 
   context.log.info(s"Self IP has been detected to be ${addressRetriever.selfIP}")
-  context.log.info("Membership actor initialized")
+  context.log.info("Administration component initialized")
 
 
   /**
@@ -65,91 +65,165 @@ class Administration private(
       MembershipServiceClient(grpcClientSettings).publish(event)
   ))
 
-  /**
-   * Event types that arrive from other nodes through the membership gRPC service
-   */
-  private def receiveEvent(event: Event): Unit = {
+  override def onMessage(msg: AdministrationMessage): Behavior[AdministrationMessage] = {
+    msg match {
 
-    event.eventType match {
+      /**
+       * Event types that arrive from other nodes through the membership gRPC service
+       */
+      case event: Event => event.eventType match {
+        case EventType.Join(joinInfo) =>
+          context.log.debug(s"Join event - ${event.nodeId} - ${joinInfo}")
 
-      case EventType.Join(joinInfo) =>
-        context.log.debug(s"Join event - ${event.nodeId} - ${joinInfo}")
+          if (!membershipTable.contains(event.nodeId)) {
+            membershipTable += NodeInfo(event.nodeId, joinInfo.ipAddress, 0, ALIVE)
+            context.log.info(s"New node ${event.nodeId} added to membership table with IP address ${joinInfo.ipAddress}")
+          }
+          else context.log.debug(s"Node ${event.nodeId} join event ignored, entry already in table")
 
-        if (!membershipTable.contains(event.nodeId)) {
-          membershipTable += NodeInfo(event.nodeId, joinInfo.ipAddress, 0, ALIVE)
-          context.log.info(s"New node ${event.nodeId} added to membership table with IP address ${joinInfo.ipAddress}")
+          publishExternally(event)
+
+        case EventType.Suspect(suspectInfo) =>
+          context.log.debug(s"Suspect event - ${event.nodeId} - ${suspectInfo}")
+
+          if (event.nodeId != nodeID && membershipTable.stateOf(event.nodeId) == NodeState.ALIVE) {
+            membershipTable = membershipTable.updateState(event.nodeId, SUSPECT)
+            context.log.debug(s"Node ${event.nodeId} will be marked as suspect")
+          }
+          else if (suspectInfo.version == membershipTable.versionOf(nodeID)) {
+            membershipTable = membershipTable.incrementVersion(nodeID)
+            context.log.debug(s"Received suspect message about self, will increment version and refute")
+
+            publishExternally(Event(nodeID).withRefute(Refute(membershipTable.versionOf(nodeID))))
+          }
+
+        case EventType.Failure(failureInfo) =>
+          context.log.debug(s"Failure event - ${event.nodeId} - ${failureInfo}")
+
+          if (event.nodeId != nodeID && membershipTable.stateOf(event.nodeId) != NodeState.DEAD) {
+            membershipTable = membershipTable.updateState(event.nodeId, DEAD)
+            context.log.debug(s"Node ${event.nodeId} will be marked as dead")
+          }
+          else if (failureInfo.version == membershipTable.versionOf(nodeID)) { // TODO merge duplicates
+            membershipTable = membershipTable.incrementVersion(nodeID)
+            context.log.debug(s"Received death message about self, will increment version and refute")
+
+            publishExternally(Event(nodeID).withRefute(Refute(membershipTable.versionOf(nodeID))))
+          }
+
+        case EventType.Refute(refuteInfo) =>
+          context.log.debug(s"Refute event - ${event.nodeId} - ${refuteInfo}")
+
+          membershipTable.get(event.nodeId).foreach(
+            currentEntry =>
+              if (refuteInfo.version > currentEntry.version) {
+                membershipTable += NodeInfo(
+                  event.nodeId,
+                  membershipTable.addressOf(event.nodeId),
+                  refuteInfo.version,
+                  NodeState.ALIVE
+                )
+                publishExternally(event)
+              })
+
+        case EventType.Leave(_) =>
+          context.log.debug(s"Leave event - ${event.nodeId}")
+
+          if (membershipTable.contains(event.nodeId)) {
+            membershipTable = membershipTable.unregister(event.nodeId)
+            context.log.info(s"Node ${event.nodeId} declared intent to leave, removing from membership table")
+          }
+          publishExternally(event)
+
+        case Empty => context.log.error(s"Received invalid Empty event - ${event.nodeId}")
+      }
+
+      /**
+       * Internal API calls that relate to broadcasting/retrieving this node's state or information
+       */
+      case call: DeclarationCall => call match {
+
+        case DeclareReadiness =>
+          context.log.info("Membership readiness signal received")
+          initializationCount -= 1
+
+          if (initializationCount <= 0 && !readiness) {
+            context.log.debug("Starting initialization sequence to establish readiness")
+
+            // Only if the seed node is defined will there be any synchronization calls
+            addressRetriever.seedIP match {
+              case Some(seedIP) =>
+                if (seedIP != addressRetriever.selfIP) {
+                  context.log.info("Contacting seed node for membership listing")
+                  MembershipServiceClient(GrpcClientSettings.connectToServiceAt(seedIP, MEMBERSHIP_PORT))
+                    .fullSync(FullSyncRequest(nodeID, addressRetriever.selfIP))
+                    .onComplete(context.self ! SeedResponse(_))
+                }
+                else {
+                  readiness = true
+                  log.info("Seed IP was the same as this current node's IP, no full sync necessary")
+                }
+              case None =>
+                readiness = true
+                log.info("No seed node specified, will assume single-node cluster readiness")
+            }
+          }
+
+        case DeclareEvent(nodeState, membershipPair) =>
+          val targetID = membershipPair.nodeID
+          val version = membershipTable.versionOf(targetID)
+          log.info(s"Declaring node ${targetID} according to detected state ${nodeState}")
+
+          val eventCandidate: Option[Event] = nodeState match {
+            case NodeState.SUSPECT => Some(Event(targetID).withSuspect(Suspect(version)))
+            case NodeState.DEAD => Some(Event(targetID).withFailure(Failure(version)))
+            case _ => None
+          }
+          eventCandidate.foreach(
+            event => {
+              publishExternally(event)
+              publishInternally(event)
+            })
+
+        case SeedResponse(syncResponse) => syncResponse match {
+
+          case Success(response) =>
+            membershipTable ++= response.syncInfo.map(_.nodeInfo)
+
+            readiness = true
+            log.info("Successful full sync response received from seed node")
+
+            publishExternally(Event(nodeID).withJoin(Join(addressRetriever.selfIP, PartitionHashes(Nil))))
+            log.info("Broadcasting join event to other nodes")
+
+          case scala.util.Failure(e) =>
+            log.error(s"Was unable to retrieve membership info from seed node: ${e}")
+
+            context.self ! DeclareReadiness
+            log.error("Attempting to reconnect with seed node")
         }
-        else context.log.debug(s"Node ${event.nodeId} join event ignored, entry already in table")
+      }
 
-        publishExternally(event)
+      /**
+       * Internal API calls that are getting cluster/admin information
+       */
+      case call: InformationCall => call match {
+        case GetReadiness(replyTo) => replyTo ! readiness
+        case GetClusterSize(replyTo) => replyTo ! membershipTable.size
+        case GetClusterInfo(replyTo) => replyTo ! membershipTable.toSeq.map(SyncInfo(_, None))
+        case GetRandomNode(nodeState, replyTo) => replyTo ! membershipTable.random(nodeState).lastOption
+        case GetRandomNodes(nodeState, number, replyTo) => replyTo ! membershipTable.random(nodeState, number)
+      }
 
-      case EventType.Suspect(suspectInfo) =>
-        context.log.debug(s"Suspect event - ${event.nodeId} - ${suspectInfo}")
-
-        if (event.nodeId != nodeID && membershipTable.stateOf(event.nodeId) == NodeState.ALIVE) {
-          membershipTable = membershipTable.updateState(event.nodeId, SUSPECT)
-          context.log.debug(s"Node ${event.nodeId} will be marked as suspect")
-        }
-        else if (suspectInfo.version == membershipTable.versionOf(nodeID)) {
-          membershipTable = membershipTable.incrementVersion(nodeID)
-          context.log.debug(s"Received suspect message about self, will increment version and refute")
-
-          publishExternally(Event(nodeID).withRefute(Refute(membershipTable.versionOf(nodeID))))
-        }
-
-      case EventType.Failure(failureInfo) =>
-        context.log.debug(s"Failure event - ${event.nodeId} - ${failureInfo}")
-
-        if (event.nodeId != nodeID && membershipTable.stateOf(event.nodeId) != NodeState.DEAD) {
-          membershipTable = membershipTable.updateState(event.nodeId, DEAD)
-          context.log.debug(s"Node ${event.nodeId} will be marked as dead")
-        }
-        else if (failureInfo.version == membershipTable.versionOf(nodeID)) { // TODO merge duplicates
-          membershipTable = membershipTable.incrementVersion(nodeID)
-          context.log.debug(s"Received death message about self, will increment version and refute")
-
-          publishExternally(Event(nodeID).withRefute(Refute(membershipTable.versionOf(nodeID))))
-        }
-
-      case EventType.Refute(refuteInfo) =>
-        context.log.debug(s"Refute event - ${event.nodeId} - ${refuteInfo}")
-
-        membershipTable.get(event.nodeId).foreach(currentEntry =>
-          if (refuteInfo.version > currentEntry.version) {
-            membershipTable += NodeInfo(
-              event.nodeId,
-              membershipTable.addressOf(event.nodeId),
-              refuteInfo.version,
-              NodeState.ALIVE
-            )
-            publishExternally(event)
-          })
-
-      case EventType.Leave(_) =>
-        context.log.debug(s"Leave event - ${event.nodeId}")
-
-        if (membershipTable.contains(event.nodeId)) {
-          membershipTable = membershipTable.unregister(event.nodeId)
-          context.log.info(s"Node ${event.nodeId} declared intent to leave, removing from membership table")
-        }
-        publishExternally(event)
-
-      case Empty => context.log.error(s"Received invalid Empty event - ${event.nodeId}")
-    }
-
-    publishInternally(event)
+      /**
+       * Internal API calls that sub/unsub from cluster/admin events
+       */
+      case call: SubscriptionCall => call match {
+        case Subscribe(actorRef) => subscribers += actorRef
+        case Unsubscribe(actorRef) => subscribers -= actorRef
+      }
+    }; this
   }
-
-  override def onMessage(msg: AdministrationAPI): Behavior[AdministrationAPI] = {
-    // TODO
-    this
-  }
-
-//  override def receive: Receive = {
-//    case apiCall: AdministrationAPI => receiveAPICall(apiCall)
-//    case event: Event           => receiveEvent(event)
-//    case x                      => log.error(receivedUnknown(x))
-//  }
 
 }
 
@@ -166,12 +240,13 @@ object Administration {
   private val log = LoggerFactory.getLogger(Administration.getClass)
   log.info(s"Membership has determined node ID: ${nodeID}, with rejoin flag: ${rejoin}")
 
-  def apply(addressRetriever: AddressRetriever, initializationCount: Int): Behavior[AdministrationAPI] =
+  def apply(addressRetriever: AddressRetriever, initializationCount: Int): Behavior[AdministrationMessage] =
     Behaviors.setup(new Administration(_, addressRetriever, initializationCount))
 
 
   /** Actor protocol: includes the generated protobuf event types */
-  sealed trait AdministrationAPI
+  sealed trait AdministrationMessage
+  sealed trait AdministrationAPI extends AdministrationMessage
 
   /** Actor protocol sub-class */
   private[membership] sealed trait DeclarationCall extends AdministrationAPI
@@ -207,7 +282,7 @@ object Administration {
    * Asks the membership actor whether or not the node is ready to receive client requests
    * Returns a `Boolean` value
    */
-  final case object GetReadiness extends InformationCall
+  final case class GetReadiness(replyTo: ActorRef[Boolean]) extends InformationCall
 
   /**
    * Get the current size of the cluster.
@@ -219,8 +294,7 @@ object Administration {
    * Get the full set of cluster information.
    * Returns a `Seq[NodeInfo]`
    */
-  final case class GetClusterInfo(replyTo: ActorRef[Seq[SyncInfo]])
-    extends InformationCall
+  final case class GetClusterInfo(replyTo: ActorRef[Seq[SyncInfo]]) extends InformationCall
 
   /**
    * Requests a random node of the specified node state.
@@ -229,8 +303,7 @@ object Administration {
    *
    * @param nodeState the state that the random node will be drawn from
    */
-  final case class GetRandomNode(nodeState: NodeState = NodeState.ALIVE, replyTo: ActorRef[Option[Membership]])
-    extends InformationCall
+  final case class GetRandomNode(nodeState: NodeState, replyTo: ActorRef[Option[Membership]]) extends InformationCall
 
   /**
    * Requests multiple random nodes of the specified node state.
@@ -242,8 +315,7 @@ object Administration {
    * @param number requested number of other random nodes
    * @param nodeState the state that the random nodes will be drawn from
    */
-  final case class GetRandomNodes(nodeState: NodeState = NodeState.ALIVE, number: Int = 1, replyTo: ActorRef[Set[Membership]])
-    extends InformationCall
+  final case class GetRandomNodes(nodeState: NodeState, number: Int, replyTo: ActorRef[Set[Membership]]) extends InformationCall
 
   /** Actor protocol sub-class */
   private[membership] sealed trait SubscriptionCall extends AdministrationAPI

@@ -4,17 +4,17 @@ import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, Props}
 import common.DefaultActor
 
 
-object PartitionActor {
+object ShardingComponent {
 
   def apply(persistenceActor: ActorRef)(implicit actorContext: ActorContext): ActorRef =
     actorContext.actorOf(
-      Props(new PartitionActor(persistenceActor)),
+      Props(new ShardingComponent(persistenceActor)),
       "partitionActor"
     )
 }
 
 
-class PartitionActor private(
+class ShardingComponent private(
     persistenceActor: ActorRef
   )
   extends DefaultActor

@@ -7,7 +7,7 @@ import akka.util.Timeout
 import common.ServerDefaults
 import common.membership.failureDetection.{Confirmation, DirectMessage, FailureDetectorServiceClient, FollowupMessage}
 import common.membership.types.NodeState
-import membership.Administration.{AdministrationAPI, DeclareEvent, GetRandomNode, GetRandomNodes}
+import membership.Administration.{AdministrationMessage, DeclareEvent, GetRandomNode, GetRandomNodes}
 import membership.failureDetection.FailureDetector._
 import membership.failureDetection.FailureDetectorConstants._
 import membership.{Administration, Membership}
@@ -22,7 +22,7 @@ import scala.util.{Failure, Success, Try}
 class FailureDetector private(
     private val context: ActorContext[FailureDetectorSignal],
     private val timer: TimerScheduler[FailureDetectorSignal],
-    administration: ActorRef[AdministrationAPI]
+    administration: ActorRef[AdministrationMessage]
   )
   extends AbstractBehavior[FailureDetectorSignal](context) {
 
@@ -126,15 +126,14 @@ class FailureDetector private(
       case DeclareDeath(target) =>
         administration ! DeclareEvent(NodeState.DEAD, target)
         context.log.info(s"Death timer run out for ${target}, verifying with membership service for possible declaration")
-    }
-    this
+    }; this
   }
 
 }
 
 object FailureDetector {
 
-  def apply(administration: ActorRef[AdministrationAPI]): Behavior[FailureDetectorSignal] =
+  def apply(administration: ActorRef[AdministrationMessage]): Behavior[FailureDetectorSignal] =
     Behaviors.setup(context => {
       Behaviors.withTimers(timer => {
         new FailureDetector(context, timer, administration)

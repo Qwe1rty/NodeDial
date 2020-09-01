@@ -8,7 +8,7 @@ import com.roundeights.hasher.Implicits._
 import common.ServerConstants
 import common.persistence.{Compression, ProtobufSerializer}
 import io.jvm.uuid._
-import membership.Administration.AdministrationAPI
+import membership.Administration.{AdministrationMessage, DeclareReadiness}
 import membership.addresser.AddressRetriever
 import persistence.PersistenceComponent._
 import replication.ReplicatedOp.OperationType
@@ -22,7 +22,7 @@ import scala.util.{Failure, Success}
 
 class ReplicationComponent(
     private val context: ActorContext[ClientOperation],
-    membershipActor: ActorRef[AdministrationAPI],
+    membershipActor: ActorRef[AdministrationMessage],
     persistenceActor: ActorRef[PersistenceTask],
     addressRetriever: AddressRetriever,
   )
@@ -63,6 +63,9 @@ class ReplicationComponent(
   }) with ProtobufSerializer[ReplicatedOp] {
     override val messageCompanion: GeneratedMessageCompanion[ReplicatedOp] = ReplicatedOp
   }
+
+  membershipActor ! DeclareReadiness
+  context.log.info("Replication component initialized")
 
 
   /**
@@ -108,7 +111,7 @@ object ReplicationComponent {
   val REPLICATED_LOG_DATA: File  = REPLICATION_DIR/"log.data"
 
   def apply(
-    membershipActor: ActorRef[AdministrationAPI],
+    membershipActor: ActorRef[AdministrationMessage],
     persistenceActor: ActorRef[PersistenceTask],
     addressRetriever: AddressRetriever
   ): Behavior[ClientOperation] =

@@ -7,14 +7,14 @@ import akka.http.scaladsl.{Http, HttpConnectionContext}
 import com.risksense.ipaddr.IpAddress
 import common.ServerDefaults.ACTOR_REQUEST_TIMEOUT
 import common.membership._
-import membership.Administration.{AdministrationAPI, GetClusterInfo}
+import membership.Administration.{AdministrationMessage, GetClusterInfo}
 import org.slf4j.LoggerFactory
 import schema.PortConfiguration.MEMBERSHIP_PORT
 
 import scala.concurrent.{ExecutionContext, Future}
 
 
-class MembershipGRPCService(administration: ActorRef[AdministrationAPI])(implicit actorSystem: ActorSystem[_]) extends MembershipService {
+class MembershipGRPCService(administration: ActorRef[AdministrationMessage])(implicit actorSystem: ActorSystem[_]) extends MembershipService {
 
   implicit val executionContext: ExecutionContext = actorSystem.executionContext
 
@@ -55,6 +55,6 @@ class MembershipGRPCService(administration: ActorRef[AdministrationAPI])(implici
 
 object MembershipGRPCService {
 
-  def apply(administration: ActorRef[AdministrationAPI])(implicit actorSystem: ActorSystem[_]): MembershipService =
+  def apply(administration: ActorRef[AdministrationMessage])(implicit actorSystem: ActorSystem[_]): MembershipService =
     new MembershipGRPCService(administration)
 }

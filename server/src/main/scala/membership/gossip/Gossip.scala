@@ -10,7 +10,7 @@ import com.risksense.ipaddr.IpAddress
 import common.ServerDefaults
 import common.membership.types.NodeState
 import common.rpc.GRPCSettingsFactory
-import membership.Administration.{AdministrationAPI, GetClusterSize, GetRandomNode}
+import membership.Administration.{AdministrationMessage, GetClusterSize, GetRandomNode}
 import membership.gossip.Gossip.GossipSignal
 import membership.{Administration, Membership}
 import schema.ImplicitDataConversions._
@@ -26,7 +26,7 @@ import scala.util.{Failure, Success, Try}
 class Gossip[KeyType: ClassTag] private(
     private val context: ActorContext[GossipSignal[KeyType]],
     private val timer: TimerScheduler[GossipSignal[KeyType]],
-    administration: ActorRef[AdministrationAPI],
+    administration: ActorRef[AdministrationMessage],
     delay: FiniteDuration,
   )
   extends AbstractBehavior[GossipSignal[KeyType]](context) {
@@ -85,7 +85,7 @@ class Gossip[KeyType: ClassTag] private(
 object Gossip extends GRPCSettingsFactory {
 
   def apply[KeyType: ClassTag]
-  (administration: ActorRef[AdministrationAPI], delay: FiniteDuration): Behavior[GossipSignal[KeyType]] =
+  (administration: ActorRef[AdministrationMessage], delay: FiniteDuration): Behavior[GossipSignal[KeyType]] =
     Behaviors.setup(context => {
       Behaviors.withTimers(timer => {
         new Gossip[KeyType](context, timer, administration, delay)

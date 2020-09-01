@@ -4,8 +4,7 @@ import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior}
 import better.files.File
 import common.ServerConstants
-import membership.Administration.{AdministrationAPI, DeclareReadiness}
-import membership.api.{DeclareReadiness, MembershipAPI}
+import membership.Administration.{AdministrationMessage, DeclareReadiness}
 import persistence.PersistenceComponent.PersistenceTask
 import persistence.execution.PartitionedTaskExecutor
 import persistence.io.KeyStateManager
@@ -21,7 +20,7 @@ object PersistenceComponent {
 
   val PERSISTENCE_DIRECTORY: File = ServerConstants.BASE_DIRECTORY/"data"
 
-  def apply(membershipActor: ActorRef[AdministrationAPI]): Behavior[PersistenceTask] =
+  def apply(membershipActor: ActorRef[AdministrationMessage]): Behavior[PersistenceTask] =
     Behaviors.setup(new PersistenceComponent(_, membershipActor))
 
 
@@ -67,7 +66,7 @@ object PersistenceComponent {
   ) extends PersistenceTask
 }
 
-class PersistenceComponent(private val context: ActorContext[PersistenceTask], membershipActor: ActorRef[AdministrationAPI])
+class PersistenceComponent(private val context: ActorContext[PersistenceTask], membershipActor: ActorRef[AdministrationMessage])
   extends AbstractBehavior[PersistenceTask](context) {
 
   import PersistenceComponent._
@@ -79,7 +78,7 @@ class PersistenceComponent(private val context: ActorContext[PersistenceTask], m
   context.log.info(s"Directory ${PERSISTENCE_DIRECTORY.toString()} opened")
 
   membershipActor ! DeclareReadiness
-  context.log.info("Persistence actor initialized")
+  context.log.info("Persistence component initialized")
 
 
   override def onMessage(task: PersistenceTask): Behavior[PersistenceTask] = {
