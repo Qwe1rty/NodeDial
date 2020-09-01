@@ -9,6 +9,8 @@ import com.risksense.ipaddr.IpAddress
 import common.ServerDefaults.ACTOR_REQUEST_TIMEOUT
 import common.rpc.GRPCSettingsFactory
 import org.slf4j.LoggerFactory
+import replication.RaftMessages.{AppendEntriesRequest, AppendEntriesResult, AppendEntryAck, AppendEntryEvent, RequestVoteRequest, RequestVoteResult}
+import replication.RaftService.RaftServiceGrpc.RaftService
 import schema.ImplicitDataConversions._
 import schema.PortConfiguration.REPLICATION_PORT
 

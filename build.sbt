@@ -12,16 +12,26 @@ lazy val dependencies =
   new {
 
     // Networking/RPC libraries
-    val protoCommonV   = "1.17.0"
-    val grpcCommonV    = "1.17.0"
-    val scalaProtoV    = scalapb.compiler.Version.scalapbVersion
-    val uuidV          = "0.3.1"
-    val ipAddressesV   = "scala_upgrade"
+    val protoBuildV  = "0.10.8"
+    val scalaGrpcV   = scalapb.compiler.Version.scalapbVersion
 
-    val protoCommon   = "com.google.api.grpc"   % "proto-google-common-protos" % protoCommonV % "protobuf"
-    val grpcCommon    = "com.google.api.grpc"   % "grpc-google-common-protos"  % grpcCommonV  % "protobuf"
-    val scalaProto    = "com.thesamet.scalapb" %% "scalapb-runtime"            % scalaProtoV  % "protobuf"
-    val uuid          = "io.jvm.uuid"          %% "scala-uuid"                 % uuidV
+    val commonProtosUnpackV = "1.17.0-0"
+    val commonProtosV       = "1.17.0-0"
+
+    val scalaProtoV  = scalapb.compiler.Version.scalapbVersion
+    val nettyGrpcV   = scalapb.compiler.Version.grpcJavaVersion
+    val uuidV        = "0.3.1"
+    val ipAddressesV = "scala_upgrade"
+
+    val protoBuild  = "com.thesamet.scalapb" %% "compilerplugin"       % protoBuildV
+    val scalaGrpc   = "com.thesamet.scalapb" %% "scalapb-runtime-grpc" % scalaGrpcV
+
+    val commonProtosUnpack = "com.thesamet.scalapb.common-protos" %% "proto-google-common-protos-scalapb_0.10" % commonProtosUnpackV % "protobuf"
+    val commonProtos       = "com.thesamet.scalapb.common-protos" %% "proto-google-common-protos-scalapb_0.10" % commonProtosV
+
+    val scalaProto  = "com.thesamet.scalapb" %% "scalapb-runtime"      % scalaProtoV  % "protobuf"
+    val nettyGrpc   = "io.grpc"               % "grpc-netty"           % nettyGrpcV
+    val uuid        = "io.jvm.uuid"          %% "scala-uuid"           % uuidV
 
     // Akka libraries
     val akkaActorV   = "2.6.8"
@@ -55,15 +65,16 @@ lazy val ipAddresses = /* Temporary solution for now */
 
 lazy val jettyAgent = "org.mortbay.jetty.alpn" % "jetty-alpn-agent" % "2.0.9" % "runtime;test"
 
-PB.targets in Compile := Seq(
-  scalapb.gen() -> (sourceManaged in Compile).value / "scalapb"
-)
-
 
 lazy val grpcLibraryGroup = Seq(
-  dependencies.protoCommon,
-  dependencies.grpcCommon,
+  dependencies.protoBuild,
+  dependencies.scalaGrpc,
+
+  dependencies.commonProtosUnpack,
+  dependencies.commonProtos,
+
   dependencies.scalaProto,
+  dependencies.nettyGrpc,
   dependencies.uuid,
 )
 
@@ -88,13 +99,14 @@ lazy val root = (project in file("."))
 lazy val api = (project in file("api"))
   .dependsOn(ipAddresses)
   .enablePlugins(
-    AkkaGrpcPlugin,
+    ProtocPlugin,
     JavaAgent /*ALPN agent*/
   )
   .settings(
     name := "ChordialSchema",
     javaAgents += jettyAgent,
-    libraryDependencies ++= akkaLibraryGroup ++ grpcLibraryGroup
+    PB.targets in Compile := Seq(scalapb.gen() -> (sourceManaged in Compile).value / "scalapb"),
+    libraryDependencies ++= grpcLibraryGroup ++ akkaLibraryGroup
   )
   .disablePlugins(AssemblyPlugin)
 
@@ -103,7 +115,6 @@ lazy val client = (project in file("client"))
   .dependsOn(ipAddresses)
   .dependsOn(api)
   .enablePlugins(
-    AkkaGrpcPlugin,
     JavaAppPackaging,
     JavaAgent /*ALPN agent*/
   )
@@ -120,7 +131,7 @@ lazy val server = (project in file("server"))
   .dependsOn(ipAddresses)
   .dependsOn(api)
   .enablePlugins(
-    AkkaGrpcPlugin,
+    ProtocPlugin,
     JavaAppPackaging,
     JavaAgent /*ALPN agent*/
   )
@@ -128,7 +139,8 @@ lazy val server = (project in file("server"))
     name := "ChordialServer",
     assemblySettings,
     javaAgents += jettyAgent,
-    libraryDependencies ++= akkaLibraryGroup ++ loggingLibraryGroup ++ Seq(
+    PB.targets in Compile := Seq(scalapb.gen() -> (sourceManaged in Compile).value / "scalapb"),
+    libraryDependencies ++= grpcLibraryGroup ++ akkaLibraryGroup ++ loggingLibraryGroup ++ Seq(
       dependencies.betterFiles,
       dependencies.hasher,
       dependencies.uuid,
