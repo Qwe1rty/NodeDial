@@ -15,14 +15,12 @@ lazy val dependencies =
     val protoCommonV   = "1.17.0"
     val grpcCommonV    = "1.17.0"
     val scalaProtoV    = scalapb.compiler.Version.scalapbVersion
-//    val scalaCompilerV = "0.10.0"
     val uuidV          = "0.3.1"
     val ipAddressesV   = "scala_upgrade"
 
     val protoCommon   = "com.google.api.grpc"   % "proto-google-common-protos" % protoCommonV % "protobuf"
     val grpcCommon    = "com.google.api.grpc"   % "grpc-google-common-protos"  % grpcCommonV  % "protobuf"
     val scalaProto    = "com.thesamet.scalapb" %% "scalapb-runtime"            % scalaProtoV  % "protobuf"
-//    val scalaCompiler = "com.thesamet.scalapb" %% "compilerplugin"             % scalaCompilerV
     val uuid          = "io.jvm.uuid"          %% "scala-uuid"                 % uuidV
 
     // Akka libraries
@@ -65,7 +63,6 @@ PB.targets in Compile := Seq(
 lazy val grpcLibraryGroup = Seq(
   dependencies.protoCommon,
   dependencies.grpcCommon,
-//  dependencies.scalaCompiler,
   dependencies.scalaProto,
   dependencies.uuid,
 )
