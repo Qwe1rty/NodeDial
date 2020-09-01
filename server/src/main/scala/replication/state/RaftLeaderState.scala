@@ -1,6 +1,6 @@
 package replication.state
 
-import membership.Membership
+import administration.Membership
 import replication.state.RaftLeaderState.LogIndexState
 
 import scala.collection.{SortedSet, View}

@@ -1,16 +1,16 @@
-package membership.failureDetection
+package administration.failureDetection
 
+import administration.Administration.{AdministrationMessage, DeclareEvent, GetRandomNode, GetRandomNodes}
+import administration.failureDetection.FailureDetector._
+import administration.failureDetection.FailureDetectorConstants._
+import administration.{Administration, Membership}
 import akka.actor
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors, TimerScheduler}
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.util.Timeout
 import common.ServerDefaults
-import common.membership.failureDetection.{Confirmation, DirectMessage, FailureDetectorServiceClient, FollowupMessage}
-import common.membership.types.NodeState
-import membership.Administration.{AdministrationMessage, DeclareEvent, GetRandomNode, GetRandomNodes}
-import membership.failureDetection.FailureDetector._
-import membership.failureDetection.FailureDetectorConstants._
-import membership.{Administration, Membership}
+import common.administration.failureDetection.{Confirmation, DirectMessage, FailureDetectorServiceClient, FollowupMessage}
+import common.administration.types.NodeState
 import schema.ImplicitDataConversions._
 
 import scala.concurrent.ExecutionContext

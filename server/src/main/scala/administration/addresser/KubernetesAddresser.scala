@@ -1,9 +1,9 @@
-package membership.addresser
+package administration.addresser
 
 import java.net.InetAddress
 
+import administration.Administration
 import com.risksense.ipaddr.IpAddress
-import membership.Administration
 import org.slf4j.LoggerFactory
 import schema.ImplicitDataConversions._
 

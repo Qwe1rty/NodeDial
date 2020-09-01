@@ -1,5 +1,6 @@
 package replication
 
+import administration.addresser.AddressRetriever
 import akka.actor.ActorSystem
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior}
@@ -8,8 +9,7 @@ import com.roundeights.hasher.Implicits._
 import common.ServerConstants
 import common.persistence.{Compression, ProtobufSerializer}
 import io.jvm.uuid._
-import membership.Administration.{AdministrationMessage, DeclareReadiness}
-import membership.addresser.AddressRetriever
+import administration.Administration.{AdministrationMessage, DeclareReadiness}
 import persistence.PersistenceComponent._
 import replication.ReplicatedOp.OperationType
 import replication.ReplicationComponent.ClientOperation

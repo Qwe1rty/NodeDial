@@ -1,8 +1,9 @@
 package replication.roles
 
+import administration.{Administration, Membership}
 import common.rpc.{NoTask, RequestTask}
 import common.time.{CancelTimer, ResetTimer}
-import membership.{Administration, Membership}
+import membership.Administration
 import org.slf4j.{Logger, LoggerFactory}
 import replication._
 import replication.roles.RaftRole.MessageResult

@@ -1,14 +1,14 @@
-package membership
+package administration
 
 import better.files.File
 import com.roundeights.hasher.Implicits._
-import membership.Administration.rejoin
+import Administration.rejoin
 import schema.ImplicitGrpcConversions._
 
 
-private[membership] object NodeIDLoader {
+private[administration] object NodeIDLoader {
 
-  private[membership] def apply(file: File): String = {
+  private[administration] def apply(file: File): String = {
 
     if (rejoin) file.loadBytes
     else {

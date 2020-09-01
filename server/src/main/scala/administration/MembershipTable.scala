@@ -1,7 +1,7 @@
-package membership
+package administration
 
 import com.risksense.ipaddr.IpAddress
-import common.membership.types.{NodeInfo, NodeState}
+import common.administration.types.{NodeInfo, NodeState}
 
 import scala.collection.immutable.SetOps
 import scala.collection.{StrictOptimizedSetOps, immutable, mutable}
@@ -117,7 +117,7 @@ final case class MembershipTable private(
     table(nodeID).state
 
   def membershipOf(nodeID: String): Membership =
-    membership.Membership(nodeID, addressOf(nodeID))
+    administration.Membership(nodeID, addressOf(nodeID))
 
   def incrementVersion(nodeID: String): MembershipTable =
     table.get(nodeID) match {

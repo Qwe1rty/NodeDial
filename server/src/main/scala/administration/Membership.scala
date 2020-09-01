@@ -1,4 +1,4 @@
-package membership
+package administration
 
 import com.risksense.ipaddr.IpAddress
 

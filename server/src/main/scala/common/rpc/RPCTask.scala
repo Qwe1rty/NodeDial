@@ -1,6 +1,6 @@
 package common.rpc
 
-import membership.Membership
+import administration.Membership
 
 
 /**

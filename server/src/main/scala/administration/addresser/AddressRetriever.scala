@@ -1,4 +1,4 @@
-package membership.addresser
+package administration.addresser
 
 import com.risksense.ipaddr.IpAddress
 import schema.ImplicitDataConversions._

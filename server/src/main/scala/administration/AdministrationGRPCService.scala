@@ -1,4 +1,4 @@
-package membership
+package administration
 
 import akka.actor.typed.scaladsl.AskPattern._
 import akka.actor.typed.{ActorRef, ActorSystem}
@@ -6,20 +6,20 @@ import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.http.scaladsl.{Http, HttpConnectionContext}
 import com.risksense.ipaddr.IpAddress
 import common.ServerDefaults.ACTOR_REQUEST_TIMEOUT
-import common.membership._
-import membership.Administration.{AdministrationMessage, GetClusterInfo}
+import common.administration._
+import Administration.{AdministrationMessage, GetClusterInfo}
 import org.slf4j.LoggerFactory
 import schema.PortConfiguration.MEMBERSHIP_PORT
 
 import scala.concurrent.{ExecutionContext, Future}
 
 
-class MembershipGRPCService(administration: ActorRef[AdministrationMessage])(implicit actorSystem: ActorSystem[_]) extends MembershipService {
+class AdministrationGRPCService(administration: ActorRef[AdministrationMessage])(implicit actorSystem: ActorSystem[_]) extends AdministrationService {
 
   implicit val executionContext: ExecutionContext = actorSystem.executionContext
 
-  final private val log = LoggerFactory.getLogger(MembershipGRPCService.getClass)
-  final private val service: HttpRequest => Future[HttpResponse] = MembershipServiceHandler(this)
+  final private val log = LoggerFactory.getLogger(AdministrationGRPCService.getClass)
+  final private val service: HttpRequest => Future[HttpResponse] = AdministrationServiceHandler(this)
 
   Http()(actorSystem.classicSystem)
     .bindAndHandleAsync(service, interface = "0.0.0.0", port = MEMBERSHIP_PORT, HttpConnectionContext())
@@ -43,7 +43,7 @@ class MembershipGRPCService(administration: ActorRef[AdministrationMessage])(imp
     log.info(s"Full sync requested from node ${in.nodeId} with IP ${IpAddress(in.ipAddress).toString}")
 
     administration
-      .ask((ref: ActorRef[Seq[SyncInfo]]) => GetClusterInfo(ref))
+      .ask(GetClusterInfo(_: ActorRef[Seq[SyncInfo]]))
       .map(SyncResponse(_))
   }
 
@@ -53,8 +53,8 @@ class MembershipGRPCService(administration: ActorRef[AdministrationMessage])(imp
   override def updateSync(in: UpdateRequest): Future[SyncResponse] = ???
 }
 
-object MembershipGRPCService {
+object AdministrationGRPCService {
 
-  def apply(administration: ActorRef[AdministrationMessage])(implicit actorSystem: ActorSystem[_]): MembershipService =
-    new MembershipGRPCService(administration)
+  def apply(administration: ActorRef[AdministrationMessage])(implicit actorSystem: ActorSystem[_]): AdministrationService =
+    new AdministrationGRPCService(administration)
 }

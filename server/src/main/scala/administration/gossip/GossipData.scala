@@ -1,4 +1,4 @@
-package membership.gossip
+package administration.gossip
 
 import akka.grpc.GrpcClientSettings
 import akka.stream.Materializer

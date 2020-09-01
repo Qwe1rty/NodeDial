@@ -1,5 +1,8 @@
-package membership.gossip
+package administration.gossip
 
+import administration.Administration.{AdministrationMessage, GetClusterSize, GetRandomNode}
+import administration.gossip.Gossip.GossipSignal
+import administration.{Administration, Membership}
 import akka.actor
 import akka.actor.ActorSystem
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors, TimerScheduler}
@@ -8,11 +11,8 @@ import akka.grpc.GrpcClientSettings
 import akka.util.Timeout
 import com.risksense.ipaddr.IpAddress
 import common.ServerDefaults
-import common.membership.types.NodeState
+import common.administration.types.NodeState
 import common.rpc.GRPCSettingsFactory
-import membership.Administration.{AdministrationMessage, GetClusterSize, GetRandomNode}
-import membership.gossip.Gossip.GossipSignal
-import membership.{Administration, Membership}
 import schema.ImplicitDataConversions._
 import schema.PortConfiguration.MEMBERSHIP_PORT
 
@@ -66,7 +66,9 @@ class Gossip[KeyType: ClassTag] private(
 
       case PublishRequest(key: GossipKey[KeyType], payload) =>
         context.log.debug(s"Gossip request received with key ${key}")
-        context.ask(administration, GetClusterSize(_: ActorRef[Int])) { ClusterSizeReceived(key, payload, _) }
+        context.ask(administration, GetClusterSize(_: ActorRef[Int])) {
+          ClusterSizeReceived(key, payload, _)
+        }
 
       case ClusterSizeReceived(key: GossipKey[KeyType], payload, clusterSizeRequest) => clusterSizeRequest match {
         case Failure(e) => context.log.error(s"Cluster size request could not be completed: ${e}")

@@ -48,7 +48,7 @@ message Response {
     message GetResponse {
         option (scalapb.message).extends = "schema.ResponseTrait";
 
-        required bytes value = 1;
+        optional bytes value = 1;
     }
 
     message PostResponse {

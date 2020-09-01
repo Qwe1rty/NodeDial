@@ -1,7 +1,7 @@
 package replication.roles
 
+import administration.Membership
 import common.time.ContinueTimer
-import membership.Membership
 import org.slf4j.{Logger, LoggerFactory}
 import replication._
 import replication.roles.RaftRole.MessageResult

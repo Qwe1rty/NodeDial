@@ -1,10 +1,10 @@
 syntax = "proto2";
 
 option java_multiple_files = true;
-option java_package = "common.membership.types";
-option java_outer_classname = "ChordialMembershipNode";
+option java_package = "common.administration.types";
+option java_outer_classname = "ChordialAdministrationNode";
 
-package chordial.membership;
+package chordial.administration;
 
 
 /*

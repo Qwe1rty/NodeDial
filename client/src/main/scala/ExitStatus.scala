@@ -8,7 +8,6 @@ object ExitStatus {
     exitStatus.code
 }
 
-
 case object STATUS_OK extends ExitStatus {
   override def code: Int = 0
 }

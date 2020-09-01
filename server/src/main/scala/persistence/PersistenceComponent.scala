@@ -4,7 +4,7 @@ import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior}
 import better.files.File
 import common.ServerConstants
-import membership.Administration.{AdministrationMessage, DeclareReadiness}
+import administration.Administration.{AdministrationMessage, DeclareReadiness}
 import persistence.PersistenceComponent.PersistenceTask
 import persistence.execution.PartitionedTaskExecutor
 import persistence.io.KeyStateManager

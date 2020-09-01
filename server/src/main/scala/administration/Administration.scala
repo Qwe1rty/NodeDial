@@ -1,18 +1,18 @@
-package membership
+package administration
 
+import administration.Administration.AdministrationMessage
+import administration.addresser.AddressRetriever
+import administration.gossip.Gossip.PublishRequest
+import administration.gossip.{Gossip, GossipKey, GossipPayload}
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 import akka.grpc.GrpcClientSettings
 import common.ServerConstants
-import common.membership.Event.EventType.Empty
-import common.membership.Event.{EventType, Failure, Join, Refute, Suspect}
-import common.membership._
-import common.membership.types.NodeState.{ALIVE, DEAD, SUSPECT}
-import common.membership.types.{NodeInfo, NodeState}
-import membership.Administration.AdministrationMessage
-import membership.addresser.AddressRetriever
-import membership.gossip.Gossip.PublishRequest
-import membership.gossip.{Gossip, GossipKey, GossipPayload}
+import common.administration.Event.EventType.Empty
+import common.administration.Event.{EventType, Failure, Join, Refute, Suspect}
+import common.administration._
+import common.administration.types.NodeState.{ALIVE, DEAD, SUSPECT}
+import common.administration.types.{NodeInfo, NodeState}
 import org.slf4j.LoggerFactory
 import partitioning.PartitionHashes
 import schema.ImplicitDataConversions._
@@ -62,7 +62,7 @@ class Administration private(
   protected def publishExternally(event: Event): Unit = gossipActor ! PublishRequest[Event](
     GossipKey(event),
     GossipPayload(grpcClientSettings => (materializer, executionContext) =>
-      MembershipServiceClient(grpcClientSettings).publish(event)
+      AdministrationServiceClient(grpcClientSettings).publish(event)
   ))
 
   override def onMessage(msg: AdministrationMessage): Behavior[AdministrationMessage] = {
@@ -155,7 +155,7 @@ class Administration private(
               case Some(seedIP) =>
                 if (seedIP != addressRetriever.selfIP) {
                   context.log.info("Contacting seed node for membership listing")
-                  MembershipServiceClient(GrpcClientSettings.connectToServiceAt(seedIP, MEMBERSHIP_PORT))
+                  AdministrationServiceClient(GrpcClientSettings.connectToServiceAt(seedIP, MEMBERSHIP_PORT))
                     .fullSync(FullSyncRequest(nodeID, addressRetriever.selfIP))
                     .onComplete(context.self ! SeedResponse(_))
                 }
@@ -229,7 +229,7 @@ class Administration private(
 
 object Administration {
 
-  private val MEMBERSHIP_DIR       = ServerConstants.BASE_DIRECTORY/"membership"
+  private val MEMBERSHIP_DIR       = ServerConstants.BASE_DIRECTORY/ "administration"
   private val MEMBERSHIP_FILENAME  = "cluster"
   private val MEMBERSHIP_EXTENSION = ".info"
   private val MEMBERSHIP_FILE      = MEMBERSHIP_DIR/(MEMBERSHIP_FILENAME + MEMBERSHIP_EXTENSION)
@@ -249,7 +249,7 @@ object Administration {
   sealed trait AdministrationAPI extends AdministrationMessage
 
   /** Actor protocol sub-class */
-  private[membership] sealed trait DeclarationCall extends AdministrationAPI
+  private[administration] sealed trait DeclarationCall extends AdministrationAPI
 
   /**
    * Signals the membership actor that a prerequisite service is ready (essentially a
@@ -273,10 +273,10 @@ object Administration {
    *
    * @param syncResponse the seed node contact result
    */
-  private[membership] case class SeedResponse(syncResponse: Try[SyncResponse]) extends DeclarationCall
+  private[administration] case class SeedResponse(syncResponse: Try[SyncResponse]) extends DeclarationCall
 
   /** Actor protocol sub-class */
-  private[membership] sealed trait InformationCall extends AdministrationAPI
+  private[administration] sealed trait InformationCall extends AdministrationAPI
 
   /**
    * Asks the membership actor whether or not the node is ready to receive client requests
@@ -318,7 +318,7 @@ object Administration {
   final case class GetRandomNodes(nodeState: NodeState, number: Int, replyTo: ActorRef[Set[Membership]]) extends InformationCall
 
   /** Actor protocol sub-class */
-  private[membership] sealed trait SubscriptionCall extends AdministrationAPI
+  private[administration] sealed trait SubscriptionCall extends AdministrationAPI
 
   /**
    * Registers an actor to receive incoming event updates from the membership module

@@ -1,14 +1,14 @@
 syntax = "proto2";
 
 option java_multiple_files = true;
-option java_package = "common.membership";
-option java_outer_classname = "ChordialMembershipMessages";
+option java_package = "common.administration";
+option java_outer_classname = "ChordialAdministrationMessages";
 
-import "membership/NodeInfo.proto";
+import "administration/NodeInfo.proto";
 import "partitioning/PartitioningMessages.proto";
 import "scalapb/scalapb.proto";
 
-package chordial.membership;
+package chordial.administration;
 
 
 /*
@@ -19,7 +19,7 @@ package chordial.membership;
 message Event {
 
     // This is needed to add this event type to the administration component's actor protocol
-    option (scalapb.message).extends = "membership.Administration.AdministrationMessage";
+    option (scalapb.message).extends = "administration.Administration.AdministrationMessage";
 
     required string node_id = 1;
 

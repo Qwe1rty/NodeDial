@@ -1,18 +1,17 @@
+import administration.{Administration, Membership}
+import administration.addresser.KubernetesAddresser
+import administration.failureDetection.FailureDetectorGRPCService
 import akka.actor.ActorSystem
 import ch.qos.logback.classic.Level
 import com.typesafe.config.ConfigFactory
 import common.ServerConstants._
-import common.membership.types.NodeState
-import membership.addresser.KubernetesAddresser
-import membership.api.DeclareEvent
-import membership.failureDetection.{FailureDetector, FailureDetectorGRPCService}
-import membership.{Administration, Membership, MembershipGRPCService}
+import common.administration.types.NodeState
 import org.slf4j.LoggerFactory
 import persistence.PersistenceActor
 import persistence.execution.PartitionedTaskExecutor
 import replication.{RaftGRPCService, ReplicationComponent}
 import schema.LoggingConfiguration
-import service.{RequestServiceImpl, ServiceActor}
+import service.ServiceActor
 
 
 private object ChordialServer extends App {

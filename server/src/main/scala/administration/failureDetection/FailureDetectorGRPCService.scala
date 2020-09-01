@@ -1,37 +1,28 @@
-package membership.failureDetection
+package administration.failureDetection
 
-import akka.actor.ActorSystem
+import administration.failureDetection.FailureDetectorConstants._
+import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.http.scaladsl.{Http, HttpConnectionContext}
-import akka.stream.ActorMaterializer
 import com.risksense.ipaddr.IpAddress
-import schema.PortConfiguration.FAILURE_DETECTOR_PORT
-import common.membership.failureDetection._
-import membership.failureDetection.FailureDetectorConstants._
+import common.administration.failureDetection._
 import org.slf4j.LoggerFactory
 import schema.ImplicitDataConversions._
-import service.RequestServiceImpl
+import schema.PortConfiguration.FAILURE_DETECTOR_PORT
 
 import scala.concurrent.{ExecutionContext, Future}
 
 
-class FailureDetectorGRPCService(implicit actorSystem: ActorSystem) extends FailureDetectorService {
+class FailureDetectorGRPCService(implicit actorSystem: ActorSystem[_]) extends FailureDetectorService {
 
-  implicit private val materializer: ActorMaterializer = ActorMaterializer()
-  implicit private val executionContext: ExecutionContext = actorSystem.dispatcher
+  implicit private val executionContext: ExecutionContext = actorSystem.executionContext
 
-  final private val log = LoggerFactory.getLogger(RequestServiceImpl.getClass)
+  final private val log = LoggerFactory.getLogger(ClientGRPCService.getClass)
   final private val service: HttpRequest => Future[HttpResponse] = FailureDetectorServiceHandler(this)
 
-  Http()
-    .bindAndHandleAsync(
-      service,
-      interface = "0.0.0.0",
-      port = FAILURE_DETECTOR_PORT,
-      connectionContext = HttpConnectionContext())
-    .foreach(
-      binding => log.info(s"Failure detector service bound to ${binding.localAddress}")
-    )
+  Http()(actorSystem.classicSystem)
+    .bindAndHandleAsync(service, interface = "0.0.0.0", port = FAILURE_DETECTOR_PORT, HttpConnectionContext())
+    .foreach(binding => log.info(s"Failure detector service bound to ${binding.localAddress}"))
 
 
   /**
@@ -53,13 +44,12 @@ class FailureDetectorGRPCService(implicit actorSystem: ActorSystem) extends Fail
     val ipAddress: IpAddress = in.ipAddress
 
     log.info(s"Followup check request has been received on suspect ${ipAddress}, attempting to request confirmation")
-    FailureDetectorServiceClient(createGRPCSettings(ipAddress, SUSPICION_DEADLINE))
+    FailureDetectorServiceClient(createGRPCSettings(ipAddress, SUSPICION_DEADLINE)(actorSystem.classicSystem))
       .directCheck(DirectMessage())
   }
 }
 
 object FailureDetectorGRPCService {
 
-  def apply()(implicit actorSystem: ActorSystem): FailureDetectorService =
-    new FailureDetectorGRPCService()
+  def apply()(implicit actorSystem: ActorSystem[_]): FailureDetectorService = new FailureDetectorGRPCService()
 }

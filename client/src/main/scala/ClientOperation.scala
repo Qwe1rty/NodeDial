@@ -6,7 +6,6 @@
  */
 sealed trait ClientOperation
 
-
 case object UNSPECIFIED extends ClientOperation
 
 case object GET extends ClientOperation

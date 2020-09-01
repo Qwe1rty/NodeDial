@@ -1,16 +1,16 @@
 syntax = "proto2";
 
 option java_multiple_files = true;
-option java_package = "common.membership";
-option java_outer_classname = "ChordialMembershipService";
+option java_package = "common.administration";
+option java_outer_classname = "ChordialAdministrationService";
 
-import "membership/NodeEvent.proto";
-import "membership/NodeSynchronization.proto";
+import "administration/NodeEvent.proto";
+import "administration/NodeSynchronization.proto";
 
-package chordial.membership;
+package chordial.administration;
 
 
-service MembershipService {
+service AdministrationService {
 
     // Push-based synchronization RPC
     rpc Publish (Event) returns (EventReply) {}

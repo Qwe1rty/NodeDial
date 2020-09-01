@@ -1,8 +1,9 @@
 package replication.roles
 
+import administration.{Administration, Membership}
 import common.rpc.{NoTask, RPCTask, ReplyFutureTask, ReplyTask}
 import common.time.{ContinueTimer, ResetTimer, TimerTask}
-import membership.{Administration, Membership}
+import membership.Administration
 import org.slf4j.Logger
 import replication.roles.RaftRole.MessageResult
 import replication.state.{RaftEvent, RaftGlobalTimeoutKey, RaftGlobalTimeoutTick, RaftIndividualTimeoutTick, RaftMessage, RaftState, RaftTimeoutKey, RaftTimeoutTick}

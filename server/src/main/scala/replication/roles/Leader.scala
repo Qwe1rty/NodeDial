@@ -1,9 +1,10 @@
 package replication.roles
 
+import administration.{Administration, Membership}
 import common.persistence.ProtobufSerializer
 import common.rpc.{RPCTask, ReplyTask, RequestTask}
 import common.time.{ContinueTimer, ResetTimer}
-import membership.{Administration, Membership}
+import membership.Administration
 import org.slf4j.{Logger, LoggerFactory}
 import replication._
 import replication.roles.RaftRole.MessageResult
