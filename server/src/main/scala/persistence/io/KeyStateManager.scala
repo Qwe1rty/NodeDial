@@ -14,38 +14,6 @@ import scala.language.implicitConversions
 import scala.util.Try
 
 
-object KeyStateManager {
-
-  private val WRITE_AHEAD_EXTENSION = ".wal"
-  private val VALUE_EXTENSION = ".val"
-
-  def apply(taskExecutor: ActorRef[PartitionedTask], hash: String): Behavior[KeyStateAction] =
-    Behaviors.setup(new KeyStateManager(_, taskExecutor, hash))
-
-
-  /** Actor protocol */
-  type KeyStateAction = Either[PersistenceTask, IOSignal]
-  sealed trait IOSignal
-
-  /**
-   * Signal to the key state manager that the disk read job has completed, along with the result
-   *
-   * @param result the result of the disk read
-   */
-  private[io] final case class ReadCompleteSignal(
-    result: Try[Array[Byte]]
-  ) extends IOSignal
-
-  /**
-   * Signal to the key state manager that the disk write job has completed
-   *
-   * @param result the result of the disk write
-   */
-  private[io] final case class WriteCompleteSignal(
-    result: Try[Unit]
-  ) extends IOSignal
-}
-
 class KeyStateManager private(
     context: ActorContext[KeyStateAction],
     executor: ActorRef[PartitionedTask],
@@ -147,4 +115,36 @@ class KeyStateManager private(
       this
   }
 
+}
+
+object KeyStateManager {
+
+  private val WRITE_AHEAD_EXTENSION = ".wal"
+  private val VALUE_EXTENSION = ".val"
+
+  def apply(taskExecutor: ActorRef[PartitionedTask], hash: String): Behavior[KeyStateAction] =
+    Behaviors.setup(new KeyStateManager(_, taskExecutor, hash))
+
+
+  /** Actor protocol */
+  type KeyStateAction = Either[PersistenceTask, IOSignal]
+  sealed trait IOSignal
+
+  /**
+   * Signal to the key state manager that the disk read job has completed, along with the result
+   *
+   * @param result the result of the disk read
+   */
+  private[io] final case class ReadCompleteSignal(
+    result: Try[Array[Byte]]
+  ) extends IOSignal
+
+  /**
+   * Signal to the key state manager that the disk write job has completed
+   *
+   * @param result the result of the disk write
+   */
+  private[io] final case class WriteCompleteSignal(
+    result: Try[Unit]
+  ) extends IOSignal
 }

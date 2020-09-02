@@ -33,7 +33,7 @@ private[replication] trait RaftRole {
 
   /** Used for logging */
   val roleName: String
-  protected val log: Logger
+  implicit protected val log: Logger
 
 
   /** Ingest a Raft message event and return the event result */
@@ -86,7 +86,7 @@ private[replication] trait RaftRole {
    * @param state current raft state
    * @return the event result
    */
-  def processAppendEntryEvent(appendEvent: AppendEntryEvent)(node: Membership, state: RaftState): MessageResult = {
+  def processAppendEntryEvent(appendEvent: AppendEntryEvent)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult = {
 
     val forwardTask: Set[RPCTask[RaftMessage]] = state.currentLeader
       .map(ReplyFutureTask(appendEvent, _))
@@ -106,7 +106,7 @@ private[replication] trait RaftRole {
    * @param state current raft state
    * @return the event result
    */
-  def processAppendEntryRequest(appendRequest: AppendEntriesRequest)(node: Membership, state: RaftState): MessageResult = {
+  def processAppendEntryRequest(appendRequest: AppendEntriesRequest)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult = {
 
     log.info(s"Append entry request received from node ${node.nodeID} with IP address ${node.ipAddress}")
 

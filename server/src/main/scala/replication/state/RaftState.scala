@@ -27,7 +27,6 @@ object RaftState {
     new RaftState(selfInfo, replicatedLog)
 }
 
-
 class RaftState(val selfInfo: Membership, val log: ReplicatedLog) extends RaftCluster(selfInfo) {
 
   import RaftState._

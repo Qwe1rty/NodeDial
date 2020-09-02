@@ -34,6 +34,9 @@ class FailureDetector private(
   private var pendingDirectChecks: Set[Membership] = Set[Membership]()
   private var pendingFollowupChecks: Map[Membership, Int] = Map[Membership, Int]()
 
+  FailureDetectorGRPCService()(context.system)
+  context.log.info("Failure detector initialized")
+
   // Periodically initiate the failure detection cycle on a random node by triggering a direct check
   timer.startTimerAtFixedRate(DirectCheckTrigger, 1500.millisecond)
 

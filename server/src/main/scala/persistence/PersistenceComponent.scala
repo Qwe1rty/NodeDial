@@ -13,6 +13,38 @@ import persistence.io.KeyStateManager.KeyStateAction
 import scala.concurrent.{Future, Promise}
 
 
+class PersistenceComponent(private val context: ActorContext[PersistenceTask], membershipActor: ActorRef[AdministrationMessage])
+  extends AbstractBehavior[PersistenceTask](context) {
+
+  import PersistenceComponent._
+
+  private val threadPartitionActor = context.spawn(PartitionedTaskExecutor(), "threadPartitionActor")
+  private var keyMapping = Map[String, ActorRef[KeyStateAction]]()
+
+  PERSISTENCE_DIRECTORY.createDirectoryIfNotExists()
+  context.log.info(s"Directory ${PERSISTENCE_DIRECTORY.toString()} opened")
+
+  membershipActor ! DeclareReadiness
+  context.log.info("Persistence component initialized")
+
+
+  override def onMessage(task: PersistenceTask): Behavior[PersistenceTask] = {
+    context.log.info(s"Persistence task with hash ${task.keyHash} and request actor path ${task.requestPromise} received")
+
+    if (!(keyMapping isDefinedAt task.keyHash)) {
+      keyMapping += task.keyHash -> context.spawn(
+        KeyStateManager(threadPartitionActor, task.keyHash),
+        s"keyStateActor-${task.keyHash}"
+      )
+      context.log.debug(s"No existing state actor found for hash ${task.keyHash} - creating new state actor")
+    }
+
+    keyMapping(task.keyHash) ! Left(task)
+    this
+  }
+
+}
+
 object PersistenceComponent {
 
   type PersistenceData = Option[Array[Byte]]
@@ -64,36 +96,4 @@ object PersistenceComponent {
     requestPromise: Promise[PersistenceData],
     keyHash: String
   ) extends PersistenceTask
-}
-
-class PersistenceComponent(private val context: ActorContext[PersistenceTask], membershipActor: ActorRef[AdministrationMessage])
-  extends AbstractBehavior[PersistenceTask](context) {
-
-  import PersistenceComponent._
-
-  private val threadPartitionActor = context.spawn(PartitionedTaskExecutor(), "threadPartitionActor")
-  private var keyMapping = Map[String, ActorRef[KeyStateAction]]()
-
-  PERSISTENCE_DIRECTORY.createDirectoryIfNotExists()
-  context.log.info(s"Directory ${PERSISTENCE_DIRECTORY.toString()} opened")
-
-  membershipActor ! DeclareReadiness
-  context.log.info("Persistence component initialized")
-
-
-  override def onMessage(task: PersistenceTask): Behavior[PersistenceTask] = {
-    context.log.info(s"Persistence task with hash ${task.keyHash} and request actor path ${task.requestPromise} received")
-
-    if (!(keyMapping isDefinedAt task.keyHash)) {
-      keyMapping += task.keyHash -> context.spawn(
-        KeyStateManager(threadPartitionActor, task.keyHash),
-        s"keyStateActor-${task.keyHash}"
-      )
-      context.log.debug(s"No existing state actor found for hash ${task.keyHash} - creating new state actor")
-    }
-
-    keyMapping(task.keyHash) ! Left(task)
-    this
-  }
-
 }

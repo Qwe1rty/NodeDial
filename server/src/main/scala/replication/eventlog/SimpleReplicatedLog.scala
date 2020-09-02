@@ -10,40 +10,6 @@ import scala.collection.mutable
 import scala.util.{Failure, Success}
 
 
-private object SimpleReplicatedLog {
-
-  private object LogMetadata extends JavaSerializer[LogMetadata] {
-
-    def apply(elems: LogIndex*): LogMetadata =
-      new LogMetadata(0, mutable.ListBuffer[LogIndex](elems: _*))
-  }
-
-  @SerialVersionUID(100L)
-  private class LogMetadata(
-    var lastIncludedTerm: Long,
-    val offsetIndex: mutable.Buffer[LogIndex]
-  )
-  extends Serializable {
-
-    def append(term: Long, logIndex: LogIndex): Unit = {
-      if (term > lastIncludedTerm) lastIncludedTerm = term
-      offsetIndex.addOne(logIndex)
-    }
-  }
-
-
-  private object LogIndex extends JavaSerializer[LogIndex]
-
-  private case class LogIndex(
-    offset: Offset,
-    length: Int,
-    term: Long,
-  )
-
-  val INIT_LOG_INDEX: LogIndex = LogIndex(0, 0, 0)
-}
-
-
 class SimpleReplicatedLog(
     private val indexFile: File,
     private val dataFile: File
@@ -145,4 +111,37 @@ class SimpleReplicatedLog(
     }
   }
 
+}
+
+private object SimpleReplicatedLog {
+
+  private object LogMetadata extends JavaSerializer[LogMetadata] {
+
+    def apply(elems: LogIndex*): LogMetadata =
+      new LogMetadata(0, mutable.ListBuffer[LogIndex](elems: _*))
+  }
+
+  @SerialVersionUID(100L)
+  private class LogMetadata(
+    var lastIncludedTerm: Long,
+    val offsetIndex: mutable.Buffer[LogIndex]
+  )
+    extends Serializable {
+
+    def append(term: Long, logIndex: LogIndex): Unit = {
+      if (term > lastIncludedTerm) lastIncludedTerm = term
+      offsetIndex.addOne(logIndex)
+    }
+  }
+
+
+  private object LogIndex extends JavaSerializer[LogIndex]
+
+  private case class LogIndex(
+    offset: Offset,
+    length: Int,
+    term: Long,
+  )
+
+  val INIT_LOG_INDEX: LogIndex = LogIndex(0, 0, 0)
 }

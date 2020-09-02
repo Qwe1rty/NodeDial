@@ -111,11 +111,11 @@ object ReplicationComponent {
   val REPLICATED_LOG_DATA: File  = REPLICATION_DIR/"log.data"
 
   def apply(
-    membershipActor: ActorRef[AdministrationMessage],
-    persistenceActor: ActorRef[PersistenceTask],
+    membershipComponent: ActorRef[AdministrationMessage],
+    persistenceComponent: ActorRef[PersistenceTask],
     addressRetriever: AddressRetriever
   ): Behavior[ClientOperation] =
-    Behaviors.setup(new ReplicationComponent(_, membershipActor, persistenceActor, addressRetriever))
+    Behaviors.setup(new ReplicationComponent(_, membershipComponent, persistenceComponent, addressRetriever))
 
 
   /** Actor protocol */

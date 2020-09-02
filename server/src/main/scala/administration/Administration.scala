@@ -2,6 +2,7 @@ package administration
 
 import administration.Administration.AdministrationMessage
 import administration.addresser.AddressRetriever
+import administration.failureDetection.FailureDetector
 import administration.gossip.Gossip.PublishRequest
 import administration.gossip.{Gossip, GossipKey, GossipPayload}
 import akka.actor
@@ -45,6 +46,8 @@ class Administration private(
     MembershipTable(NodeInfo(nodeID, addressRetriever.selfIP, 0, NodeState.ALIVE))
 
   AdministrationGRPCService(context.self)(context.system)
+  context.spawn(FailureDetector(context.self), "failureDetector")
+
   context.log.info(s"Self IP has been detected to be ${addressRetriever.selfIP}")
   context.log.info("Administration component initialized")
 
