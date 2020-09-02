@@ -4,6 +4,7 @@ import administration.failureDetection.FailureDetectorConstants._
 import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.http.scaladsl.{Http, HttpConnectionContext}
+import akka.stream.Materializer
 import com.risksense.ipaddr.IpAddress
 import common.administration.failureDetection._
 import org.slf4j.LoggerFactory
@@ -17,8 +18,11 @@ class FailureDetectorGRPCService(implicit actorSystem: ActorSystem[_]) extends F
 
   implicit private val executionContext: ExecutionContext = actorSystem.executionContext
 
-  final private val log = LoggerFactory.getLogger(ClientGRPCService.getClass)
-  final private val service: HttpRequest => Future[HttpResponse] = FailureDetectorServiceHandler(this)
+  final private val log = LoggerFactory.getLogger(FailureDetectorGRPCService.getClass)
+  final private val service: HttpRequest => Future[HttpResponse] = FailureDetectorServiceHandler(this)(
+    Materializer.matFromSystem(actorSystem),
+    actorSystem.classicSystem
+  )
 
   Http()(actorSystem.classicSystem)
     .bindAndHandleAsync(service, interface = "0.0.0.0", port = FAILURE_DETECTOR_PORT, HttpConnectionContext())

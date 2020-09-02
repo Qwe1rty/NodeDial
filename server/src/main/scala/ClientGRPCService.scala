@@ -28,7 +28,10 @@ class ClientGRPCService(
   implicit val executionContext: ExecutionContext = actorSystem.executionContext
 
   final private val log = LoggerFactory.getLogger(ClientGRPCService.getClass)
-  final private val service: HttpRequest => Future[HttpResponse] = RequestServiceHandler(this)
+  final private val service: HttpRequest => Future[HttpResponse] = RequestServiceHandler(this)(
+    Materializer.matFromSystem(actorSystem),
+    actorSystem.classicSystem
+  )
 
   Http()(actorSystem.classicSystem)
     .bindAndHandleAsync(service, interface = "0.0.0.0", port = EXTERNAL_REQUEST_PORT, HttpConnectionContext())

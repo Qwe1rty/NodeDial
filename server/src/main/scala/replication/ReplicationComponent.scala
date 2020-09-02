@@ -40,18 +40,18 @@ class ReplicationComponent(
     val commitPromise = Promise[PersistenceData]()
     commit.operationType match {
 
-      case OperationType.Read(ReadOp(key, uuid, _)) =>
+      case OperationType.Read(ReadOp(key, uuid)) =>
         context.log.info(s"Get entry with key $key and UUID ${uuid: String} has been received as Raft commit")
         persistenceActor ! GetTask(commitPromise, byteStringToString(key).sha256)
 
-      case OperationType.Write(WriteOp(key, compressedValue, uuid, _)) =>
+      case OperationType.Write(WriteOp(key, compressedValue, uuid)) =>
         context.log.info(s"Write entry with key $key and UUID ${uuid: String} will now attempt to be committed")
         decompressBytes(compressedValue) match {
           case Success(value) => persistenceActor ! WriteTask(commitPromise, byteStringToString(key).sha256, value)
           case Failure(e) => context.log.error(s"Decompression error for key $key for reason: ${e.getLocalizedMessage}")
         }
 
-      case OperationType.Delete(DeleteOp(key, uuid, _)) =>
+      case OperationType.Delete(DeleteOp(key, uuid)) =>
         context.log.info(s"Delete entry with key $key and UUID ${uuid: String} will now attempt to be committed")
         persistenceActor ! DeleteTask(commitPromise, byteStringToString(key).sha256)
 

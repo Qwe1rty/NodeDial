@@ -4,6 +4,7 @@ import administration.Administration.AdministrationMessage
 import administration.addresser.AddressRetriever
 import administration.gossip.Gossip.PublishRequest
 import administration.gossip.{Gossip, GossipKey, GossipPayload}
+import akka.actor
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 import akka.grpc.GrpcClientSettings
@@ -32,10 +33,10 @@ class Administration private(
 
   import Administration._
 
-  implicit private val actorSystem: ActorSystem[Nothing] = context.system
-  implicit private val executionContext: ExecutionContext = actorSystem.executionContext
+  implicit private val classicSystem: actor.ActorSystem = context.system.classicSystem
+  implicit private val executionContext: ExecutionContext = context.system.executionContext
 
-  private val gossipActor = context.spawn(Gossip[Event](context.self, 200.millisecond), "gossipActor-administration")
+  private val gossip = context.spawn(Gossip[Event](context.self, 200.millisecond), "administration-gossip")
   context.log.info(s"Gossip component affiliated with administration initialized")
 
   protected var readiness: Boolean = false
@@ -43,6 +44,7 @@ class Administration private(
   protected var membershipTable: MembershipTable =
     MembershipTable(NodeInfo(nodeID, addressRetriever.selfIP, 0, NodeState.ALIVE))
 
+  AdministrationGRPCService(context.self)(context.system)
   context.log.info(s"Self IP has been detected to be ${addressRetriever.selfIP}")
   context.log.info("Administration component initialized")
 
@@ -59,7 +61,7 @@ class Administration private(
    *
    * @param event event to publish
    */
-  protected def publishExternally(event: Event): Unit = gossipActor ! PublishRequest[Event](
+  protected def publishExternally(event: Event): Unit = gossip ! PublishRequest[Event](
     GossipKey(event),
     GossipPayload(grpcClientSettings => (materializer, executionContext) =>
       AdministrationServiceClient(grpcClientSettings).publish(event)
@@ -161,18 +163,18 @@ class Administration private(
                 }
                 else {
                   readiness = true
-                  log.info("Seed IP was the same as this current node's IP, no full sync necessary")
+                  context.log.info("Seed IP was the same as this current node's IP, no full sync necessary")
                 }
               case None =>
                 readiness = true
-                log.info("No seed node specified, will assume single-node cluster readiness")
+                context.log.info("No seed node specified, will assume single-node cluster readiness")
             }
           }
 
         case DeclareEvent(nodeState, membershipPair) =>
           val targetID = membershipPair.nodeID
           val version = membershipTable.versionOf(targetID)
-          log.info(s"Declaring node ${targetID} according to detected state ${nodeState}")
+          context.log.info(s"Declaring node ${targetID} according to detected state ${nodeState}")
 
           val eventCandidate: Option[Event] = nodeState match {
             case NodeState.SUSPECT => Some(Event(targetID).withSuspect(Suspect(version)))
@@ -191,16 +193,16 @@ class Administration private(
             membershipTable ++= response.syncInfo.map(_.nodeInfo)
 
             readiness = true
-            log.info("Successful full sync response received from seed node")
+            context.log.info("Successful full sync response received from seed node")
 
             publishExternally(Event(nodeID).withJoin(Join(addressRetriever.selfIP, PartitionHashes(Nil))))
-            log.info("Broadcasting join event to other nodes")
+            context.log.info("Broadcasting join event to other nodes")
 
           case scala.util.Failure(e) =>
-            log.error(s"Was unable to retrieve membership info from seed node: ${e}")
+            context.log.error(s"Was unable to retrieve membership info from seed node: ${e}")
 
             context.self ! DeclareReadiness
-            log.error("Attempting to reconnect with seed node")
+            context.log.error("Attempting to reconnect with seed node")
         }
       }
 
@@ -237,8 +239,9 @@ object Administration {
   val rejoin: Boolean = !MEMBERSHIP_FILE.notExists
   val nodeID: String = NodeIDLoader(MEMBERSHIP_FILE)
 
-  private val log = LoggerFactory.getLogger(Administration.getClass)
-  log.info(s"Membership has determined node ID: ${nodeID}, with rejoin flag: ${rejoin}")
+  LoggerFactory.getLogger(Administration.getClass).info(
+    s"Membership has determined node ID: ${nodeID}, with rejoin flag: ${rejoin}"
+  )
 
   def apply(addressRetriever: AddressRetriever, initializationCount: Int): Behavior[AdministrationMessage] =
     Behaviors.setup(new Administration(_, addressRetriever, initializationCount))

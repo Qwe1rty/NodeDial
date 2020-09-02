@@ -1,7 +1,8 @@
 import administration.{Administration, Membership}
 import administration.addresser.KubernetesAddresser
 import administration.failureDetection.FailureDetectorGRPCService
-import akka.actor.typed.ActorSystem
+import akka.actor.typed.{ActorSystem, Behavior}
+import akka.actor.typed.scaladsl.{AbstractBehavior, Behaviors}
 import ch.qos.logback.classic.Level
 import com.typesafe.config.ConfigFactory
 import common.ServerConstants._
@@ -28,24 +29,28 @@ private object ChordialServer extends App {
   log.info("Server config loaded")
 
   log.info("Initializing actor system")
-  implicit val actorSystem: ActorSystem[Nothing] = ActorSystem(new "ChordialServer", config)
+  implicit val actorSystem: ActorSystem[Nothing] = ActorSystem(Behaviors.setup { context =>
+    new AbstractBehavior[Nothing](context) { override def onMessage(msg: Nothing): Behavior[Nothing] = {
+
+      /**
+       * Membership module components
+       *   TODO: eventually allow different address retriever methods
+       */
+      log.info("Initializing membership module components")
+      val addressRetriever = KubernetesAddresser
+      val membershipActor = context.spawn(Administration(addressRetriever, REQUIRED_TRIGGERS), "administration")
+      FailureDetectorGRPCService()
+
+      log.info("Membership module components initialized")
+
+      context.spawn()
+
+      this
+    }}
+  }, "ChordialServer", config)
 
 
-  /**
-   * Membership module components
-   *   TODO: eventually allow different address retriever methods
-   */
-  log.info("Initializing membership module components")
 
-  val addressRetriever = KubernetesAddresser
-
-  val membershipActor = Administration(addressRetriever, REQUIRED_TRIGGERS)
-  MembershipServiceImpl(membershipActor)
-
-  val failureDetectorActor = FailureDetectorActor(membershipActor)
-  FailureDetectorGRPCService()
-
-  log.info("Membership module components initialized")
 
 
   /**

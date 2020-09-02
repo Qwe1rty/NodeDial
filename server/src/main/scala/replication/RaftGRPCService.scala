@@ -5,6 +5,7 @@ import akka.grpc.GrpcClientSettings
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.http.scaladsl.{Http, HttpConnectionContext}
 import akka.pattern.ask
+import akka.stream.Materializer
 import com.risksense.ipaddr.IpAddress
 import common.ServerDefaults.ACTOR_REQUEST_TIMEOUT
 import common.rpc.GRPCSettingsFactory
@@ -34,7 +35,10 @@ class RaftGRPCService(raftActor: ActorRef)(implicit actorSystem: ActorSystem) ex
   implicit val executionContext: ExecutionContext = actorSystem.dispatcher
 
   final private val log = LoggerFactory.getLogger(RaftGRPCService.getClass)
-  final private val service: HttpRequest => Future[HttpResponse] = RaftServiceHandler(this)
+  final private val service: HttpRequest => Future[HttpResponse] = RaftServiceHandler(this)(
+    Materializer.matFromSystem(actorSystem),
+    actorSystem.classicSystem
+  )
 
   Http()
     .bindAndHandleAsync(service, interface = "0.0.0.0", port = REPLICATION_PORT, HttpConnectionContext())

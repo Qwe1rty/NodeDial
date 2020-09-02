@@ -8,6 +8,7 @@ import com.risksense.ipaddr.IpAddress
 import common.ServerDefaults.ACTOR_REQUEST_TIMEOUT
 import common.administration._
 import Administration.{AdministrationMessage, GetClusterInfo}
+import akka.stream.Materializer
 import org.slf4j.LoggerFactory
 import schema.PortConfiguration.MEMBERSHIP_PORT
 
@@ -19,7 +20,10 @@ class AdministrationGRPCService(administration: ActorRef[AdministrationMessage])
   implicit val executionContext: ExecutionContext = actorSystem.executionContext
 
   final private val log = LoggerFactory.getLogger(AdministrationGRPCService.getClass)
-  final private val service: HttpRequest => Future[HttpResponse] = AdministrationServiceHandler(this)
+  final private val service: HttpRequest => Future[HttpResponse] = AdministrationServiceHandler(this)(
+    Materializer.matFromSystem(actorSystem),
+    actorSystem.classicSystem
+  )
 
   Http()(actorSystem.classicSystem)
     .bindAndHandleAsync(service, interface = "0.0.0.0", port = MEMBERSHIP_PORT, HttpConnectionContext())

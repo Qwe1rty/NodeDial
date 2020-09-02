@@ -7,7 +7,6 @@ import akka.actor.{ActorSystem, FSM}
 import common.persistence.Serializer
 import common.rpc._
 import common.time._
-import membership.Administration
 import replication.Raft.{CommitConfirmation, CommitFunction}
 import replication.RaftGRPCService.createGRPCSettings
 import replication.roles.RaftRole.MessageResult
@@ -124,9 +123,6 @@ private[replication] class RaftFSM[Command <: Serializable](
 
   initialize()
   log.debug("Raft role FSM has been initialized")
-
-  RaftGRPCService(self)
-  log.info("Raft API service has been initialized")
 
   processTimerTask(ResetTimer(RaftGlobalTimeoutKey))
   log.info("Randomized Raft election timeout started")

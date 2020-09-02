@@ -2,8 +2,8 @@ package replication
 
 import java.util.concurrent.TimeUnit
 
-import administration.{Administration, Membership}
 import administration.addresser.AddressRetriever
+import administration.{Administration, Membership}
 import akka.actor.{ActorSystem, Props}
 import akka.pattern.ask
 import akka.util
@@ -11,9 +11,10 @@ import akka.util.Timeout
 import common.persistence.Serializer
 import common.time.TimeRange
 import io.jvm.uuid._
-import membership.Administration
+import org.slf4j.{Logger, LoggerFactory}
 import replication.Raft.CommitFunction
 import replication.eventlog.SimpleReplicatedLog
+import replication.roles.Candidate
 import replication.state.RaftState
 
 import scala.concurrent.Future
@@ -49,6 +50,9 @@ class Raft[Command <: Serializable](addresser: AddressRetriever, commitCallback:
     )),
     s"raftActor-${UUID.random}"
   )
+
+  RaftGRPCService(raft)
+  LoggerFactory.getLogger(Raft.getClass).info("Raft API service has been initialized")
 
 
   def submit(appendEntryEvent: AppendEntryEvent): Future[AppendEntryAck] = {
