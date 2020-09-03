@@ -67,7 +67,7 @@ class Administration private(
   protected def publishExternally(event: Event): Unit = gossip ! PublishRequest[Event](
     GossipKey(event),
     GossipPayload(grpcClientSettings => (materializer, executionContext) =>
-      AdministrationServiceClient(grpcClientSettings).publish(event)
+      AdministrationServiceClient(grpcClientSettings)(materializer, executionContext).publish(event)
   ))
 
   override def onMessage(msg: AdministrationMessage): Behavior[AdministrationMessage] = {
@@ -251,7 +251,7 @@ object Administration {
 
 
   /** Actor protocol: includes the generated protobuf event types */
-  sealed trait AdministrationMessage
+  trait AdministrationMessage
   sealed trait AdministrationAPI extends AdministrationMessage
 
   /** Actor protocol sub-class */

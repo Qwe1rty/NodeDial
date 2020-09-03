@@ -144,7 +144,7 @@ object FailureDetector {
     })
 
   /** Actor protocol */
-  private sealed trait FailureDetectorSignal
+  private[administration] sealed trait FailureDetectorSignal
 
   private final case object DirectCheckTrigger extends FailureDetectorSignal
   private final case class DirectRequest(potentialTarget: Option[Membership]) extends FailureDetectorSignal

@@ -4,11 +4,10 @@ import akka.actor.typed.{ActorRef, ActorSystem}
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.http.scaladsl.{Http, HttpConnectionContext}
 import akka.stream.Materializer
-import com.google.protobuf.ByteString
 import io.jvm.uuid.UUID
 import org.slf4j.LoggerFactory
 import persistence.PersistenceComponent.PersistenceData
-import replication.ReplicationComponent.{ClientOperation, DeleteOperation, ReadOperation, ReplicatedConfirmation, WriteOperation}
+import replication.ReplicationComponent._
 import schema.ImplicitGrpcConversions._
 import schema.PortConfiguration.EXTERNAL_REQUEST_PORT
 import schema.service.Request.{DeleteRequest, GetRequest, PostRequest}
@@ -44,7 +43,7 @@ class ClientGRPCService(
     val uuid = UUID.random
     log.debug(s"Get request received with key '${in.key}' and UUID $uuid")
 
-    if (in.key.isBlank) {
+    if (in.key.isEmpty) {
       Future.failed(new IllegalArgumentException("Key value cannot be empty or undefined"))
     }
     else {
@@ -58,7 +57,7 @@ class ClientGRPCService(
     val uuid = UUID.random
     log.debug(s"Post request received with key '${in.key}' and UUID $uuid")
 
-    if (in.key.isBlank) {
+    if (in.key.isEmpty) {
       Future.failed(new IllegalArgumentException("Key value cannot be empty or undefined"))
     }
     else {
@@ -72,7 +71,7 @@ class ClientGRPCService(
     val uuid = UUID.random
     log.debug(s"Delete request received with key '${in.key}' and UUID $uuid")
 
-    if (in.key.isBlank) {
+    if (in.key.isEmpty) {
       Future.failed(new IllegalArgumentException("Key value cannot be empty or undefined"))
     }
     else {

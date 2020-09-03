@@ -42,7 +42,7 @@ private[replication] case object Leader extends RaftRole with ProtobufSerializer
    * @param state current raft state
    * @return the timeout result
    */
-  override def processRaftIndividualTimeout(node: Membership, state: RaftState): MessageResult = {
+  override def processRaftIndividualTimeout(node: Membership, state: RaftState)(implicit log: Logger): MessageResult = {
 
     // For leaders, individual timeouts mean a node has not received a heartbeat/request in a while
     MessageResult(Set(RequestTask(createAppendEntriesRequest(node.nodeID, state), node)), ContinueTimer, None)
@@ -56,9 +56,9 @@ private[replication] case object Leader extends RaftRole with ProtobufSerializer
    * @param state       current raft state
    * @return the event result
    */
-  override def processAppendEntryEvent(appendEvent: AppendEntryEvent)(node: Membership, state: RaftState): MessageResult = {
+  override def processAppendEntryEvent(appendEvent: AppendEntryEvent)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult = {
 
-    val currentTerm = state.currentTerm.read().getOrElse(0)
+    val currentTerm: Long = state.currentTerm.read().getOrElse(0)
 
     val appendLogResult = for (
       bytes <- serialize(appendEvent.logEntry);
@@ -88,7 +88,7 @@ private[replication] case object Leader extends RaftRole with ProtobufSerializer
 
       case Failure(exception) =>
         log.error(
-          s"Serialization error on append entry ${appendEvent.logEntry.key} and UUID \"${appendEvent.uuid}\", on term $currentTerm: " +
+          s"Serialization error on append entry ${appendEvent.logEntry.key} and UUID ${appendEvent.uuid}, on term $currentTerm: " +
             exception.getLocalizedMessage
         )
         MessageResult(Set(ReplyTask(AppendEntryAck(success = false))), ContinueTimer, None)
@@ -103,7 +103,7 @@ private[replication] case object Leader extends RaftRole with ProtobufSerializer
    * @param state         current raft state
    * @return the event result
    */
-  override def processAppendEntryRequest(appendRequest: AppendEntriesRequest)(node: Membership, state: RaftState): MessageResult = ???
+  override def processAppendEntryRequest(appendRequest: AppendEntriesRequest)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult = ???
 
   /**
    * Handle a response from an append entry request from followers. Determines whether an entry is
@@ -113,7 +113,7 @@ private[replication] case object Leader extends RaftRole with ProtobufSerializer
    * @param state       current raft state
    * @return the event result
    */
-  override def processAppendEntryResult(appendReply: AppendEntriesResult)(node: Membership, state: RaftState): MessageResult = {
+  override def processAppendEntryResult(appendReply: AppendEntriesResult)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult = {
 
     // Due to things like network partitions, a new leader of higher term may exist. We step down in this case
     val nextRole = determineStepDown(appendReply.currentTerm)(state)
@@ -150,7 +150,7 @@ private[replication] case object Leader extends RaftRole with ProtobufSerializer
    * @param state current raft state
    * @return the event result
    */
-  override def processRequestVoteRequest(voteRequest: RequestVoteRequest)(node: Membership, state: RaftState): MessageResult =
+  override def processRequestVoteRequest(voteRequest: RequestVoteRequest)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult =
     super.processRequestVoteRequest(voteRequest)(node, state)
 
   /**
@@ -160,7 +160,7 @@ private[replication] case object Leader extends RaftRole with ProtobufSerializer
    * @param state current raft state
    * @return the event result
    */
-  override def processRequestVoteResult(voteReply: RequestVoteResult)(node: Membership, state: RaftState): MessageResult =
+  override def processRequestVoteResult(voteReply: RequestVoteResult)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult =
     super.processRequestVoteResult(voteReply)(node, state)
 
   /**

@@ -110,8 +110,10 @@ private object ChordialClient extends App {
         match {
           case Success(future) => future.value.get match {
             case Success(getResponse) =>
-              val stringValue: String = getResponse.value // Convert ByteString to String
-              println(s"GET request successful: ${stringValue}")
+              getResponse.value.map(byteStringToString) match {
+                case Some(stringValue) => println(s"GET request successful: ${stringValue}")
+                case None => println(s"GET request successful, but the key contained no associated value")
+              }
               sys.exit(STATUS_OK)
             case Failure(requestError) =>
               println(s"GET request failed: ${requestError}")

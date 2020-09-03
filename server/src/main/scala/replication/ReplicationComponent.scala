@@ -1,5 +1,6 @@
 package replication
 
+import administration.Administration.{AdministrationMessage, DeclareReadiness}
 import administration.addresser.AddressRetriever
 import akka.actor.ActorSystem
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
@@ -9,7 +10,6 @@ import com.roundeights.hasher.Implicits._
 import common.ServerConstants
 import common.persistence.{Compression, ProtobufSerializer}
 import io.jvm.uuid._
-import administration.Administration.{AdministrationMessage, DeclareReadiness}
 import persistence.PersistenceComponent._
 import replication.ReplicatedOp.OperationType
 import replication.ReplicationComponent.ClientOperation
@@ -82,7 +82,7 @@ class ReplicationComponent(
       persistenceActor ! GetTask(readPromise, key.sha256)
       this
 
-    case WriteOperation(writePromise: Promise[ReplicatedConfirmation], key, uuid, value) =>
+    case WriteOperation(writePromise: Promise[ReplicatedConfirmation], key, value, uuid) =>
 
       // Post requests must be committed by the raft group before it can be written to disk
       context.log.debug(s"Post request received with UUID ${uuid.string}")
@@ -134,8 +134,8 @@ object ReplicationComponent {
   case class WriteOperation(
     writePromise: Promise[ReplicatedConfirmation],
     key: String,
+    value: Array[Byte],
     uuid: UUID,
-    value: Array[Byte]
   ) extends ClientOperation
 
   case class DeleteOperation(

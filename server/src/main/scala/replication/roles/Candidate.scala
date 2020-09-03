@@ -35,7 +35,7 @@ override def processRaftGlobalTimeout(state: RaftState): Option[RaftRole] = Some
    * @param state current raft state
    * @return the timeout result
    */
-  override def processRaftIndividualTimeout(node: Membership, state: RaftState): MessageResult = {
+  override def processRaftIndividualTimeout(node: Membership, state: RaftState)(implicit log: Logger): MessageResult = {
 
     // For candidates, individual timeouts mean that a request vote reply was not received, so resend vote request
     state.currentTerm.read().foreach { currentTerm =>
@@ -62,7 +62,8 @@ override def processRaftGlobalTimeout(state: RaftState): Option[RaftRole] = Some
    * @param state       current raft state
    * @return the event result
    */
-  override def processAppendEntryEvent(appendEvent: AppendEntryEvent)(node: Membership, state: RaftState): MessageResult = ???
+  override def processAppendEntryEvent(appendEvent: AppendEntryEvent)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult =
+    Follower.processAppendEntryEvent(appendEvent)(node, state)
 
   /**
    * Handle an append entry request received from the leader
@@ -71,7 +72,7 @@ override def processRaftGlobalTimeout(state: RaftState): Option[RaftRole] = Some
    * @param state         current raft state
    * @return the event result
    */
-  override def processAppendEntryRequest(appendRequest: AppendEntriesRequest)(node: Membership, state: RaftState): MessageResult =
+  override def processAppendEntryRequest(appendRequest: AppendEntriesRequest)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult =
     super.processAppendEntryRequest(appendRequest)(node, state)
 
   /**
@@ -82,7 +83,7 @@ override def processRaftGlobalTimeout(state: RaftState): Option[RaftRole] = Some
    * @param state       current raft state
    * @return the event result
    */
-  override def processAppendEntryResult(appendReply: AppendEntriesResult)(node: Membership, state: RaftState): MessageResult =
+  override def processAppendEntryResult(appendReply: AppendEntriesResult)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult =
     super.processAppendEntryResult(appendReply)(node, state)
 
   /**
@@ -92,7 +93,7 @@ override def processRaftGlobalTimeout(state: RaftState): Option[RaftRole] = Some
    * @param state current raft state
    * @return the event result
    */
-  override def processRequestVoteRequest(voteRequest: RequestVoteRequest)(node: Membership, state: RaftState): MessageResult =
+  override def processRequestVoteRequest(voteRequest: RequestVoteRequest)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult =
     super.processRequestVoteRequest(voteRequest)(node, state)
 
   /**
@@ -102,7 +103,7 @@ override def processRaftGlobalTimeout(state: RaftState): Option[RaftRole] = Some
    * @param state     current raft state
    * @return the event result
    */
-  override def processRequestVoteResult(voteReply: RequestVoteResult)(node: Membership, state: RaftState): MessageResult = {
+  override def processRequestVoteResult(voteReply: RequestVoteResult)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult = {
 
     val nextRole = determineStepDown(voteReply.currentTerm)(state).orElse {
 

@@ -76,7 +76,7 @@ private[replication] trait RaftRole {
    * @param state current raft state
    * @return the timeout result
    */
-  def processRaftIndividualTimeout(node: Membership, state: RaftState): MessageResult
+  def processRaftIndividualTimeout(node: Membership, state: RaftState)(implicit log: Logger): MessageResult
 
   /**
    * Handle a direct append entry request received by this server. Only in the leader role is this
@@ -86,15 +86,7 @@ private[replication] trait RaftRole {
    * @param state current raft state
    * @return the event result
    */
-  def processAppendEntryEvent(appendEvent: AppendEntryEvent)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult = {
-
-    val forwardTask: Set[RPCTask[RaftMessage]] = state.currentLeader
-      .map(ReplyFutureTask(appendEvent, _))
-      .iterator
-      .to(Set)
-
-    MessageResult(forwardTask, ContinueTimer, None)
-  }
+  def processAppendEntryEvent(appendEvent: AppendEntryEvent)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult
 
 
   // Raft event handler methods (with default implementations)
@@ -158,7 +150,7 @@ private[replication] trait RaftRole {
    * @param state current raft state
    * @return the event result
    */
-  def processAppendEntryResult(appendReply: AppendEntriesResult)(node: Membership, state: RaftState): MessageResult =
+  def processAppendEntryResult(appendReply: AppendEntriesResult)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult =
     stepDownIfBehind(appendReply.currentTerm, state)
 
   /**
@@ -168,7 +160,7 @@ private[replication] trait RaftRole {
    * @param state current raft state
    * @return the event result
    */
-  def processRequestVoteRequest(voteRequest: RequestVoteRequest)(node: Membership, state: RaftState): MessageResult = {
+  def processRequestVoteRequest(voteRequest: RequestVoteRequest)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult = {
 
     log.info(s"Vote request received from node ${node.nodeID} with IP address ${node.ipAddress}")
 
@@ -202,7 +194,7 @@ private[replication] trait RaftRole {
    * @param state current raft state
    * @return the event result
    */
-  def processRequestVoteResult(voteReply: RequestVoteResult)(node: Membership, state: RaftState): MessageResult =
+  def processRequestVoteResult(voteReply: RequestVoteResult)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult =
     stepDownIfBehind(voteReply.currentTerm, state)
 
 

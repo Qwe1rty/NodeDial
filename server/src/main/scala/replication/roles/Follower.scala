@@ -1,11 +1,12 @@
 package replication.roles
 
 import administration.Membership
+import common.rpc.{RPCTask, ReplyFutureTask}
 import common.time.ContinueTimer
 import org.slf4j.{Logger, LoggerFactory}
 import replication._
 import replication.roles.RaftRole.MessageResult
-import replication.state.RaftState
+import replication.state.{RaftMessage, RaftState}
 
 
 private[replication] case object Follower extends RaftRole {
@@ -34,7 +35,7 @@ private[replication] case object Follower extends RaftRole {
    * @param state current raft state
    * @return the timeout result
    */
-  override def processRaftIndividualTimeout(node: Membership, state: RaftState): MessageResult = {
+  override def processRaftIndividualTimeout(node: Membership, state: RaftState)(implicit log: Logger): MessageResult = {
 
     // For followers, nothing needs to happen, and occur as holdovers from previous roles
     MessageResult(Set(), ContinueTimer, None)
@@ -48,7 +49,15 @@ private[replication] case object Follower extends RaftRole {
    * @param state       current raft state
    * @return the event result
    */
-  override def processAppendEntryEvent(appendEvent: AppendEntryEvent)(node: Membership, state: RaftState): MessageResult = ???
+  override def processAppendEntryEvent(appendEvent: AppendEntryEvent)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult = {
+
+    val forwardTask: Set[RPCTask[RaftMessage]] = state.currentLeader
+      .map(ReplyFutureTask(appendEvent, _))
+      .iterator
+      .to(Set)
+
+    MessageResult(forwardTask, ContinueTimer, None)
+  }
 
   /**
    * Handle an append entry request received from the leader
@@ -57,7 +66,7 @@ private[replication] case object Follower extends RaftRole {
    * @param state current raft state
    * @return the event result
    */
-  override def processAppendEntryRequest(appendRequest: AppendEntriesRequest)(node: Membership, state: RaftState): MessageResult =
+  override def processAppendEntryRequest(appendRequest: AppendEntriesRequest)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult =
     super.processAppendEntryRequest(appendRequest)(node, state)
 
   /**
@@ -68,7 +77,7 @@ private[replication] case object Follower extends RaftRole {
    * @param state       current raft state
    * @return the event result
    */
-  override def processAppendEntryResult(appendReply: AppendEntriesResult)(node: Membership, state: RaftState): MessageResult =
+  override def processAppendEntryResult(appendReply: AppendEntriesResult)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult =
     super.processAppendEntryResult(appendReply)(node, state)
 
   /**
@@ -78,7 +87,7 @@ private[replication] case object Follower extends RaftRole {
    * @param state current raft state
    * @return the event result
    */
-  override def processRequestVoteRequest(voteRequest: RequestVoteRequest)(node: Membership, state: RaftState): MessageResult =
+  override def processRequestVoteRequest(voteRequest: RequestVoteRequest)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult =
     super.processRequestVoteRequest(voteRequest)(node, state)
 
   /**
@@ -88,6 +97,6 @@ private[replication] case object Follower extends RaftRole {
    * @param state current raft state
    * @return the event result
    */
-  override def processRequestVoteResult(voteReply: RequestVoteResult)(node: Membership, state: RaftState): MessageResult =
+  override def processRequestVoteResult(voteReply: RequestVoteResult)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult =
     super.processRequestVoteResult(voteReply)(node, state)
 }

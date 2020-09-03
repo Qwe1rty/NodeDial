@@ -143,5 +143,5 @@ private object SimpleReplicatedLog {
     term: Long,
   )
 
-  val INIT_LOG_INDEX: LogIndex = LogIndex(0, 0, 0)
+  private val INIT_LOG_INDEX: LogIndex = LogIndex(0, 0, 0)
 }
