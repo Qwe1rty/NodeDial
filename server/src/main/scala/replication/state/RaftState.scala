@@ -4,7 +4,7 @@ import administration.Membership
 import better.files.File
 import common.ServerConstants
 import common.persistence.{PersistentLong, PersistentString}
-import replication.AppendEntryEvent
+import replication.{AppendEntryEvent, Raft}
 import replication.eventlog.ReplicatedLog
 
 import scala.collection.immutable.Queue
@@ -19,9 +19,7 @@ import scala.collection.immutable.Queue
  */
 object RaftState {
 
-  val RAFT_DIR: File       = ServerConstants.BASE_DIRECTORY/"raft"
   val RAFT_STATE_EXTENSION = ".state"
-
 
   def apply(selfInfo: Membership, replicatedLog: ReplicatedLog): RaftState =
     new RaftState(selfInfo, replicatedLog)
@@ -32,8 +30,8 @@ class RaftState(val selfInfo: Membership, val log: ReplicatedLog) extends RaftCl
   import RaftState._
 
   // Common state variables, for all roles
-  val currentTerm: PersistentLong = PersistentLong(RAFT_DIR/"currentTerm"/RAFT_STATE_EXTENSION)
-  val votedFor: PersistentString = PersistentString(RAFT_DIR/"votedFor"/RAFT_STATE_EXTENSION)
+  val currentTerm: PersistentLong = PersistentLong(Raft.RAFT_DIR/("currentTerm" + RAFT_STATE_EXTENSION))
+  val votedFor: PersistentString = PersistentString(Raft.RAFT_DIR/("votedFor" + RAFT_STATE_EXTENSION))
 
   var currentLeader: Option[Membership] = None
   var bufferedAppendEvents: Queue[AppendEntryEvent] = Queue[AppendEntryEvent]()

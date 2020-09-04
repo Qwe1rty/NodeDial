@@ -4,12 +4,14 @@ import java.util.concurrent.TimeUnit
 
 import administration.addresser.AddressRetriever
 import administration.{Administration, Membership}
+import akka.actor.Props
 import akka.actor.typed.scaladsl.ActorContext
 import akka.actor.typed.scaladsl.adapter._
-import akka.actor.{ActorSystem, Props}
 import akka.pattern.ask
-import akka.{actor, util}
 import akka.util.Timeout
+import akka.{actor, util}
+import better.files.File
+import common.ServerConstants
 import common.persistence.Serializer
 import common.time.TimeRange
 import io.jvm.uuid._
@@ -40,13 +42,15 @@ class Raft[Command <: Serializable](addresser: AddressRetriever, commitCallback:
    */
   this: Serializer[Command] =>
 
+  import Raft._
+
   implicit private val classicSystem: actor.ActorSystem = context.system.classicSystem
 
   private val raft = context.actorOf(
     Props(new RaftFSM[Command](
       RaftState(
         Membership(Administration.nodeID, addresser.selfIP),
-        new SimpleReplicatedLog(ReplicationComponent.REPLICATED_LOG_INDEX, ReplicationComponent.REPLICATED_LOG_DATA)
+        new SimpleReplicatedLog(RAFT_LOG_INDEX, RAFT_LOG_DATA)
       ),
       commitCallback,
       this
@@ -76,6 +80,10 @@ object Raft {
    */
   type CommitConfirmation = Unit
   type CommitFunction[Command] = Function[Command, Future[CommitConfirmation]]
+
+  val RAFT_DIR: File = ServerConstants.BASE_DIRECTORY/"raft"
+  val RAFT_LOG_INDEX: File = RAFT_DIR/"raft.log.index"
+  val RAFT_LOG_DATA: File  = RAFT_DIR/"raft.log.data"
 
   val ELECTION_TIMEOUT_LOWER_BOUND: FiniteDuration = FiniteDuration(150, TimeUnit.MILLISECONDS)
   val ELECTION_TIMEOUT_UPPER_BOUND: FiniteDuration = FiniteDuration(325, TimeUnit.MILLISECONDS)

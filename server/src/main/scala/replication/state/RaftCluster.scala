@@ -2,6 +2,7 @@ package replication.state
 
 import administration.Membership
 import common.persistence.{JavaSerializer, PersistentVal}
+import replication.Raft
 import replication.state.RaftState._
 
 import scala.collection.View
@@ -11,7 +12,7 @@ import scala.collection.immutable.HashSet
 abstract class RaftCluster(self: Membership) {
 
   private val raftMembership: PersistentVal[HashSet[Membership]] =
-    new PersistentVal[HashSet[Membership]](RAFT_DIR/"cluster"/RAFT_STATE_EXTENSION) with JavaSerializer[HashSet[Membership]]
+    new PersistentVal[HashSet[Membership]](Raft.RAFT_DIR/"cluster"/RAFT_STATE_EXTENSION) with JavaSerializer[HashSet[Membership]]
 
   private var attemptedQuorum: Set[Membership] = new HashSet[Membership]()
 

@@ -5,9 +5,7 @@ import administration.addresser.AddressRetriever
 import akka.actor.ActorSystem
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior}
-import better.files.File
 import com.roundeights.hasher.Implicits._
-import common.ServerConstants
 import common.persistence.{Compression, ProtobufSerializer}
 import io.jvm.uuid._
 import persistence.PersistenceComponent._
@@ -60,7 +58,7 @@ class ReplicationComponent(
     }
     commitPromise.future.map(_ => ())
 
-  }) with ProtobufSerializer[ReplicatedOp] {
+  })(context) with ProtobufSerializer[ReplicatedOp] {
     override val messageCompanion: GeneratedMessageCompanion[ReplicatedOp] = ReplicatedOp
   }
 
@@ -104,11 +102,6 @@ class ReplicationComponent(
 }
 
 object ReplicationComponent {
-
-  val REPLICATION_DIR: File = ServerConstants.BASE_DIRECTORY/"raft"
-
-  val REPLICATED_LOG_INDEX: File = REPLICATION_DIR/"log.index"
-  val REPLICATED_LOG_DATA: File  = REPLICATION_DIR/"log.data"
 
   def apply(
     membershipComponent: ActorRef[AdministrationMessage],

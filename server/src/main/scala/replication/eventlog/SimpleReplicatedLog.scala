@@ -18,6 +18,9 @@ class SimpleReplicatedLog(
 
   import SimpleReplicatedLog._
 
+  indexFile.createFileIfNotExists(createParents = true)
+  dataFile.createFileIfNotExists(createParents = true)
+
   private val dataAccess: RandomAccessFile = {
     dataFile.createFileIfNotExists()
     dataFile.newRandomAccess(File.RandomAccessMode.readWriteContentSynchronous)
