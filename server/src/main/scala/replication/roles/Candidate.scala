@@ -5,6 +5,7 @@ import common.rpc.RequestTask
 import common.time.{CancelTimer, ResetTimer}
 import org.slf4j.{Logger, LoggerFactory}
 import replication._
+import replication.roles.Follower.stepDownIfBehind
 import replication.roles.RaftRole.MessageResult
 import replication.state.{RaftIndividualTimeoutKey, RaftState}
 
@@ -73,7 +74,7 @@ override def processRaftGlobalTimeout(state: RaftState): Option[RaftRole] = Some
    * @return the event result
    */
   override def processAppendEntryRequest(appendRequest: AppendEntriesRequest)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult =
-    super.processAppendEntryRequest(appendRequest)(node, state)
+    Follower.processAppendEntryRequest(appendRequest)(node, state)
 
   /**
    * Handle a response from an append entry request from followers. Determines whether an entry is
@@ -84,7 +85,7 @@ override def processRaftGlobalTimeout(state: RaftState): Option[RaftRole] = Some
    * @return the event result
    */
   override def processAppendEntryResult(appendReply: AppendEntriesResult)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult =
-    super.processAppendEntryResult(appendReply)(node, state)
+    Follower.processAppendEntryResult(appendReply)(node, state)
 
   /**
    * Handle a vote request from a candidate, and decide whether or not to give that vote
@@ -94,7 +95,7 @@ override def processRaftGlobalTimeout(state: RaftState): Option[RaftRole] = Some
    * @return the event result
    */
   override def processRequestVoteRequest(voteRequest: RequestVoteRequest)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult =
-    super.processRequestVoteRequest(voteRequest)(node, state)
+    Follower.processRequestVoteRequest(voteRequest)(node, state)
 
   /**
    * Handle a vote reply from a follower. Determines whether this server becomes the new leader

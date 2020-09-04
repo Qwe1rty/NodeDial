@@ -41,7 +41,7 @@ class Administration private(
   context.log.info(s"Gossip component affiliated with administration initialized")
 
   protected var readiness: Boolean = false
-  protected var subscribers: Set[ActorRef] = Set[ActorRef]()
+  protected var subscribers: Set[ActorRef[AdministrationMessage]] = Set[ActorRef[AdministrationMessage]]()
   protected var membershipTable: MembershipTable =
     MembershipTable(NodeInfo(nodeID, addressRetriever.selfIP, 0, NodeState.ALIVE))
 
@@ -331,11 +331,11 @@ object Administration {
    *
    * @param actorRef actor reference
    */
-  final case class Subscribe(actorRef: ActorRef) extends SubscriptionCall
+  final case class Subscribe(actorRef: ActorRef[AdministrationMessage]) extends SubscriptionCall
 
   object Subscribe {
 
-    def apply()(implicit actorRef: ActorRef, d: Disambiguate.type): Subscribe =
+    def apply()(implicit actorRef: ActorRef[AdministrationMessage], d: Disambiguate.type): Subscribe =
       Subscribe(actorRef)
   }
 
@@ -344,11 +344,11 @@ object Administration {
    *
    * @param actorRef actor reference
    */
-  final case class Unsubscribe(actorRef: ActorRef) extends SubscriptionCall
+  final case class Unsubscribe(actorRef: ActorRef[AdministrationMessage]) extends SubscriptionCall
 
   object Unsubscribe {
 
-    def apply()(implicit actorRef: ActorRef, d: Disambiguate.type): Unsubscribe =
+    def apply()(implicit actorRef: ActorRef[AdministrationMessage], d: Disambiguate.type): Unsubscribe =
       Unsubscribe(actorRef)
   }
 

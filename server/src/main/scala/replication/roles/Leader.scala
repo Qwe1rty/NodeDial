@@ -6,6 +6,7 @@ import common.rpc.{RPCTask, ReplyTask, RequestTask}
 import common.time.{ContinueTimer, ResetTimer}
 import org.slf4j.{Logger, LoggerFactory}
 import replication._
+import replication.roles.Follower.stepDownIfBehind
 import replication.roles.RaftRole.MessageResult
 import replication.state.RaftLeaderState.LogIndexState
 import replication.state.{RaftIndividualTimeoutKey, RaftMessage, RaftState}
@@ -103,7 +104,8 @@ private[replication] case object Leader extends RaftRole with ProtobufSerializer
    * @param state         current raft state
    * @return the event result
    */
-  override def processAppendEntryRequest(appendRequest: AppendEntriesRequest)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult = ???
+  override def processAppendEntryRequest(appendRequest: AppendEntriesRequest)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult =
+    Follower.processAppendEntryRequest(appendRequest)(node, state)
 
   /**
    * Handle a response from an append entry request from followers. Determines whether an entry is
@@ -151,7 +153,7 @@ private[replication] case object Leader extends RaftRole with ProtobufSerializer
    * @return the event result
    */
   override def processRequestVoteRequest(voteRequest: RequestVoteRequest)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult =
-    super.processRequestVoteRequest(voteRequest)(node, state)
+    Follower.processRequestVoteRequest(voteRequest)(node, state)
 
   /**
    * Handle a vote reply from a follower. Determines whether this server becomes the new leader
@@ -161,7 +163,7 @@ private[replication] case object Leader extends RaftRole with ProtobufSerializer
    * @return the event result
    */
   override def processRequestVoteResult(voteReply: RequestVoteResult)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult =
-    super.processRequestVoteResult(voteReply)(node, state)
+    Follower.processRequestVoteResult(voteReply)(node, state)
 
   /**
    * Creates an AppendEntriesRequest for a given follower, based on the follower's current log length and match index.

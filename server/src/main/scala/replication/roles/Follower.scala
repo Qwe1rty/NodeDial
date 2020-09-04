@@ -1,6 +1,6 @@
 package replication.roles
 
-import administration.Membership
+import administration.{Administration, Membership}
 import common.rpc.{RPCTask, ReplyFutureTask}
 import common.time.ContinueTimer
 import org.slf4j.{Logger, LoggerFactory}
@@ -66,8 +66,49 @@ private[replication] case object Follower extends RaftRole {
    * @param state current raft state
    * @return the event result
    */
-  override def processAppendEntryRequest(appendRequest: AppendEntriesRequest)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult =
-    super.processAppendEntryRequest(appendRequest)(node, state)
+  override def processAppendEntryRequest(appendRequest: AppendEntriesRequest)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult = {
+
+    log.info(s"Append entry request received from node ${node.nodeID} with IP address ${node.ipAddress}")
+
+    state.currentTerm.read().foreach(currentTerm => {
+      val nextRole = determineStepDown(appendRequest.leaderTerm)(state)
+
+      // If leader's term is outdated, or the last log entry doesn't match
+      if (appendRequest.leaderTerm < currentTerm) {
+        rejectEntry(currentTerm, nextRole)
+      }
+
+      // If the log entries don't match up, then reject entries, and it indicates logs prior to this entry are inconsistent
+      else if (
+        state.log.lastLogIndex() < appendRequest.prevLogIndex ||
+          state.log.termOf(appendRequest.prevLogIndex) != appendRequest.prevLogTerm) {
+
+        rejectEntry(currentTerm, nextRole)
+      }
+
+      // New log entry (or entries) can now be appended
+      else {
+
+        // If the new entry conflicts with existing follower log entries, then rollback follower log
+        if (state.log.lastLogIndex() > appendRequest.prevLogIndex) {
+          state.log.rollback(appendRequest.prevLogIndex + 1)
+        }
+
+        // Append entries and send success message, implying follower & leader logs are now fully in sync
+        for (entry <- appendRequest.entries) {
+          state.log.append(appendRequest.leaderTerm, entry.logEntry.toByteArray)
+        }
+        if (appendRequest.leaderCommitIndex > state.commitIndex) {
+          state.commitIndex = Math.min(state.log.lastLogIndex(), appendRequest.leaderCommitIndex)
+        }
+
+        acceptEntry(currentTerm, nextRole)
+      }
+    })
+
+    log.error("Current term was undefined! Invalid state")
+    throw new IllegalStateException("Current Raft term value was undefined")
+  }
 
   /**
    * Handle a response from an append entry request from followers. Determines whether an entry is
@@ -78,7 +119,7 @@ private[replication] case object Follower extends RaftRole {
    * @return the event result
    */
   override def processAppendEntryResult(appendReply: AppendEntriesResult)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult =
-    super.processAppendEntryResult(appendReply)(node, state)
+    stepDownIfBehind(appendReply.currentTerm, state)
 
   /**
    * Handle a vote request from a candidate, and decide whether or not to give that vote
@@ -87,8 +128,32 @@ private[replication] case object Follower extends RaftRole {
    * @param state current raft state
    * @return the event result
    */
-  override def processRequestVoteRequest(voteRequest: RequestVoteRequest)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult =
-    super.processRequestVoteRequest(voteRequest)(node, state)
+  override def processRequestVoteRequest(voteRequest: RequestVoteRequest)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult = {
+
+    log.info(s"Vote request received from node ${node.nodeID} with IP address ${node.ipAddress}")
+
+    state.currentTerm.read().foreach(currentTerm => {
+      val nextRole = determineStepDown(voteRequest.candidateTerm)(state)
+
+      // If candidate's term is outdated, or we voted for someone else already
+      if (voteRequest.candidateTerm < currentTerm || !state.votedFor.read().contains(Administration.nodeID)) {
+        refuseVote(currentTerm, nextRole)
+      }
+
+      // If this follower's log is more up-to-date, then refuse vote
+      else if (
+        voteRequest.lastLogTerm < state.log.lastLogTerm() ||
+          voteRequest.lastLogTerm == state.log.lastLogTerm() && voteRequest.lastLogIndex < state.log.lastLogIndex()) {
+
+        refuseVote(currentTerm, nextRole)
+      }
+
+      else giveVote(currentTerm, nextRole)
+    })
+
+    log.error("Current term was undefined! Invalid state")
+    throw new IllegalStateException("Current Raft term value was undefined")
+  }
 
   /**
    * Handle a vote reply from a follower. Determines whether this server becomes the new leader
@@ -98,5 +163,5 @@ private[replication] case object Follower extends RaftRole {
    * @return the event result
    */
   override def processRequestVoteResult(voteReply: RequestVoteResult)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult =
-    super.processRequestVoteResult(voteReply)(node, state)
+    stepDownIfBehind(voteReply.currentTerm, state)
 }
