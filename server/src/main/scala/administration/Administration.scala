@@ -234,7 +234,7 @@ class Administration private(
 
 object Administration {
 
-  private val MEMBERSHIP_DIR       = ServerConstants.BASE_DIRECTORY/ "administration"
+  private val MEMBERSHIP_DIR       = ServerConstants.BASE_DIRECTORY/"administration"
   private val MEMBERSHIP_FILENAME  = "cluster"
   private val MEMBERSHIP_EXTENSION = ".info"
   private val MEMBERSHIP_FILE      = MEMBERSHIP_DIR/(MEMBERSHIP_FILENAME + MEMBERSHIP_EXTENSION)
@@ -243,7 +243,7 @@ object Administration {
   val nodeID: String = NodeIDLoader(MEMBERSHIP_FILE)
 
   LoggerFactory.getLogger(Administration.getClass).info(
-    s"Membership has determined node ID: ${nodeID}, with rejoin flag: ${rejoin}"
+    s"Membership has determined node ID: $nodeID, with rejoin flag: $rejoin"
   )
 
   def apply(addressRetriever: AddressRetriever, initializationCount: Int): Behavior[AdministrationMessage] =

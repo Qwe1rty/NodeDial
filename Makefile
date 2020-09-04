@@ -93,4 +93,5 @@ kube-clear:
 	@kubectl delete service chs -n chordial-ns
 	@kubectl delete pvc chordial-volume-claim-cdb-0 -n chordial-ns
 	@kubectl delete pvc chordial-volume-claim-cdb-1 -n chordial-ns
+	@kubectl delete pvc chordial-volume-claim-cdb-2 -n chordial-ns
 

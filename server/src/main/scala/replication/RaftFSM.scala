@@ -194,6 +194,8 @@ private[replication] class RaftFSM[Command <: Serializable](
     }
 
     case ReplyTask(reply) => sender ! reply
+
+    case NoTask => () // no need to do anything
   }
 
   /**

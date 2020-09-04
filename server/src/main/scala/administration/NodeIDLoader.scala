@@ -14,7 +14,7 @@ private[administration] object NodeIDLoader {
     else {
       val newID: String = System.nanoTime().toString.sha256
 
-      file.createDirectoryIfNotExists()
+      file.createFileIfNotExists(createParents = true)
       file.writeByteArray(newID)
 
       newID

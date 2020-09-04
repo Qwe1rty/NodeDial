@@ -4,17 +4,18 @@ import java.util.concurrent.TimeUnit
 
 import administration.addresser.AddressRetriever
 import administration.{Administration, Membership}
+import akka.actor.typed.scaladsl.ActorContext
+import akka.actor.typed.scaladsl.adapter._
 import akka.actor.{ActorSystem, Props}
 import akka.pattern.ask
-import akka.util
+import akka.{actor, util}
 import akka.util.Timeout
 import common.persistence.Serializer
 import common.time.TimeRange
 import io.jvm.uuid._
-import org.slf4j.{Logger, LoggerFactory}
+import org.slf4j.LoggerFactory
 import replication.Raft.CommitFunction
 import replication.eventlog.SimpleReplicatedLog
-import replication.roles.Candidate
 import replication.state.RaftState
 
 import scala.concurrent.Future
@@ -28,10 +29,10 @@ import scala.concurrent.duration.FiniteDuration
  * @param commitCallback the function that the Raft process calls after it has determined that a
  *                       majority of the cluster has agreed to append the log entry, and now needs to be
  *                       applied to the state machine as dictated by user code
- * @param actorSystem    the actor system
+ * @param context        the parent actor context
  * @tparam Command the command type to be applied to the state machine
  */
-class Raft[Command <: Serializable](addresser: AddressRetriever, commitCallback: CommitFunction[Command])(implicit actorSystem: ActorSystem) {
+class Raft[Command <: Serializable](addresser: AddressRetriever, commitCallback: CommitFunction[Command])(implicit context: ActorContext[_]) {
 
   /**
    * The serializer is used to convert the log entry bytes to the command object, for when
@@ -39,7 +40,9 @@ class Raft[Command <: Serializable](addresser: AddressRetriever, commitCallback:
    */
   this: Serializer[Command] =>
 
-  private val raft = actorSystem.actorOf(
+  implicit private val classicSystem: actor.ActorSystem = context.system.classicSystem
+
+  private val raft = context.actorOf(
     Props(new RaftFSM[Command](
       RaftState(
         Membership(Administration.nodeID, addresser.selfIP),
