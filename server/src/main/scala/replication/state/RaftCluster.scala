@@ -10,8 +10,8 @@ import scala.collection.immutable.HashSet
 
 abstract class RaftCluster(self: Membership) {
 
-  private val raftMembership: PersistentVal[Set[Membership]] =
-    new PersistentVal[Set[Membership]](RAFT_DIR/"cluster"/RAFT_STATE_EXTENSION) with JavaSerializer[Set[Membership]]
+  private val raftMembership: PersistentVal[HashSet[Membership]] =
+    new PersistentVal[HashSet[Membership]](RAFT_DIR/"cluster"/RAFT_STATE_EXTENSION) with JavaSerializer[HashSet[Membership]]
 
   private var attemptedQuorum: Set[Membership] = new HashSet[Membership]()
 

@@ -20,7 +20,7 @@ import scala.util.{Failure, Success, Try}
 
 
 class FailureDetector private(
-    private val context: ActorContext[FailureDetectorSignal],
+    override protected val context: ActorContext[FailureDetectorSignal],
     private val timer: TimerScheduler[FailureDetectorSignal],
     administration: ActorRef[AdministrationMessage]
   )

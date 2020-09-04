@@ -21,7 +21,7 @@ import scala.util.{Failure, Success}
 
 
 class ReplicationComponent(
-    private val context: ActorContext[ClientOperation],
+    override protected val context: ActorContext[ClientOperation],
     membershipActor: ActorRef[AdministrationMessage],
     persistenceActor: ActorRef[PersistenceTask],
     addressRetriever: AddressRetriever,

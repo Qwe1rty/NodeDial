@@ -13,7 +13,7 @@ import persistence.io.KeyStateManager.KeyStateAction
 import scala.concurrent.{Future, Promise}
 
 
-class PersistenceComponent(private val context: ActorContext[PersistenceTask], membershipActor: ActorRef[AdministrationMessage])
+class PersistenceComponent(override protected val context: ActorContext[PersistenceTask], membershipActor: ActorRef[AdministrationMessage])
   extends AbstractBehavior[PersistenceTask](context) {
 
   import PersistenceComponent._

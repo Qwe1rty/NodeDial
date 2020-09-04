@@ -24,7 +24,7 @@ import scala.util.{Failure, Success, Try}
 
 
 class Gossip[KeyType: ClassTag] private(
-    private val context: ActorContext[GossipSignal[KeyType]],
+    override protected val context: ActorContext[GossipSignal[KeyType]],
     private val timer: TimerScheduler[GossipSignal[KeyType]],
     administration: ActorRef[AdministrationMessage],
     delay: FiniteDuration,

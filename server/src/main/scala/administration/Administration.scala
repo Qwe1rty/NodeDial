@@ -26,7 +26,7 @@ import scala.util.{Success, Try}
 
 
 class Administration private(
-    private val context: ActorContext[AdministrationMessage],
+    override protected val context: ActorContext[AdministrationMessage],
     protected val addressRetriever: AddressRetriever,
     protected var initializationCount: Int
   )

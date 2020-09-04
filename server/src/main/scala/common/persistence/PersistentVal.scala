@@ -15,10 +15,7 @@ import scala.util.{Failure, Success, Try}
  * @param file file where the value should be persisted
  * @tparam A the value type
  */
-abstract class PersistentVal[A](
-    val file: File,
-  )
-  extends Serializer[A] { self =>
+abstract class PersistentVal[A](val file: File) extends Serializer[A] {
 
   private var value: Option[A] = read()
 
