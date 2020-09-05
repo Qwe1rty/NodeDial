@@ -178,8 +178,7 @@ private[replication] case object Leader extends RaftRole with ProtobufSerializer
     val logEntries: Try[Seq[LogEntry]] =
       if (state.log.lastLogIndex() < state.leaderState(nodeID).nextIndex) Success(Seq.empty)
       else {
-        deserialize(state.log(state.leaderState(nodeID).nextIndex))
-          .map(Seq[LogEntry](_))
+        deserialize(state.log(state.leaderState(nodeID).nextIndex)).map(Seq[LogEntry](_))
       }
 
     // Start building the append request if the log entry could be deserialized
@@ -199,7 +198,7 @@ private[replication] case object Leader extends RaftRole with ProtobufSerializer
         )
 
       case Failure(exception) =>
-        log.error(s"could not deserialize log entry: ${exception.getLocalizedMessage}")
+        log.error(s"Could not deserialize log entry: ${exception.getLocalizedMessage}")
         throw exception
     }
   }

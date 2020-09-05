@@ -56,7 +56,7 @@ class KeyStateManager private(
    * Processes the next task to run, without checking if one exists
    */
   private def process(): Unit = {
-    val nextTask = requestQueue.head
+    val nextTask = requestQueue.dequeue()
 
     exclusiveLocked = true
     pendingRequest = Some(nextTask.requestPromise)
@@ -104,7 +104,7 @@ class KeyStateManager private(
     case Right(signal) => signal match {
       case ReadCompleteSignal(result) =>
         context.log.debug(tag + "Read complete signal received")
-        complete(result.map(Some(_)))
+        complete(result)
         poll()
 
       case WriteCompleteSignal(result) =>
@@ -128,7 +128,7 @@ object KeyStateManager {
 
   /** Actor protocol */
   type KeyStateAction = Either[PersistenceTask, IOSignal]
-  sealed trait IOSignal
+  private[persistence] sealed trait IOSignal
 
   /**
    * Signal to the key state manager that the disk read job has completed, along with the result
@@ -136,7 +136,7 @@ object KeyStateManager {
    * @param result the result of the disk read
    */
   private[io] final case class ReadCompleteSignal(
-    result: Try[Array[Byte]]
+    result: Try[Option[Array[Byte]]]
   ) extends IOSignal
 
   /**

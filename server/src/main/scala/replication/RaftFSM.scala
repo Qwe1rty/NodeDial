@@ -235,7 +235,7 @@ private[replication] class RaftFSM[Command <: Serializable](
         Future.failed(new IllegalArgumentException("unknown Raft request type"))
     }
 
-    startSingleTimer(node.nodeID, RaftIndividualTimeoutTick(node.nodeID), Raft.INDIVIDUAL_NODE_TIMEOUT)
+    processTimerTask(ResetTimer(RaftIndividualTimeoutKey(node.nodeID)))
     futureReply
   }
 
@@ -257,8 +257,11 @@ private[replication] class RaftFSM[Command <: Serializable](
     case ResetTimer(key) => key match {
       case RaftGlobalTimeoutKey =>
         startSingleTimer(ELECTION_TIMER_NAME, RaftGlobalTimeoutTick, TIMEOUT_RANGE.random())
+        log.debug("Resetting election timer")
+
       case RaftIndividualTimeoutKey(nodeID) =>
         startSingleTimer(nodeID, RaftIndividualTimeoutTick(nodeID), Raft.INDIVIDUAL_NODE_TIMEOUT)
+        log.debug(s"Resetting individual node heartbeat timer: $nodeID")
     }
 
     case ContinueTimer => () // no need to do anything

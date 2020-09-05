@@ -66,8 +66,7 @@ class Raft[Command <: Serializable](addresser: AddressRetriever, commitCallback:
     implicit def timeout: util.Timeout = Timeout(Raft.NEW_LOG_ENTRY_TIMEOUT)
 
     (raft ? appendEntryEvent)
-      .mapTo[Future[AppendEntryAck]]
-      .flatten
+      .mapTo[AppendEntryAck]
   }
 }
 

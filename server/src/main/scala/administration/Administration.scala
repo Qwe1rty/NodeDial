@@ -38,7 +38,7 @@ class Administration private(
   implicit private val executionContext: ExecutionContext = context.system.executionContext
 
   private val gossip = context.spawn(Gossip[Event](context.self, 200.millisecond), "administration-gossip")
-  context.log.info(s"Gossip component affiliated with administration initialized")
+  context.log.info(s"Gossip component for administration initialized")
 
   protected var readiness: Boolean = false
   protected var subscribers: Set[ActorRef[AdministrationMessage]] = Set[ActorRef[AdministrationMessage]]()

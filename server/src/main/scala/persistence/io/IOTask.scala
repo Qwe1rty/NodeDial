@@ -16,7 +16,9 @@ private[persistence] sealed trait IOTask {
 private[persistence] case class ReadIOTask(valueFile: File)(implicit stateActor: ActorRef[KeyStateAction]) extends IOTask {
 
   override def execute()(implicit executionContext: ExecutionContext): Unit = {
-    stateActor ! Right(ReadCompleteSignal(Try(valueFile.loadBytes)))
+    stateActor ! Right(ReadCompleteSignal(
+      if (valueFile.exists) Try(Some(valueFile.loadBytes)) else Success(None)
+    ))
   }
 }
 
