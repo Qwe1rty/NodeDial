@@ -41,6 +41,9 @@ abstract class RaftCluster(self: Membership) {
   def iterator(): Iterator[Membership] =
     get.iterator
 
+  def clusterSize(): Int =
+    raftMembership.read().get.size
+
 
   def registerReply(nodeID: String): Unit = if (raftMembership.read().get.contains(nodeID)) {
     attemptedQuorum += nodeID

@@ -46,7 +46,17 @@ private[replication] case object Leader extends RaftRole with ProtobufSerializer
   override def processRaftIndividualTimeout(nodeID: String)(state: RaftState)(implicit log: Logger): MessageResult = {
 
     // For leaders, individual timeouts mean a node has not received a heartbeat/request in a while
-    MessageResult(Set(RequestTask(createAppendEntriesRequest(nodeID, state), nodeID)), ContinueTimer, None)
+    val requestTask: Set[RPCTask[RaftMessage]] =
+      if (nodeID == Administration.nodeID) {
+        log.debug("Individual leader timeout reached for self, will not perform any RPC action")
+        Set.empty
+      }
+      else {
+        log.info(s"Individual leader timeout reached for node $nodeID")
+        Set(RequestTask(createAppendEntriesRequest(nodeID, state), nodeID))
+      }
+
+    MessageResult(requestTask, ContinueTimer, None)
   }
 
   /**
@@ -69,6 +79,13 @@ private[replication] case object Leader extends RaftRole with ProtobufSerializer
     appendLogResult match {
       case Success(_) =>
 
+        // Leader doesn't make a network call to itself so it has to manually update its log index record
+        state.leaderState = state.leaderState.patch(Administration.nodeID, _ => LogIndexState(
+          state.log.lastLogIndex() + 1,
+          state.log.lastLogIndex(),
+        ))
+        if (state.clusterSize() == 1) state.commitIndex += 1
+
         val appendEntryRequest = AppendEntriesRequest(
           currentTerm,
           Administration.nodeID,
@@ -81,6 +98,7 @@ private[replication] case object Leader extends RaftRole with ProtobufSerializer
         // Send all followers with up-to-date logs a new AppendEntriesRequest
         val matchingFollowers: Set[RPCTask[RaftMessage]] =
           state.cluster()
+            .filter(node => node.nodeID != Administration.nodeID)
             .filter(node => state.leaderState(node.nodeID).matchIndex == state.log.lastLogIndex() - 1)
             .map(membership => RequestTask(appendEntryRequest, membership.nodeID))
             .toSet
@@ -120,7 +138,7 @@ private[replication] case object Leader extends RaftRole with ProtobufSerializer
     // Due to things like network partitions, a new leader of higher term may exist. We step down in this case
     val nextRole = determineStepDown(appendReply.currentTerm)(state)
     if (nextRole.contains(Follower)) {
-      return MessageResult(Set(), ContinueTimer, nextRole)
+      return MessageResult(Set.empty, ContinueTimer, nextRole)
     }
 
     // If successful, we're guaranteed that the follower log is consistent with the leader log, and we need to update
@@ -135,7 +153,7 @@ private[replication] case object Leader extends RaftRole with ProtobufSerializer
       val sortedMatchIndexes = state.leaderState.matches().toSeq.sorted
       state.commitIndex = sortedMatchIndexes((sortedMatchIndexes.size - 1) / 2)
 
-      MessageResult(Set(), ResetTimer(RaftIndividualTimeoutKey(appendReply.followerId)), None)
+      MessageResult(Set.empty, ResetTimer(RaftIndividualTimeoutKey(appendReply.followerId)), None)
     }
 
     // Otherwise, follower log is inconsistent with leader log, so we roll back one entry and retry the request

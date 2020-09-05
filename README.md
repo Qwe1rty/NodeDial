@@ -101,9 +101,6 @@ cluster (if you'd like to)
 ---
 ## Kubernetes Cluster Setup
 
-**Disclaimer: This has currently only been tested using version 1.14.x of the Kubernetes server. Please 
-be on the lookout for potential issues when using other versions of Kubernetes**
-
 If everything seems to work okay, you can now set up a Kubernetes cluster! Note that this section may
 skip over details about setting up non-Chordial related Kubernetes components (such as the DNS 
 service), so some familiarity with Kubernetes would be really helpful
@@ -161,9 +158,6 @@ get this sort of log output:
 If it looks something like that, you're all set to start adding new nodes to the cluster
 
 ### Cluster Scaling
-
-**Note that log snippets for the rest of the article will replace the dispatcher source (such as
-`[ChordialServer-akka.actor.default-dispatcher-13]`) with `[...]` for brevity**
 
 To scale the number of replicas in the `StatefulSet`, you will need to run the command:
 `kubectl scale statefulset cdb -n chordial-ns --replicas=${REPLICA_COUNT}`. This will add new pods one-by-one 
@@ -235,8 +229,22 @@ cluster seed node (the hostname `cdb-0.chs.chordial-ns.svc.cluster.local`)
 Without a DNS server, it is still possible to have future nodes scaled automatically, but it will require
 you to manually specify the seed node IP address into the Kubernetes `StatefulSet` configuration. The
 program will attempt to read this IP address from the environment variable `SEED_IP` if it fails to
-read the variable `SEED_NODE`.
-_**TODO elaborate on this more**_ 
+read the variable `SEED_NODE`. 
+
+
+---
+## Replicas and Raft
+
+When starting up a single node, you'll notice that it immediately begins the election process. Since there is 
+nobody else to provide votes, it will win and become leader for Term 1. Once it has become leader, it can process
+client POST requests. Here is an example of what a `post -k "hello" -v "world"` request looks like going through Raft:
+
+```
+16:39:22.693 [...] INFO replication.RaftFSM - Starting leader election for new term: 1
+16:39:22.894 [...] INFO replication.RaftFSM - Election won, becoming leader of term 1
+
+TODO: complete this section
+```
 
 _**Section under construction! Please come back another time**_
 

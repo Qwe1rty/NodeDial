@@ -4,7 +4,9 @@ import java.io.RandomAccessFile
 
 import better.files.File
 import common.persistence.JavaSerializer
+import org.slf4j.{Logger, LoggerFactory}
 import replication.eventlog.ReplicatedLog.Offset
+import replication.roles.Leader
 
 import scala.collection.mutable
 import scala.util.{Failure, Success}
@@ -17,6 +19,8 @@ class SimpleReplicatedLog(
   extends ReplicatedLog {
 
   import SimpleReplicatedLog._
+
+  private val log: Logger = LoggerFactory.getLogger(SimpleReplicatedLog.getClass) // DEBUG ONLY, REMOVE LATER
 
   private val dataAccess: RandomAccessFile = {
     dataFile.createFileIfNotExists(createParents = true)
@@ -39,6 +43,8 @@ class SimpleReplicatedLog(
 
   override def apply(index: Int): Array[Byte] = {
     val entry = new Array[Byte](lengthOf(index))
+    log.debug(s"Retrieved log entry #$index at offset ${offsetOf(index)} and length ${entry.length}: ${entry.map("%02X" format _).mkString}") // DEBUG ONLY, REMOVE LATER
+
     dataAccess.read(entry, offsetOf(index), lengthOf(index))
     entry
   }
@@ -46,17 +52,11 @@ class SimpleReplicatedLog(
   // Note: important that metadata is updated AFTER the data itself, to prevent
   // invalid state
   override def append(term: Long, entry: Array[Byte]): Unit = {
-    val logIndex = LogIndex(dataFile.size.toInt, entry.length, term)
+    log.debug(s"Appending log entry #${metadata.size} at offset ${dataFile.size.toInt} and length ${entry.length}: ${entry.map("%02X" format _).mkString}") // DEBUG ONLY, REMOVE LATER
 
-    LogIndex.serialize(logIndex) match {
-        
-      case Success(bytes) =>
-        dataFile.appendByteArray(bytes)
-        metadata.append(term, logIndex)
-        saveMetadata(metadata)
-
-      case Failure(exception) => throw exception
-    }
+    dataFile.appendByteArray(entry)
+    metadata.append(term, LogIndex(dataFile.size.toInt, entry.length, term))
+    saveMetadata(metadata)
   }
 
   override def slice(from: Int, until: Int): Array[Byte] = {
@@ -133,6 +133,8 @@ private object SimpleReplicatedLog {
       if (term > lastIncludedTerm) lastIncludedTerm = term
       offsetIndex.addOne(logIndex)
     }
+
+    def size: Int = offsetIndex.size
   }
 
 

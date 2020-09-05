@@ -235,6 +235,7 @@ private[replication] class RaftFSM[Command <: Serializable](
         Future.failed(new IllegalArgumentException("unknown Raft request type"))
     }
 
+    log.debug(s"Message sent to member ${node.nodeID} with IP address ${node.ipAddress.toString}")
     processTimerTask(ResetTimer(RaftIndividualTimeoutKey(node.nodeID)))
     futureReply
   }
