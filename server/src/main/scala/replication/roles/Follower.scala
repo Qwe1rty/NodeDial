@@ -31,11 +31,11 @@ private[replication] case object Follower extends RaftRole {
    * a timeout for a specific node can occur if it hasn't been contacted in a while, necessitating
    * a heartbeat message to be sent out
    *
-   * @param node  the node that timed out
+   * @param nodeID  the node that timed out
    * @param state current raft state
    * @return the timeout result
    */
-  override def processRaftIndividualTimeout(node: Membership, state: RaftState)(implicit log: Logger): MessageResult = {
+  override def processRaftIndividualTimeout(nodeID: String)(state: RaftState)(implicit log: Logger): MessageResult = {
 
     // For followers, nothing needs to happen, and occur as holdovers from previous roles
     MessageResult(Set(), ContinueTimer, None)
@@ -49,10 +49,10 @@ private[replication] case object Follower extends RaftRole {
    * @param state       current raft state
    * @return the event result
    */
-  override def processAppendEntryEvent(appendEvent: AppendEntryEvent)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult = {
+  override def processAppendEntryEvent(appendEvent: AppendEntryEvent)(state: RaftState)(implicit log: Logger): MessageResult = {
 
     val forwardTask: Set[RPCTask[RaftMessage]] = state.currentLeader
-      .map(ReplyFutureTask(appendEvent, _))
+      .map(leader => ReplyFutureTask(appendEvent, leader.nodeID))
       .iterator
       .to(Set)
 
@@ -66,48 +66,45 @@ private[replication] case object Follower extends RaftRole {
    * @param state current raft state
    * @return the event result
    */
-  override def processAppendEntryRequest(appendRequest: AppendEntriesRequest)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult = {
+  override def processAppendEntryRequest(appendRequest: AppendEntriesRequest)(state: RaftState)(implicit log: Logger): MessageResult = {
 
-    log.info(s"Append entry request received from node ${node.nodeID} with IP address ${node.ipAddress}")
+    log.info(s"Append entry request received from node ${appendRequest.leaderId} with term ${appendRequest.leaderTerm}")
 
-    state.currentTerm.read().foreach(currentTerm => {
-      val nextRole = determineStepDown(appendRequest.leaderTerm)(state)
+    val currentTerm: Long = state.currentTerm.read().getOrElse(0)
+    val nextRole = determineStepDown(appendRequest.leaderTerm)(state)
 
-      // If leader's term is outdated, or the last log entry doesn't match
-      if (appendRequest.leaderTerm < currentTerm) {
-        rejectEntry(currentTerm, nextRole)
+    // If leader's term is outdated, or the last log entry doesn't match
+    if (appendRequest.leaderTerm < currentTerm) {
+      rejectEntry(currentTerm, nextRole)
+    }
+
+    // If the log entries don't match up, then reject entries, and it indicates logs prior to this entry are inconsistent
+    else if (
+      state.log.lastLogIndex() < appendRequest.prevLogIndex ||
+        state.log.termOf(appendRequest.prevLogIndex) != appendRequest.prevLogTerm) {
+
+      rejectEntry(currentTerm, nextRole)
+    }
+
+    // New log entry (or entries) can now be appended
+    else {
+
+      // If the new entry conflicts with existing follower log entries, then rollback follower log
+      if (state.log.lastLogIndex() > appendRequest.prevLogIndex) {
+        state.log.rollback(appendRequest.prevLogIndex + 1)
       }
 
-      // If the log entries don't match up, then reject entries, and it indicates logs prior to this entry are inconsistent
-      else if (
-        state.log.lastLogIndex() < appendRequest.prevLogIndex ||
-          state.log.termOf(appendRequest.prevLogIndex) != appendRequest.prevLogTerm) {
-
-        rejectEntry(currentTerm, nextRole)
+      // Append entries and send success message, implying follower & leader logs are now fully in sync
+      for (entry <- appendRequest.entries) {
+        state.log.append(appendRequest.leaderTerm, entry.logEntry.toByteArray)
+      }
+      if (appendRequest.leaderCommitIndex > state.commitIndex) {
+        state.commitIndex = Math.min(state.log.lastLogIndex(), appendRequest.leaderCommitIndex)
       }
 
-      // New log entry (or entries) can now be appended
-      else {
+      acceptEntry(currentTerm, nextRole)
+    }
 
-        // If the new entry conflicts with existing follower log entries, then rollback follower log
-        if (state.log.lastLogIndex() > appendRequest.prevLogIndex) {
-          state.log.rollback(appendRequest.prevLogIndex + 1)
-        }
-
-        // Append entries and send success message, implying follower & leader logs are now fully in sync
-        for (entry <- appendRequest.entries) {
-          state.log.append(appendRequest.leaderTerm, entry.logEntry.toByteArray)
-        }
-        if (appendRequest.leaderCommitIndex > state.commitIndex) {
-          state.commitIndex = Math.min(state.log.lastLogIndex(), appendRequest.leaderCommitIndex)
-        }
-
-        acceptEntry(currentTerm, nextRole)
-      }
-    })
-
-    log.error("Current term was undefined! Invalid state")
-    throw new IllegalStateException("Current Raft term value was undefined")
   }
 
   /**
@@ -118,7 +115,7 @@ private[replication] case object Follower extends RaftRole {
    * @param state       current raft state
    * @return the event result
    */
-  override def processAppendEntryResult(appendReply: AppendEntriesResult)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult =
+  override def processAppendEntryResult(appendReply: AppendEntriesResult)(state: RaftState)(implicit log: Logger): MessageResult =
     stepDownIfBehind(appendReply.currentTerm, state)
 
   /**
@@ -128,31 +125,27 @@ private[replication] case object Follower extends RaftRole {
    * @param state current raft state
    * @return the event result
    */
-  override def processRequestVoteRequest(voteRequest: RequestVoteRequest)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult = {
+  override def processRequestVoteRequest(voteRequest: RequestVoteRequest)(state: RaftState)(implicit log: Logger): MessageResult = {
 
-    log.info(s"Vote request received from node ${node.nodeID} with IP address ${node.ipAddress}")
+    log.info(s"Vote request received from node ${voteRequest.candidateId} with term ${voteRequest.candidateTerm}")
 
-    state.currentTerm.read().foreach(currentTerm => {
-      val nextRole = determineStepDown(voteRequest.candidateTerm)(state)
+    val currentTerm: Long = state.currentTerm.read().getOrElse(0)
+    val nextRole = determineStepDown(voteRequest.candidateTerm)(state)
 
-      // If candidate's term is outdated, or we voted for someone else already
-      if (voteRequest.candidateTerm < currentTerm || !state.votedFor.read().contains(Administration.nodeID)) {
-        refuseVote(currentTerm, nextRole)
-      }
+    // If candidate's term is outdated, or we voted for someone else already
+    if (voteRequest.candidateTerm < currentTerm || !state.votedFor.read().contains(Administration.nodeID)) {
+      refuseVote(currentTerm, nextRole)
+    }
 
-      // If this follower's log is more up-to-date, then refuse vote
-      else if (
-        voteRequest.lastLogTerm < state.log.lastLogTerm() ||
-          voteRequest.lastLogTerm == state.log.lastLogTerm() && voteRequest.lastLogIndex < state.log.lastLogIndex()) {
+    // If this follower's log is more up-to-date, then refuse vote
+    else if (
+      voteRequest.lastLogTerm < state.log.lastLogTerm() ||
+        voteRequest.lastLogTerm == state.log.lastLogTerm() && voteRequest.lastLogIndex < state.log.lastLogIndex()) {
 
-        refuseVote(currentTerm, nextRole)
-      }
+      refuseVote(currentTerm, nextRole)
+    }
 
-      else giveVote(currentTerm, nextRole)
-    })
-
-    log.error("Current term was undefined! Invalid state")
-    throw new IllegalStateException("Current Raft term value was undefined")
+    else giveVote(currentTerm, nextRole)
   }
 
   /**
@@ -162,6 +155,6 @@ private[replication] case object Follower extends RaftRole {
    * @param state current raft state
    * @return the event result
    */
-  override def processRequestVoteResult(voteReply: RequestVoteResult)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult =
+  override def processRequestVoteResult(voteReply: RequestVoteResult)(state: RaftState)(implicit log: Logger): MessageResult =
     stepDownIfBehind(voteReply.currentTerm, state)
 }

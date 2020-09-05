@@ -1,17 +1,5 @@
 package replication.state
 
-import administration.Membership
-
-
-/**
- * RaftEvent is any Raft message that has the identity of its origin also
- * included
- *
- * @param node node that produced message
- * @param message the Raft message
- */
-case class RaftEvent(node: Membership, message: RaftMessage)
-
 
 // NOTE: The below traits are inherited by the Raft generated protobuf
 // messages!!

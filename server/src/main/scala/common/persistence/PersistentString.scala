@@ -6,14 +6,6 @@ import schema.ImplicitGrpcConversions._
 import scala.util.Try
 
 
-object PersistentString {
-
-  def apply(file: File): PersistentString = {
-    new PersistentString(file)
-  }
-}
-
-
 class PersistentString(file: File) extends PersistentVal[String](file) {
 
   /**
@@ -30,3 +22,9 @@ class PersistentString(file: File) extends PersistentVal[String](file) {
     byteArrayToString(bytes)
   }
 }
+
+object PersistentString {
+
+  def apply(file: File): PersistentString = new PersistentString(file)
+}
+

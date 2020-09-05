@@ -30,7 +30,7 @@ import scala.util.{Failure, Success, Try}
  * @tparam Command the serializable type that will be replicated in the Raft log
  */
 private[replication] class RaftFSM[Command <: Serializable](
-    private val initialState: RaftState,
+    private val state: RaftState,
     private val commitCallback: CommitFunction[Command],
     private val serializer: Serializer[Command]
   )(
@@ -63,7 +63,7 @@ private[replication] class RaftFSM[Command <: Serializable](
   // Will always start off as a Follower on startup, even if it was a Candidate or Leader before.
   // All volatile raft state variables will be zero-initialized, but persisted states will
   // be read from file and restored.
-  startWith(Follower, initialState)
+  startWith(Follower, state)
 
   // Define the event handling for all Raft roles, along with an error handling case
   when(Follower)(onReceive(Follower))
@@ -133,7 +133,7 @@ private[replication] class RaftFSM[Command <: Serializable](
 
       // Handle event message, one of 3 types: Raft message event, timeout event, or commit event
       val MessageResult(rpcTasks, timerTask, newRole) = receive match {
-        case event:   RaftEvent       => currentRole.processRaftEvent(event, state)
+        case message: RaftMessage     => currentRole.processRaftEvent(message, state)
         case timeout: RaftTimeoutTick => currentRole.processRaftTimeout(timeout, state)
         case persist: RaftCommitTick  => state.commitInProgress = false
           persist.commitResult match {
@@ -182,15 +182,15 @@ private[replication] class RaftFSM[Command <: Serializable](
       })
     }
 
-    case RequestTask(task, node) => task match {
-      case request: RaftRequest => message(request, node).onComplete {
+    case RequestTask(task, nodeID) => task match {
+      case request: RaftRequest => message(request, state.member(nodeID)).onComplete {
         case Success(event)  => self ! event
         case Failure(reason) => log.debug(s"RPC request failed: ${reason.getLocalizedMessage}")
       }
     }
 
-    case ReplyFutureTask(task, node) => task match {
-      case request: RaftRequest => sender ! message(request, node)
+    case ReplyFutureTask(task, nodeID) => task match {
+      case request: RaftRequest => sender ! message(request, state.member(nodeID))
     }
 
     case ReplyTask(reply) => sender ! reply
@@ -205,7 +205,11 @@ private[replication] class RaftFSM[Command <: Serializable](
    * @return set of futures, each future corresponding to a reply from a node
    */
   private def broadcast(request: RaftRequest): Set[Future[RaftResult]] =
-    stateData.cluster().map(message(request, _)).toSet
+    stateData
+      .cluster()
+      .filter(_.nodeID != Administration.nodeID)
+      .map(message(request, _))
+      .toSet
 
   /**
    * Send a new RPC request message to a specific node
@@ -231,7 +235,7 @@ private[replication] class RaftFSM[Command <: Serializable](
         Future.failed(new IllegalArgumentException("unknown Raft request type"))
     }
 
-    startSingleTimer(node.nodeID, RaftIndividualTimeoutTick(node), Raft.INDIVIDUAL_NODE_TIMEOUT)
+    startSingleTimer(node.nodeID, RaftIndividualTimeoutTick(node.nodeID), Raft.INDIVIDUAL_NODE_TIMEOUT)
     futureReply
   }
 
@@ -246,15 +250,15 @@ private[replication] class RaftFSM[Command <: Serializable](
       startSingleTimer(ELECTION_TIMER_NAME, RaftGlobalTimeoutTick, timeout)
 
     case CancelTimer(key) => key match {
-      case RaftGlobalTimeoutKey           => cancelTimer(ELECTION_TIMER_NAME)
-      case RaftIndividualTimeoutKey(node) => cancelTimer(node.nodeID)
+      case RaftGlobalTimeoutKey             => cancelTimer(ELECTION_TIMER_NAME)
+      case RaftIndividualTimeoutKey(nodeID) => cancelTimer(nodeID)
     }
 
     case ResetTimer(key) => key match {
       case RaftGlobalTimeoutKey =>
         startSingleTimer(ELECTION_TIMER_NAME, RaftGlobalTimeoutTick, TIMEOUT_RANGE.random())
-      case RaftIndividualTimeoutKey(node) =>
-        startSingleTimer(node.nodeID, RaftIndividualTimeoutTick(node), Raft.INDIVIDUAL_NODE_TIMEOUT)
+      case RaftIndividualTimeoutKey(nodeID) =>
+        startSingleTimer(nodeID, RaftIndividualTimeoutTick(nodeID), Raft.INDIVIDUAL_NODE_TIMEOUT)
     }
 
     case ContinueTimer => () // no need to do anything

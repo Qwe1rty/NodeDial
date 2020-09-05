@@ -21,9 +21,9 @@ private[replication] case object RaftGlobalTimeoutKey extends RaftTimeoutKey
  * The Raft local timeout key controls the timeout between how often to
  * resend a request to a specific node
  *
- * @param node the node that the individual timeout is referring to
+ * @param nodeID the node that the individual timeout is referring to
  */
-private[replication] case class RaftIndividualTimeoutKey(node: Membership) extends RaftTimeoutKey
+private[replication] case class RaftIndividualTimeoutKey(nodeID: String) extends RaftTimeoutKey
 
 
 /** For pattern matching */
@@ -36,6 +36,6 @@ private[replication] trait RaftTimeoutTick
 private[replication] case object RaftGlobalTimeoutTick extends RaftTimeoutTick
 
 /**
- * @param node the node that the individual timeout is referring to
+ * @param nodeID the node that the individual timeout is referring to
  */
-private[replication] case class RaftIndividualTimeoutTick(node: Membership) extends RaftTimeoutTick
+private[replication] case class RaftIndividualTimeoutTick(nodeID: String) extends RaftTimeoutTick

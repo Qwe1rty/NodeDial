@@ -25,34 +25,28 @@ private[replication] case object Candidate extends RaftRole {
    * @param state current raft state
    * @return the timeout result
    */
-override def processRaftGlobalTimeout(state: RaftState): Option[RaftRole] = Some(Candidate)
+override def processRaftGlobalTimeout(state: RaftState): Option[RaftRole] = Some(if (state.hasQuorum) Leader else Candidate)
 
   /**
    * Handles timeout for sending a request to a single node. For example, if this server is a leader,
    * a timeout for a specific node can occur if it hasn't been contacted in a while, necessitating
    * a heartbeat message to be sent out
    *
-   * @param node  the node that timed out
+   * @param nodeID  the node that timed out
    * @param state current raft state
    * @return the timeout result
    */
-  override def processRaftIndividualTimeout(node: Membership, state: RaftState)(implicit log: Logger): MessageResult = {
+  override def processRaftIndividualTimeout(nodeID: String)(state: RaftState)(implicit log: Logger): MessageResult = {
 
     // For candidates, individual timeouts mean that a request vote reply was not received, so resend vote request
-    state.currentTerm.read().foreach { currentTerm =>
+    val voteRequest = RequestVoteRequest(
+      state.currentTerm.read().getOrElse(0),
+      Administration.nodeID,
+      state.log.lastLogIndex(),
+      state.log.lastLogTerm()
+    )
 
-      val voteRequest = RequestVoteRequest(
-        currentTerm,
-        Administration.nodeID,
-        state.log.lastLogIndex(),
-        state.log.lastLogTerm()
-      )
-
-      MessageResult(Set(RequestTask(voteRequest, node)), ResetTimer(RaftIndividualTimeoutKey(node)), None)
-    }
-
-    log.error("Current term was undefined! Invalid state")
-    throw new IllegalStateException("Current Raft term value was undefined")
+    MessageResult(Set(RequestTask(voteRequest, nodeID)), ResetTimer(RaftIndividualTimeoutKey(nodeID)), None)
   }
 
   /**
@@ -63,8 +57,8 @@ override def processRaftGlobalTimeout(state: RaftState): Option[RaftRole] = Some
    * @param state       current raft state
    * @return the event result
    */
-  override def processAppendEntryEvent(appendEvent: AppendEntryEvent)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult =
-    Follower.processAppendEntryEvent(appendEvent)(node, state)
+  override def processAppendEntryEvent(appendEvent: AppendEntryEvent)(state: RaftState)(implicit log: Logger): MessageResult =
+    Follower.processAppendEntryEvent(appendEvent)(state)
 
   /**
    * Handle an append entry request received from the leader
@@ -73,8 +67,8 @@ override def processRaftGlobalTimeout(state: RaftState): Option[RaftRole] = Some
    * @param state         current raft state
    * @return the event result
    */
-  override def processAppendEntryRequest(appendRequest: AppendEntriesRequest)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult =
-    Follower.processAppendEntryRequest(appendRequest)(node, state)
+  override def processAppendEntryRequest(appendRequest: AppendEntriesRequest)(state: RaftState)(implicit log: Logger): MessageResult =
+    Follower.processAppendEntryRequest(appendRequest)(state)
 
   /**
    * Handle a response from an append entry request from followers. Determines whether an entry is
@@ -84,8 +78,8 @@ override def processRaftGlobalTimeout(state: RaftState): Option[RaftRole] = Some
    * @param state       current raft state
    * @return the event result
    */
-  override def processAppendEntryResult(appendReply: AppendEntriesResult)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult =
-    Follower.processAppendEntryResult(appendReply)(node, state)
+  override def processAppendEntryResult(appendReply: AppendEntriesResult)(state: RaftState)(implicit log: Logger): MessageResult =
+    Follower.processAppendEntryResult(appendReply)(state)
 
   /**
    * Handle a vote request from a candidate, and decide whether or not to give that vote
@@ -94,8 +88,8 @@ override def processRaftGlobalTimeout(state: RaftState): Option[RaftRole] = Some
    * @param state current raft state
    * @return the event result
    */
-  override def processRequestVoteRequest(voteRequest: RequestVoteRequest)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult =
-    Follower.processRequestVoteRequest(voteRequest)(node, state)
+  override def processRequestVoteRequest(voteRequest: RequestVoteRequest)(state: RaftState)(implicit log: Logger): MessageResult =
+    Follower.processRequestVoteRequest(voteRequest)(state)
 
   /**
    * Handle a vote reply from a follower. Determines whether this server becomes the new leader
@@ -104,16 +98,16 @@ override def processRaftGlobalTimeout(state: RaftState): Option[RaftRole] = Some
    * @param state     current raft state
    * @return the event result
    */
-  override def processRequestVoteResult(voteReply: RequestVoteResult)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult = {
+  override def processRequestVoteResult(voteReply: RequestVoteResult)(state: RaftState)(implicit log: Logger): MessageResult = {
 
     val nextRole = determineStepDown(voteReply.currentTerm)(state).orElse {
 
       // If we haven't stepped down as a result of the new message, and the vote was given, register reply and check
       // to see if we've won the election
-      Option.when(voteReply.voteGiven && {state.registerReply(node); state.hasQuorum})(Leader)
+      Option.when(voteReply.voteGiven && {state.registerReply(voteReply.followerId); state.hasQuorum})(Leader)
     }
 
-    MessageResult(Set(), CancelTimer(RaftIndividualTimeoutKey(node)), nextRole)
+    MessageResult(Set(), CancelTimer(RaftIndividualTimeoutKey(voteReply.followerId)), nextRole)
   }
 
 }

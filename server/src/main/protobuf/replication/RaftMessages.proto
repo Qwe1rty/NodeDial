@@ -63,10 +63,11 @@ message AppendEntriesResult {
 
     // Returns the follower's current term
     required uint64 current_term = 1;
+    required string follower_id = 2;
 
     // Indicates whether entries have been accepted for commits by this
     // follower
-    required bool success = 2;
+    required bool success = 3;
 }
 
 message RequestVoteRequest {
@@ -91,8 +92,9 @@ message RequestVoteResult {
 
     // Returns the follower's current term
     required uint64 current_term = 1;
+    required string follower_id = 2;
 
     // Indicates whether the candidate has received the follower's vote
-    required bool vote_given = 2;
+    required bool vote_given = 3;
 }
 

@@ -48,22 +48,22 @@ case class BroadcastTask[RPCObject](task: RPCObject) extends RPCTask[RPCObject]
  * Represents a "request" network task
  *
  * @param task the RPC task
- * @param recipient the address to send the request to
+ * @param recipientID the ID of the node to send the request to
  * @tparam RPCObject the RPC object associated with the task (eg. request
  *                   parameters for an RPC)
  */
-case class RequestTask[RPCObject](task: RPCObject, recipient: Membership) extends RPCTask[RPCObject]
+case class RequestTask[RPCObject](task: RPCObject, recipientID: String) extends RPCTask[RPCObject]
 
 
 /**
  * Represents an asynchronous/future "request" network task
  *
  * @param task the RPC task
- * @param recipient the address to send the request to
+ * @param recipientID the ID of the node to send the request to
  * @tparam RPCObject the RPC object associated with the task (eg. request
  *                   parameters for an RPC)
  */
-case class ReplyFutureTask[RPCObject](task: RPCObject, recipient: Membership) extends RPCTask[RPCObject]
+case class ReplyFutureTask[RPCObject](task: RPCObject, recipientID: String) extends RPCTask[RPCObject]
 
 
 /**

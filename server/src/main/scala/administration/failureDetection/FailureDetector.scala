@@ -59,6 +59,7 @@ class FailureDetector private(
 
         // Make the check if there's not one pending already and it's not calling itself
         if (!pendingDirectChecks.contains(target) && target.nodeID != Administration.nodeID) {
+          context.log.debug(s"Calling failure check on node with ID ${target.nodeID}")
           pendingDirectChecks += target
           FailureDetectorServiceClient(createGRPCSettings(target.ipAddress, SUSPICION_DEADLINE))
             .directCheck(DirectMessage())

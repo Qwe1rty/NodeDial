@@ -39,14 +39,14 @@ private[replication] case object Leader extends RaftRole with ProtobufSerializer
    * a timeout for a specific node can occur if it hasn't been contacted in a while, necessitating
    * a heartbeat message to be sent out
    *
-   * @param node  the node that timed out
+   * @param nodeID  the node that timed out
    * @param state current raft state
    * @return the timeout result
    */
-  override def processRaftIndividualTimeout(node: Membership, state: RaftState)(implicit log: Logger): MessageResult = {
+  override def processRaftIndividualTimeout(nodeID: String)(state: RaftState)(implicit log: Logger): MessageResult = {
 
     // For leaders, individual timeouts mean a node has not received a heartbeat/request in a while
-    MessageResult(Set(RequestTask(createAppendEntriesRequest(node.nodeID, state), node)), ContinueTimer, None)
+    MessageResult(Set(RequestTask(createAppendEntriesRequest(nodeID, state), nodeID)), ContinueTimer, None)
   }
 
   /**
@@ -57,7 +57,7 @@ private[replication] case object Leader extends RaftRole with ProtobufSerializer
    * @param state       current raft state
    * @return the event result
    */
-  override def processAppendEntryEvent(appendEvent: AppendEntryEvent)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult = {
+  override def processAppendEntryEvent(appendEvent: AppendEntryEvent)(state: RaftState)(implicit log: Logger): MessageResult = {
 
     val currentTerm: Long = state.currentTerm.read().getOrElse(0)
 
@@ -82,7 +82,7 @@ private[replication] case object Leader extends RaftRole with ProtobufSerializer
         val matchingFollowers: Set[RPCTask[RaftMessage]] =
           state.cluster()
             .filter(node => state.leaderState(node.nodeID).matchIndex == state.log.lastLogIndex() - 1)
-            .map(RequestTask(appendEntryRequest, _))
+            .map(membership => RequestTask(appendEntryRequest, membership.nodeID))
             .toSet
 
         MessageResult(matchingFollowers + ReplyTask(AppendEntryAck(success = true)), ContinueTimer, None)
@@ -104,8 +104,8 @@ private[replication] case object Leader extends RaftRole with ProtobufSerializer
    * @param state         current raft state
    * @return the event result
    */
-  override def processAppendEntryRequest(appendRequest: AppendEntriesRequest)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult =
-    Follower.processAppendEntryRequest(appendRequest)(node, state)
+  override def processAppendEntryRequest(appendRequest: AppendEntriesRequest)(state: RaftState)(implicit log: Logger): MessageResult =
+    Follower.processAppendEntryRequest(appendRequest)(state)
 
   /**
    * Handle a response from an append entry request from followers. Determines whether an entry is
@@ -115,7 +115,7 @@ private[replication] case object Leader extends RaftRole with ProtobufSerializer
    * @param state       current raft state
    * @return the event result
    */
-  override def processAppendEntryResult(appendReply: AppendEntriesResult)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult = {
+  override def processAppendEntryResult(appendReply: AppendEntriesResult)(state: RaftState)(implicit log: Logger): MessageResult = {
 
     // Due to things like network partitions, a new leader of higher term may exist. We step down in this case
     val nextRole = determineStepDown(appendReply.currentTerm)(state)
@@ -126,7 +126,7 @@ private[replication] case object Leader extends RaftRole with ProtobufSerializer
     // If successful, we're guaranteed that the follower log is consistent with the leader log, and we need to update
     // the known up-to-dateness
     if (appendReply.success) {
-      state.leaderState = state.leaderState.patch(node.nodeID, currentIndexState => LogIndexState(
+      state.leaderState = state.leaderState.patch(appendReply.followerId, currentIndexState => LogIndexState(
         currentIndexState.nextIndex + 1,
         currentIndexState.nextIndex
       ))
@@ -135,13 +135,13 @@ private[replication] case object Leader extends RaftRole with ProtobufSerializer
       val sortedMatchIndexes = state.leaderState.matches().toSeq.sorted
       state.commitIndex = sortedMatchIndexes((sortedMatchIndexes.size - 1) / 2)
 
-      MessageResult(Set(), ResetTimer(RaftIndividualTimeoutKey(node)), None)
+      MessageResult(Set(), ResetTimer(RaftIndividualTimeoutKey(appendReply.followerId)), None)
     }
 
     // Otherwise, follower log is inconsistent with leader log, so we roll back one entry and retry the request
     else {
-      state.leaderState.patchNextIndex(node.nodeID, _ - 1)
-      MessageResult(Set(RequestTask(createAppendEntriesRequest(node.nodeID, state), node)), ContinueTimer, None)
+      state.leaderState.patchNextIndex(appendReply.followerId, _ - 1)
+      MessageResult(Set(RequestTask(createAppendEntriesRequest(appendReply.followerId, state), appendReply.followerId)), ContinueTimer, None)
     }
   }
 
@@ -152,8 +152,8 @@ private[replication] case object Leader extends RaftRole with ProtobufSerializer
    * @param state current raft state
    * @return the event result
    */
-  override def processRequestVoteRequest(voteRequest: RequestVoteRequest)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult =
-    Follower.processRequestVoteRequest(voteRequest)(node, state)
+  override def processRequestVoteRequest(voteRequest: RequestVoteRequest)(state: RaftState)(implicit log: Logger): MessageResult =
+    Follower.processRequestVoteRequest(voteRequest)(state)
 
   /**
    * Handle a vote reply from a follower. Determines whether this server becomes the new leader
@@ -162,8 +162,8 @@ private[replication] case object Leader extends RaftRole with ProtobufSerializer
    * @param state current raft state
    * @return the event result
    */
-  override def processRequestVoteResult(voteReply: RequestVoteResult)(node: Membership, state: RaftState)(implicit log: Logger): MessageResult =
-    Follower.processRequestVoteResult(voteReply)(node, state)
+  override def processRequestVoteResult(voteReply: RequestVoteResult)(state: RaftState)(implicit log: Logger): MessageResult =
+    Follower.processRequestVoteResult(voteReply)(state)
 
   /**
    * Creates an AppendEntriesRequest for a given follower, based on the follower's current log length and match index.

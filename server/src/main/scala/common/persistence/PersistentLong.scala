@@ -5,14 +5,6 @@ import better.files.File
 import scala.util.Try
 
 
-object PersistentLong {
-
-  def apply(file: File): PersistentLong = {
-    new PersistentLong(file)
-  }
-}
-
-
 class PersistentLong(file: File) extends PersistentVal[Long](file) {
 
   /**
@@ -47,4 +39,9 @@ class PersistentLong(file: File) extends PersistentVal[Long](file) {
   override def deserialize(bytes: Array[Byte]): Try[Long] = Try {
     BigInt(bytes).toLong
   }
+}
+
+object PersistentLong {
+
+  def apply(file: File): PersistentLong = new PersistentLong(file)
 }
