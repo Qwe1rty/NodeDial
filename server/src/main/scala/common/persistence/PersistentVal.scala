@@ -17,7 +17,10 @@ import scala.util.{Failure, Success, Try}
  */
 abstract class PersistentVal[A](val file: File) extends Serializer[A] {
 
-  private var value: Option[A] = read()
+  private var value: Option[A] = None
+
+  // Read as separate step to avoid NullPointerExceptions
+  value = read()
 
 
   /**
@@ -26,6 +29,7 @@ abstract class PersistentVal[A](val file: File) extends Serializer[A] {
    * @param a the value to persist
    */
   final def write(a: A): Unit = {
+    file.createFileIfNotExists()
     serialize(a) match {
       case Success(bytes) => file.writeByteArray(bytes)
       case Failure(exception) => throw exception
@@ -40,11 +44,9 @@ abstract class PersistentVal[A](val file: File) extends Serializer[A] {
    * @return the persisted value
    */
   final def read(): Option[A] = {
-    if (value.isEmpty && file.exists) {
-      deserialize(file.loadBytes) match {
-        case Success(value) => this.value = Some(value)
-        case Failure(exception) => throw exception
-      }
+    if (file.exists && value.isEmpty) deserialize(file.loadBytes) match {
+      case Success(value) => this.value = Some(value)
+      case Failure(exception) => throw exception
     }
     value
   }

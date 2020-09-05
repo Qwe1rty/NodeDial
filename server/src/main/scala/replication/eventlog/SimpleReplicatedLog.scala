@@ -18,11 +18,8 @@ class SimpleReplicatedLog(
 
   import SimpleReplicatedLog._
 
-  indexFile.createFileIfNotExists(createParents = true)
-  dataFile.createFileIfNotExists(createParents = true)
-
   private val dataAccess: RandomAccessFile = {
-    dataFile.createFileIfNotExists()
+    dataFile.createFileIfNotExists(createParents = true)
     dataFile.newRandomAccess(File.RandomAccessMode.readWriteContentSynchronous)
   }
 
@@ -32,6 +29,7 @@ class SimpleReplicatedLog(
       case Failure(exception) => throw exception
     }
     else {
+      indexFile.createFileIfNotExists(createParents = true)
       val newMetadata = LogMetadata(INIT_LOG_INDEX)
       saveMetadata(newMetadata)
       newMetadata
