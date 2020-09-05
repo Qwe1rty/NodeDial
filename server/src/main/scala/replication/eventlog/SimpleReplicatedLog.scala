@@ -1,12 +1,11 @@
 package replication.eventlog
 
-import java.io.RandomAccessFile
+import java.io.{FileOutputStream, RandomAccessFile}
 
 import better.files.File
 import common.persistence.JavaSerializer
 import org.slf4j.{Logger, LoggerFactory}
 import replication.eventlog.ReplicatedLog.Offset
-import replication.roles.Leader
 
 import scala.collection.mutable
 import scala.util.{Failure, Success}
@@ -20,12 +19,10 @@ class SimpleReplicatedLog(
 
   import SimpleReplicatedLog._
 
-  private val log: Logger = LoggerFactory.getLogger(SimpleReplicatedLog.getClass) // DEBUG ONLY, REMOVE LATER
+  dataFile.createFileIfNotExists(createParents = true)
 
-  private val dataAccess: RandomAccessFile = {
-    dataFile.createFileIfNotExists(createParents = true)
-    dataFile.newRandomAccess(File.RandomAccessMode.readWriteContentSynchronous)
-  }
+  private val dataReader: RandomAccessFile = dataFile.newRandomAccess(File.RandomAccessMode.readWriteMetadataSynchronous)
+  private val dataAppender: FileOutputStream = dataFile.newFileOutputStream(append = true)
 
   private val metadata: LogMetadata = {
     if (indexFile.exists) LogMetadata.deserialize(indexFile.loadBytes) match {
@@ -40,22 +37,25 @@ class SimpleReplicatedLog(
     }
   }
 
+  private val log: Logger = LoggerFactory.getLogger(SimpleReplicatedLog.getClass)
+
 
   override def apply(index: Int): Array[Byte] = {
-    val entry = new Array[Byte](lengthOf(index))
-    log.debug(s"Retrieved log entry #$index at offset ${offsetOf(index)} and length ${entry.length}: ${entry.map("%02X" format _).mkString}") // DEBUG ONLY, REMOVE LATER
+    val  entry = new Array[Byte](lengthOf(index))
+    dataReader.read(entry, offsetOf(index), lengthOf(index))
 
-    dataAccess.read(entry, offsetOf(index), lengthOf(index))
+    log.debug(s"Retrieved log entry #$index at offset ${offsetOf(index)} and byte length ${lengthOf(index)} to WAL: ${entry.map("%02X" format _).mkString}") // DEBUG ONLY, REMOVE LATER
     entry
   }
 
-  // Note: important that metadata is updated AFTER the data itself, to prevent
-  // invalid state
+  // Note: important that metadata is updated AFTER the data itself, to prevent invalid state
   override def append(term: Long, entry: Array[Byte]): Unit = {
-    log.debug(s"Appending log entry #${metadata.size} at offset ${dataFile.size.toInt} and length ${entry.length}: ${entry.map("%02X" format _).mkString}") // DEBUG ONLY, REMOVE LATER
+    val logIndex = LogIndex(dataFile.size.toInt, entry.length, term)
+    log.debug(s"Appending log entry #${metadata.size} at offset ${logIndex.offset} and byte length ${logIndex.length} to WAL: ${entry.map("%02X" format _).mkString}") // DEBUG ONLY, REMOVE LATER
 
-    dataFile.appendByteArray(entry)
-    metadata.append(term, LogIndex(dataFile.size.toInt, entry.length, term))
+    dataAppender.write(entry)
+    dataAppender.flush()
+    metadata.append(term, logIndex)
     saveMetadata(metadata)
   }
 
@@ -70,7 +70,7 @@ class SimpleReplicatedLog(
       metadata.offsetIndex(from).offset
 
     val entry = new Array[Byte](sliceLength)
-    dataAccess.read(entry, metadata.offsetIndex(from).offset, sliceLength)
+    dataReader.read(entry, metadata.offsetIndex(from).offset, sliceLength)
     entry
   }
 
