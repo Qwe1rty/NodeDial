@@ -23,7 +23,7 @@ class KeyStateManager private(
 
   import KeyStateManager._
 
-  final private val tag = s"${hash} -> " // TODO patternize this
+  final private val tag = s"$hash ->" // TODO patternize this
 
   private var exclusiveLocked = false // TODO make this a 2PL
   private var pendingRequest: Option[Promise[PersistenceData]] = None
@@ -40,7 +40,7 @@ class KeyStateManager private(
    */
   private def schedule(task: IOTask): Unit = {
     executor ! PartitionedTask(hash, task)
-    context.log.debug(tag + s"Submitting task to task scheduler")
+    context.log.debug(s"$tag Submitting task to task scheduler")
   }
 
   /**
@@ -49,7 +49,7 @@ class KeyStateManager private(
   private def suspend(): Unit = {
     exclusiveLocked = false
     pendingRequest = None
-    context.log.debug(tag + "Suspending actor")
+    context.log.debug(s"$tag Suspending actor")
   }
 
   /**
@@ -64,16 +64,16 @@ class KeyStateManager private(
     schedule(nextTask match {
 
       case _: GetTask =>
-        context.log.info(tag + "Signalling read task")
+        context.log.info(s"$tag Signalling read task")
         ReadIOTask(VALUE_EXTENSION)(context.self)
 
       case post: WriteTask =>
-        context.log.info(tag + "Signalling write ahead task")
+        context.log.info(s"$tag Signalling write task with hex value: ${post.value.map("%02X" format _).mkString}")
         WriteIOTask(VALUE_EXTENSION, post.value)(context.self)
 
       case _: DeleteTask =>
-        context.log.info(tag + "Signalling tombstone task")
-        TombstoneIOTask(VALUE_EXTENSION)(context.self)
+        context.log.info(s"$tag Signalling delete task")
+        DeleteIOTask(VALUE_EXTENSION)(context.self)
     })
   }
 
@@ -81,7 +81,7 @@ class KeyStateManager private(
    * Executes the next task, if there is one
    */
   private def poll(): Unit = {
-    context.log.debug(tag + "Polling next operation")
+    context.log.debug(s"$tag Polling next operation")
     if (requestQueue.isEmpty) suspend() else process()
   }
 
@@ -96,19 +96,19 @@ class KeyStateManager private(
 
   override def onMessage(action: KeyStateAction): Behavior[KeyStateAction] = action match {
     case Left(persistenceTask) =>
-      context.log.info(tag + s"Persistence task received")
+      context.log.info(s"$tag Persistence task received")
       requestQueue.enqueue(persistenceTask)
       if (!exclusiveLocked) process()
       this
 
     case Right(signal) => signal match {
       case ReadCompleteSignal(result) =>
-        context.log.debug(tag + "Read complete signal received")
+        context.log.debug(s"$tag Read complete signal received")
         complete(result)
         poll()
 
       case WriteCompleteSignal(result) =>
-        context.log.debug(tag + "Write complete signal received")
+        context.log.debug(s"$tag Write complete signal received")
         complete(result.map(_ => None))
         poll()
       }
@@ -144,6 +144,15 @@ object KeyStateManager {
    * @param result the result of the disk write
    */
   private[io] final case class WriteCompleteSignal(
+    result: Try[Unit]
+  ) extends IOSignal
+
+  /**
+   * Signal to the key state manager that the disk delete job has completed
+   *
+   * @param result the result of the disk write
+   */
+  private[io] final case class DeleteCompleteSignal(
     result: Try[Unit]
   ) extends IOSignal
 }

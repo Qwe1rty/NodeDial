@@ -8,17 +8,19 @@ Modeled around existing NoSQL databases such as Redis, Cassandra, and Dynamo, it
 and cloud deployments in mind. For more details about setting the project up on your environment, check out the
 [build walkthrough](#project-setup-and-walkthrough) and deployment guide!
 
+Currently supports the three basic operations: `GET`, `POST`, and `DELETE`
+
 ### About the Project
 
-The project was started as a way to learn distributed systems concepts, practice writing asynchronous and 
-concurrent applications, and gain experience with the pitfalls of writing these distributed applications. 
+The project was started as a way to learn distributed systems concepts, practice writing asynchronous/concurrent 
+applications, and gain experience with the pitfalls of writing these distributed applications.
 I've found that trying to implement pretty abstract distributed systems ideas into an actual program really helps
 solidify details that I would've missed from just reading about it - such as non-obvious corner cases in the Raft 
 algorithm. 
 
 Overall, the project still has a significant amount of work to do, but over the past year of on-and-off work, I've
 learned a lot. I don't know how long I'll continue working on it past the replication/Raft layer, but I'm sure that
-this project's teachings will last for all future projects that I work on.
+the project's teachings will last for all future projects that I work on.
 
 
 ---

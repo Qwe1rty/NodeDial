@@ -66,13 +66,13 @@ class Raft[Command <: Serializable](addresser: AddressRetriever, commitCallback:
   LoggerFactory.getLogger(Raft.getClass).info("Raft API service has been initialized")
 
 
-  def submit(key: String, command: Command, uuid: Option[String] = None): Future[AppendEntryAck] = {
+  def submit(key: String, command: Command, uuid: Option[UUID] = None): Future[AppendEntryAck] = {
     implicit def timeout: util.Timeout = Timeout(Raft.NEW_LOG_ENTRY_TIMEOUT)
 
     serialize(command) match {
       case Failure(exception) => Future.failed(exception)
       case Success(value) =>
-        val appendEntryEvent = AppendEntryEvent(LogEntry(key, value), uuid.map(stringToByteString))
+        val appendEntryEvent = AppendEntryEvent(LogEntry(key, value), uuid.map(UUIDToByteString))
         (raft ? appendEntryEvent).mapTo[AppendEntryAck]
     }
   }

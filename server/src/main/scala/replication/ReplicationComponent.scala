@@ -96,11 +96,11 @@ class ReplicationComponent(
     case WriteOperation(writePromise: Promise[ReplicatedConfirmation], key, value, uuid) =>
 
       // Post requests must be committed by the raft group before it can be written to disk
-      context.log.debug(s"Post request received with UUID ${uuid.string}")
+      context.log.debug(s"Post request received with UUID ${uuid.string} and hex value: ${value.map("%02X" format _).mkString}")
       compressBytes(value) match {
         case Failure(e) => context.log.error(s"Compression error for key $key: ${e.getLocalizedMessage}")
         case Success(gzip) =>
-          val futureConfirmation = raft.submit(key, ReplicatedOp(Write(WriteOp(key, gzip, uuid))), Some(uuid.toString))
+          val futureConfirmation = raft.submit(key, ReplicatedOp(Write(WriteOp(key, gzip, uuid))), Some(uuid))
           writePromise.completeWith(futureConfirmation.map { _ => () })
       }
       this
@@ -109,7 +109,7 @@ class ReplicationComponent(
 
       // Delete requests also have to go through raft
       context.log.debug(s"Delete request received with UUID ${uuid.string}")
-      val futureConfirmation = raft.submit(key, ReplicatedOp(Delete(DeleteOp(key, uuid))), Some(uuid.toString))
+      val futureConfirmation = raft.submit(key, ReplicatedOp(Delete(DeleteOp(key, uuid))), Some(uuid))
       deletePromise.completeWith(futureConfirmation.map { _ => () })
       this
   }

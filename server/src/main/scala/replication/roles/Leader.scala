@@ -67,8 +67,8 @@ private[replication] case object Leader extends RaftRole {
     val currentTerm: Long = state.currentTerm.read().getOrElse(0)
 
     val appendLogResult = for (
-      bytes        <- Raft.LogEntrySerializer.serialize(appendEvent.logEntry);
-      appendResult <- Try(state.log.append(currentTerm, bytes))
+      logEntryBytes <- Raft.LogEntrySerializer.serialize(appendEvent.logEntry);
+      appendResult  <- Try(state.log.append(currentTerm, logEntryBytes))
     ) yield appendResult
 
     appendLogResult match {
