@@ -13,7 +13,16 @@ import persistence.io.KeyStateManager.KeyStateAction
 import scala.concurrent.{Future, Promise}
 
 
-class PersistenceComponent(override protected val context: ActorContext[PersistenceTask], membershipActor: ActorRef[AdministrationMessage])
+/**
+ * The top-level object in the persistence layer for the replication layer to interface with
+ *
+ * @param context actor context
+ * @param administration program administration interface
+ */
+class PersistenceComponent(
+    override protected val context: ActorContext[PersistenceTask],
+    administration: ActorRef[AdministrationMessage]
+  )
   extends AbstractBehavior[PersistenceTask](context) {
 
   import PersistenceComponent._
@@ -24,7 +33,7 @@ class PersistenceComponent(override protected val context: ActorContext[Persiste
   PERSISTENCE_DIRECTORY.createDirectoryIfNotExists()
   context.log.info(s"Directory ${PERSISTENCE_DIRECTORY.toString()} opened")
 
-  membershipActor ! DeclareReadiness
+  administration ! DeclareReadiness
   context.log.info("Persistence component initialized")
 
 

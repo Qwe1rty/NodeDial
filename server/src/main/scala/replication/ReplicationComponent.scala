@@ -43,19 +43,28 @@ class ReplicationComponent(
     commit.operationType match {
 
       case OperationType.Read(ReadOp(key, uuid)) =>
-        log.info(s"Get entry with key $key and UUID ${uuid: String} has been received as Raft commit")
-        persistenceActor ! GetTask(commitPromise, byteStringToString(key).sha256)
+        val keyString = byteStringToString(key)
+        val uuidString = byteStringToString(uuid)
+
+        log.info(s"Get entry with key $keyString and UUID $uuidString has been received as Raft commit")
+        persistenceActor ! GetTask(commitPromise, keyString.sha256)
 
       case OperationType.Write(WriteOp(key, compressedValue, uuid)) =>
-        log.info(s"Write entry with key $key and UUID ${uuid.toString} will now attempt to be committed")
+        val keyString = byteStringToString(key)
+        val uuidString = byteStringToString(uuid)
+
+        log.info(s"Write entry with key $keyString and UUID $uuidString will now attempt to be committed")
         decompressBytes(compressedValue) match {
-          case Success(value) => persistenceActor ! WriteTask(commitPromise, byteStringToString(key).sha256, value)
+          case Success(value) => persistenceActor ! WriteTask(commitPromise, keyString.sha256, value)
           case Failure(e) => log.error(s"Decompression error for key $key for reason: ${e.getLocalizedMessage}")
         }
 
       case OperationType.Delete(DeleteOp(key, uuid)) =>
-        log.info(s"Delete entry with key $key and UUID ${uuid: String} will now attempt to be committed")
-        persistenceActor ! DeleteTask(commitPromise, byteStringToString(key).sha256)
+        val keyString = byteStringToString(key)
+        val uuidString = byteStringToString(uuid)
+
+        log.info(s"Delete entry with key $keyString and UUID $uuidString will now attempt to be committed")
+        persistenceActor ! DeleteTask(commitPromise, keyString.sha256)
 
       case OperationType.Empty =>
         log.error("Received empty replicated operation type!")

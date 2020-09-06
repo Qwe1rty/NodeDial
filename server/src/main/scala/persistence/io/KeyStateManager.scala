@@ -69,7 +69,7 @@ class KeyStateManager private(
 
       case post: WriteTask =>
         context.log.info(tag + "Signalling write ahead task")
-        WriteIOTask(WRITE_AHEAD_EXTENSION, post.value)(context.self)
+        WriteIOTask(VALUE_EXTENSION, post.value)(context.self)
 
       case _: DeleteTask =>
         context.log.info(tag + "Signalling tombstone task")
@@ -119,7 +119,6 @@ class KeyStateManager private(
 
 object KeyStateManager {
 
-  private val WRITE_AHEAD_EXTENSION = ".wal"
   private val VALUE_EXTENSION = ".val"
 
   def apply(taskExecutor: ActorRef[PartitionedTask], hash: String): Behavior[KeyStateAction] =
