@@ -12,13 +12,14 @@ import akka.util.Timeout
 import akka.{actor, util}
 import better.files.File
 import common.ServerConstants
-import common.persistence.Serializer
+import common.persistence.{ProtobufSerializer, Serializer}
 import common.time.TimeRange
 import io.jvm.uuid._
 import org.slf4j.LoggerFactory
 import replication.Raft.CommitFunction
 import replication.eventlog.SimpleReplicatedLog
 import replication.state.RaftState
+import scalapb.GeneratedMessageCompanion
 
 import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
@@ -90,4 +91,8 @@ object Raft {
   val ELECTION_TIMEOUT_RANGE: TimeRange = TimeRange(ELECTION_TIMEOUT_LOWER_BOUND, ELECTION_TIMEOUT_UPPER_BOUND)
   val INDIVIDUAL_NODE_TIMEOUT: FiniteDuration = FiniteDuration(50, TimeUnit.MILLISECONDS)
   val NEW_LOG_ENTRY_TIMEOUT: FiniteDuration = FiniteDuration(5, TimeUnit.SECONDS)
+
+  private[replication] object LogEntrySerializer extends ProtobufSerializer[LogEntry] {
+    override def messageCompanion: GeneratedMessageCompanion[LogEntry] = LogEntry
+  }
 }

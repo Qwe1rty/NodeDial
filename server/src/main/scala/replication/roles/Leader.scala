@@ -1,25 +1,20 @@
 package replication.roles
 
-import administration.{Administration, Membership}
-import common.persistence.ProtobufSerializer
+import administration.Administration
 import common.rpc.{RPCTask, ReplyTask, RequestTask}
 import common.time.{ContinueTimer, ResetTimer}
 import org.slf4j.{Logger, LoggerFactory}
 import replication._
-import replication.roles.Follower.stepDownIfBehind
 import replication.roles.RaftRole.MessageResult
 import replication.state.RaftLeaderState.LogIndexState
 import replication.state.{RaftIndividualTimeoutKey, RaftMessage, RaftState}
-import scalapb.GeneratedMessageCompanion
 
 import scala.util.{Failure, Success, Try}
 
 
-private[replication] case object Leader extends RaftRole with ProtobufSerializer[LogEntry] {
+private[replication] case object Leader extends RaftRole {
 
   protected val log: Logger = LoggerFactory.getLogger(Leader.getClass)
-
-  override val messageCompanion: GeneratedMessageCompanion[LogEntry] = LogEntry
 
   /** Used for logging */
   override val roleName: String = "Leader"
@@ -72,9 +67,9 @@ private[replication] case object Leader extends RaftRole with ProtobufSerializer
     val currentTerm: Long = state.currentTerm.read().getOrElse(0)
 
     val appendLogResult = for (
-      bytes <- serialize(appendEvent.logEntry);
-      _     <- Try(state.log.append(currentTerm, bytes))
-    ) yield {}
+      bytes        <- Raft.LogEntrySerializer.serialize(appendEvent.logEntry);
+      appendResult <- Try(state.log.append(currentTerm, bytes))
+    ) yield appendResult
 
     appendLogResult match {
       case Success(_) =>
@@ -196,7 +191,7 @@ private[replication] case object Leader extends RaftRole with ProtobufSerializer
     val logEntries: Try[Seq[LogEntry]] =
       if (state.log.lastLogIndex() < state.leaderState(nodeID).nextIndex) Success(Seq.empty)
       else {
-        deserialize(state.log(state.leaderState(nodeID).nextIndex)).map(Seq[LogEntry](_))
+        Raft.LogEntrySerializer.deserialize(state.log(state.leaderState(nodeID).nextIndex)).map(Seq[LogEntry](_))
       }
 
     // Start building the append request if the log entry could be deserialized

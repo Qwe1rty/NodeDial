@@ -20,11 +20,10 @@ private object ChordialClient extends App {
 
   import ClientHandler._
 
-  lazy val separator = sys.props("line.separator")
-
   // Needed as the the netty I/O logs on DEBUG mode are excessive
   LoggingConfiguration.setPackageLevel(Level.ERROR, "io.grpc.netty")
 
+  lazy val separator = sys.props("line.separator")
 
   val parser: OptionParser[ClientHandler] = new OptionParser[ClientHandler]("chordial") {
 

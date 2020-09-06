@@ -1,6 +1,6 @@
 package replication.roles
 
-import administration.{Administration, Membership}
+import administration.Administration
 import common.rpc.{RPCTask, ReplyFutureTask}
 import common.time.ContinueTimer
 import org.slf4j.{Logger, LoggerFactory}

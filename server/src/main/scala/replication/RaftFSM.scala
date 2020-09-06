@@ -12,6 +12,7 @@ import replication.RaftGRPCService.createGRPCSettings
 import replication.roles.RaftRole.MessageResult
 import replication.roles._
 import replication.state._
+import schema.ImplicitGrpcConversions._
 
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
@@ -153,8 +154,14 @@ private[replication] class RaftFSM[Command <: Serializable](
       // they are executed sequentially), then commit the next entry to the state machine
       if (!state.commitInProgress && state.lastApplied < state.commitIndex) {
         state.commitInProgress = true
-        serializer.deserialize(state.log(state.lastApplied + 1)) match {
-          case Success(logEntry)  => commitCallback(logEntry).onComplete(self ! RaftCommitTick(_))
+
+        val commandTry: Try[Command] = for (
+          logEntry <- Raft.LogEntrySerializer.deserialize(state.log(state.lastApplied + 1));
+          command  <- serializer.deserialize(logEntry.value)
+        ) yield command
+
+        commandTry match {
+          case Success(command)   => commitCallback(command).onComplete(self ! RaftCommitTick(_))
           case Failure(exception) =>
             log.error(s"Deserialization error for log entry #${state.lastApplied + 1} commit: ${exception.getLocalizedMessage}")
             self ! RaftCommitTick(Failure(exception))

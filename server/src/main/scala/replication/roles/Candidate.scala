@@ -1,11 +1,10 @@
 package replication.roles
 
-import administration.{Administration, Membership}
+import administration.Administration
 import common.rpc.RequestTask
 import common.time.{CancelTimer, ResetTimer}
 import org.slf4j.{Logger, LoggerFactory}
 import replication._
-import replication.roles.Follower.stepDownIfBehind
 import replication.roles.RaftRole.MessageResult
 import replication.state.{RaftIndividualTimeoutKey, RaftState}
 
