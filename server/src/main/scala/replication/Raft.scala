@@ -20,9 +20,11 @@ import replication.Raft.CommitFunction
 import replication.eventlog.SimpleReplicatedLog
 import replication.state.RaftState
 import scalapb.GeneratedMessageCompanion
+import schema.ImplicitGrpcConversions._
 
 import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
+import scala.util.{Failure, Success}
 
 
 /**
@@ -43,9 +45,9 @@ class Raft[Command <: Serializable](addresser: AddressRetriever, commitCallback:
    */
   this: Serializer[Command] =>
 
-  import Raft._
-
   implicit private val classicSystem: actor.ActorSystem = context.system.classicSystem
+
+  import Raft._
 
   private val raft = context.actorOf(
     Props(new RaftFSM[Command](
@@ -63,12 +65,17 @@ class Raft[Command <: Serializable](addresser: AddressRetriever, commitCallback:
   LoggerFactory.getLogger(Raft.getClass).info("Raft API service has been initialized")
 
 
-  def submit(appendEntryEvent: AppendEntryEvent): Future[AppendEntryAck] = {
+  def submit(key: String, command: Command, uuid: Option[String] = None): Future[AppendEntryAck] = {
     implicit def timeout: util.Timeout = Timeout(Raft.NEW_LOG_ENTRY_TIMEOUT)
 
-    (raft ? appendEntryEvent)
-      .mapTo[AppendEntryAck]
+    serialize(command) match {
+      case Failure(exception) => Future.failed(exception)
+      case Success(value) =>
+        val appendEntryEvent = AppendEntryEvent(LogEntry(key, value), uuid.map(stringToByteString))
+        (raft ? appendEntryEvent).mapTo[AppendEntryAck]
+    }
   }
+
 }
 
 object Raft {

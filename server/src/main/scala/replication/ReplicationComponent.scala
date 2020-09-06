@@ -10,6 +10,7 @@ import common.persistence.{Compression, ProtobufSerializer}
 import io.jvm.uuid._
 import persistence.PersistenceComponent._
 import replication.ReplicatedOp.OperationType
+import replication.ReplicatedOp.OperationType.{Delete, Write}
 import replication.ReplicationComponent.ClientOperation
 import scalapb.GeneratedMessageCompanion
 import schema.ImplicitGrpcConversions._
@@ -25,12 +26,15 @@ class ReplicationComponent(
     addressRetriever: AddressRetriever,
   )
   extends AbstractBehavior[ClientOperation](context)
-  with Compression {
+  with ProtobufSerializer[ReplicatedOp]
+  with Compression { self =>
 
   import ReplicationComponent._
 
   implicit private val classicSystem: ActorSystem = context.system.classicSystem
   implicit private val executionContext: ExecutionContext = context.system.executionContext
+
+  override val messageCompanion: GeneratedMessageCompanion[ReplicatedOp] = ReplicatedOp
 
   // TODO use a Raft-provided logger when in Raft context
   private val raft: Raft[ReplicatedOp] = new Raft[ReplicatedOp](addressRetriever, { commit =>
@@ -59,7 +63,7 @@ class ReplicationComponent(
     commitPromise.future.map(_ => ())
 
   })(context) with ProtobufSerializer[ReplicatedOp] {
-    override val messageCompanion: GeneratedMessageCompanion[ReplicatedOp] = ReplicatedOp
+    override val messageCompanion: GeneratedMessageCompanion[ReplicatedOp] = self.messageCompanion
   }
 
   membershipActor ! DeclareReadiness
@@ -87,7 +91,8 @@ class ReplicationComponent(
       compressBytes(value) match {
         case Failure(e) => context.log.error(s"Compression error for key $key: ${e.getLocalizedMessage}")
         case Success(gzip) =>
-          writePromise.completeWith(raft.submit(AppendEntryEvent(LogEntry(key.sha256.bytes, gzip), Some(uuid))).map(_ => ()))
+          val futureConfirmation = raft.submit(key, ReplicatedOp(Write(WriteOp(key, gzip, uuid))), Some(uuid.toString))
+          writePromise.completeWith(futureConfirmation.map { _ => () })
       }
       this
 
@@ -95,7 +100,8 @@ class ReplicationComponent(
 
       // Delete requests also have to go through raft
       context.log.debug(s"Delete request received with UUID ${uuid.string}")
-      deletePromise.completeWith(raft.submit(AppendEntryEvent(LogEntry(key, Array[Byte]()), Some(uuid))).map(_ => ()))
+      val futureConfirmation = raft.submit(key, ReplicatedOp(Delete(DeleteOp(key, uuid))), Some(uuid.toString))
+      deletePromise.completeWith(futureConfirmation.map { _ => () })
       this
   }
 

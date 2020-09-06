@@ -33,7 +33,7 @@ import scala.util.{Failure, Success, Try}
 private[replication] class RaftFSM[Command <: Serializable](
     private val state: RaftState,
     private val commitCallback: CommitFunction[Command],
-    private val serializer: Serializer[Command]
+    private val commandSerializer: Serializer[Command]
   )(
     implicit
     actorSystem: ActorSystem
@@ -157,7 +157,7 @@ private[replication] class RaftFSM[Command <: Serializable](
 
         val commandTry: Try[Command] = for (
           logEntry <- Raft.LogEntrySerializer.deserialize(state.log(state.lastApplied + 1));
-          command  <- serializer.deserialize(logEntry.value)
+          command  <- commandSerializer.deserialize(logEntry.value)
         ) yield command
 
         commandTry match {
