@@ -37,30 +37,30 @@ class ReplicationComponent(
   override val messageCompanion: GeneratedMessageCompanion[ReplicatedOp] = ReplicatedOp
 
   // TODO use a Raft-provided logger when in Raft context
-  private val raft: Raft[ReplicatedOp] = new Raft[ReplicatedOp](addressRetriever, { commit =>
+  private val raft: Raft[ReplicatedOp] = new Raft[ReplicatedOp](addressRetriever, { case (commit, log)  =>
 
     val commitPromise = Promise[PersistenceData]()
     commit.operationType match {
 
       case OperationType.Read(ReadOp(key, uuid)) =>
-        context.log.info(s"Get entry with key $key and UUID ${uuid: String} has been received as Raft commit")
+        log.info(s"Get entry with key $key and UUID ${uuid: String} has been received as Raft commit")
         persistenceActor ! GetTask(commitPromise, byteStringToString(key).sha256)
 
       case OperationType.Write(WriteOp(key, compressedValue, uuid)) =>
-        context.log.info(s"Write entry with key $key and UUID ${uuid: String} will now attempt to be committed")
+        log.info(s"Write entry with key $key and UUID ${uuid.toString} will now attempt to be committed")
         decompressBytes(compressedValue) match {
           case Success(value) => persistenceActor ! WriteTask(commitPromise, byteStringToString(key).sha256, value)
-          case Failure(e) => context.log.error(s"Decompression error for key $key for reason: ${e.getLocalizedMessage}")
+          case Failure(e) => log.error(s"Decompression error for key $key for reason: ${e.getLocalizedMessage}")
         }
 
       case OperationType.Delete(DeleteOp(key, uuid)) =>
-        context.log.info(s"Delete entry with key $key and UUID ${uuid: String} will now attempt to be committed")
+        log.info(s"Delete entry with key $key and UUID ${uuid: String} will now attempt to be committed")
         persistenceActor ! DeleteTask(commitPromise, byteStringToString(key).sha256)
 
       case OperationType.Empty =>
-        context.log.error("Received empty replicated operation type!")
+        log.error("Received empty replicated operation type!")
     }
-    commitPromise.future.map(_ => ())
+    commitPromise.future.map { _ => () }
 
   })(context) with ProtobufSerializer[ReplicatedOp] {
     override val messageCompanion: GeneratedMessageCompanion[ReplicatedOp] = self.messageCompanion

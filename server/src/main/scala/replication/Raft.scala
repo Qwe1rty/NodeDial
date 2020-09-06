@@ -7,6 +7,7 @@ import administration.{Administration, Membership}
 import akka.actor.Props
 import akka.actor.typed.scaladsl.ActorContext
 import akka.actor.typed.scaladsl.adapter._
+import akka.event.LoggingAdapter
 import akka.pattern.ask
 import akka.util.Timeout
 import akka.{actor, util}
@@ -86,7 +87,7 @@ object Raft {
    * machine as dictated by user code
    */
   type CommitConfirmation = Unit
-  type CommitFunction[Command] = Function[Command, Future[CommitConfirmation]]
+  type CommitFunction[Command] = Function[(Command, LoggingAdapter), Future[CommitConfirmation]]
 
   val RAFT_DIR: File = ServerConstants.BASE_DIRECTORY/"raft"
   val RAFT_LOG_INDEX: File = RAFT_DIR/"raft.log.index"

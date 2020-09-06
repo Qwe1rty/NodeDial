@@ -30,7 +30,7 @@ import scala.util.{Failure, Success, Try}
  * @param actorSystem the actor system
  * @tparam Command the serializable type that will be replicated in the Raft log
  */
-private[replication] class RaftFSM[Command <: Serializable](
+private[replication] final class RaftFSM[Command <: Serializable](
     private val state: RaftState,
     private val commitCallback: CommitFunction[Command],
     private val commandSerializer: Serializer[Command]
@@ -141,6 +141,7 @@ private[replication] class RaftFSM[Command <: Serializable](
             case Success(_)         => state.lastApplied += 1
             case Failure(exception) => log.info(s"Commit result failure: ${exception.getLocalizedMessage}")
           }
+          MessageResult(Set.empty, ContinueTimer, None)
         case x =>
           log.error(s"Raft role FSM encountered unhandled event error, received ${x.getClass}")
           throw new IllegalArgumentException(s"Unknown type ${x.getClass} received by Raft FSM")
@@ -161,7 +162,7 @@ private[replication] class RaftFSM[Command <: Serializable](
         ) yield command
 
         commandTry match {
-          case Success(command)   => commitCallback(command).onComplete(self ! RaftCommitTick(_))
+          case Success(command)   => commitCallback(command, log).onComplete(self ! RaftCommitTick(_))
           case Failure(exception) =>
             log.error(s"Deserialization error for log entry #${state.lastApplied + 1} commit: ${exception.getLocalizedMessage}")
             self ! RaftCommitTick(Failure(exception))

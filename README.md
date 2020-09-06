@@ -145,14 +145,14 @@ You can also check out the logs and see how it's interacting with the cluster. T
 get this sort of log output:
 ```
 > kubectl logs cdb-0 -n chordial-ns -f
-22:27:10.247 [main] INFO ChordialServer$ - Server config loaded
-22:27:10.250 [main] INFO ChordialServer$ - Initializing actor system
-22:27:10.719 [ChordialServer-akka.actor.default-dispatcher-5] INFO akka.event.slf4j.Slf4jLogger - Slf4jLogger started
-22:27:10.727 [ChordialServer-akka.actor.default-dispatcher-5] DEBUG akka.event.EventStream - logger log1-Slf4jLogger started
+[main] INFO ChordialServer$ - Server config loaded
+[main] INFO ChordialServer$ - Initializing actor system
+[ChordialServer-akka.actor.default-dispatcher-5] INFO akka.event.slf4j.Slf4jLogger - Slf4jLogger started
+[ChordialServer-akka.actor.default-dispatcher-5] DEBUG akka.event.EventStream - logger log1-Slf4jLogger started
 ...
-22:27:10.789 [main] INFO ChordialServer$ - Initializing membership module components
-22:27:10.823 [main] INFO membership.MembershipActor$ - Node ID not found - generating new ID
-22:27:10.832 [main] INFO membership.MembershipActor$ - Membership has determined node ID: 2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27, with rejoin flag: false
+[main] INFO ChordialServer$ - Initializing membership module components
+[main] INFO membership.MembershipActor$ - Node ID not found - generating new ID
+[main] INFO membership.MembershipActor$ - Membership has determined node ID: 2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27, with rejoin flag: false
 ``` 
 
 If it looks something like that, you're all set to start adding new nodes to the cluster
@@ -169,12 +169,12 @@ with it.
 
 To better illustrate the joining process, a sample log output of the new node would look like this:
 ```
-22:27:11.636 [...] INFO membership.MembershipActor$ - Retrieved seed node environment variable with value: 'cdb-0.chs.chordial-ns.svc.cluster.local'
-22:27:11.646 [...] DEBUG membership.MembershipActor - Starting initialization sequence to establish readiness
-22:27:11.648 [...] INFO membership.MembershipActor$ - Seed node IP address resolved to: 10.1.0.91
-22:27:11.649 [...] INFO membership.MembershipActor - Contacting seed node for membership listing
+[...] INFO membership.MembershipActor$ - Retrieved seed node environment variable with value: 'cdb-0.chs.chordial-ns.svc.cluster.local'
+[...] DEBUG membership.MembershipActor - Starting initialization sequence to establish readiness
+[...] INFO membership.MembershipActor$ - Seed node IP address resolved to: 10.1.0.91
+[...] INFO membership.MembershipActor - Contacting seed node for membership listing
 ...
-22:27:12.270 [...] INFO membership.MembershipActor - Successful full sync response received from seed node
+[...] INFO membership.MembershipActor - Successful full sync response received from seed node
 ```
 
 What's occurring here is that the new node will try to first resolve the seed node's hostname, and then
@@ -183,10 +183,10 @@ contact it to request a complete synchronization of the membership table
 Once complete, the node has full status knowledge of the all other nodes in the cluster and is ready to
 start broadcasting its new alive status to the rest of the cluster:
 ```
-22:27:12.270 [...] INFO membership.MembershipActor - Successful full sync response received from seed node
-22:27:12.277 [...] INFO membership.MembershipActor - Broadcasting join event to other nodes
-22:27:12.279 [...] DEBUG common.gossip.GossipActor - Gossip request received with key GossipKey(Event(2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27,Join(Join(167837788,PartitionHashes(List())))))
-22:27:12.282 [...] DEBUG common.gossip.GossipActor - Cluster size detected as 2, setting gossip round buffer to 5
+[...] INFO membership.MembershipActor - Successful full sync response received from seed node
+[...] INFO membership.MembershipActor - Broadcasting join event to other nodes
+[...] DEBUG common.gossip.GossipActor - Gossip request received with key GossipKey(Event(2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27,Join(Join(167837788,PartitionHashes(List())))))
+[...] DEBUG common.gossip.GossipActor - Cluster size detected as 2, setting gossip round buffer to 5
 ``` 
 
 The join event is send to the `GossipActor` instance, which is the component responsible for broadcasting the 
@@ -196,12 +196,12 @@ spread by this particular node before it goes into cooldown
 On the seed node side, it'll first receive the full sync request, and then receive the join gossip
 message shortly after:
 ```
-22:27:12.187 [...] INFO membership.MembershipServiceImpl$ - Full sync requested from node 2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27 with IP 10.1.0.92
-22:27:13.314 [...] DEBUG membership.MembershipServiceImpl$ - Event received from 2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27, forwarding to membership actor
-22:27:13.315 [...] DEBUG membership.MembershipActor - Join event - 2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27 - Join(167837788,PartitionHashes(Vector()))
-22:27:13.315 [...] INFO membership.MembershipActor - New node 2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27 added to membership table with IP address 167837788
-22:27:13.317 [...] DEBUG common.gossip.GossipActor - Gossip request received with key GossipKey(Event(2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27,Join(Join(167837788,PartitionHashes(Vector())))))
-22:27:13.319 [...] DEBUG common.gossip.GossipActor - Cluster size detected as 2, setting gossip round buffer to 5
+[...] INFO membership.MembershipServiceImpl$ - Full sync requested from node 2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27 with IP 10.1.0.92
+[...] DEBUG membership.MembershipServiceImpl$ - Event received from 2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27, forwarding to membership actor
+[...] DEBUG membership.MembershipActor - Join event - 2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27 - Join(167837788,PartitionHashes(Vector()))
+[...] INFO membership.MembershipActor - New node 2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27 added to membership table with IP address 167837788
+[...] DEBUG common.gossip.GossipActor - Gossip request received with key GossipKey(Event(2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27,Join(Join(167837788,PartitionHashes(Vector())))))
+[...] DEBUG common.gossip.GossipActor - Cluster size detected as 2, setting gossip round buffer to 5
 ```
 
 Note that from the perspective of the seed node, the new node won't be officially added by the full
@@ -213,11 +213,11 @@ not the seed node
 Afterwards, both nodes will stabilize and start to periodically perform failure checks on each other, and 
 reply liveness confirmations to incoming checks:
 ```
-22:27:18.556 [...] DEBUG membership.failureDetection.FailureDetectorActor - Target [2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27, 10.1.0.92] successfully passed initial direct failure check
-22:27:20.082 [...] DEBUG membership.failureDetection.FailureDetectorActor - Target [2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27, 10.1.0.92] successfully passed initial direct failure check
-22:27:20.762 [...] INFO service.RequestServiceImpl$ - Health check request has been received, sending confirmation
-22:27:22.265 [...] INFO service.RequestServiceImpl$ - Health check request has been received, sending confirmation
-22:27:23.108 [...] DEBUG membership.failureDetection.FailureDetectorActor - Target [2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27, 10.1.0.92] successfully passed initial direct failure check
+[...] DEBUG membership.failureDetection.FailureDetectorActor - Target [2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27, 10.1.0.92] successfully passed initial direct failure check
+[...] DEBUG membership.failureDetection.FailureDetectorActor - Target [2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27, 10.1.0.92] successfully passed initial direct failure check
+[...] INFO service.RequestServiceImpl$ - Health check request has been received, sending confirmation
+[...] INFO service.RequestServiceImpl$ - Health check request has been received, sending confirmation
+[...] DEBUG membership.failureDetection.FailureDetectorActor - Target [2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27, 10.1.0.92] successfully passed initial direct failure check
 ```
 
 Now you can scale your cluster to any size you want!
