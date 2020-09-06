@@ -1,13 +1,22 @@
 
 # Chordial
 
-A distributed, scalable key-value database system! Modeled around existing NoSQL databases such 
-as Redis, Cassandra, and Dynamo, it is built with horizontal scalability and cloud deployments in
-mind - check out the [build walkthrough](#project-setup-and-walkthrough) and deployment guide to get
-started!
+A distributed, scalable key-value database system! Note that this database is not production ready,
+and is mainly being built for educational purposes (so please never use it on a production system)
 
-**Project development is currently ongoing! Note that this database is not production ready,
-and is mainly being built for educational purposes**
+Modeled around existing NoSQL databases such as Redis, Cassandra, and Dynamo, it is built with horizontal scalability
+and cloud deployments in mind. For more details about setting the project up on your environment, check out the
+[build walkthrough](#project-setup-and-walkthrough) and deployment guide!
+
+### About the Project
+
+The project was started as a way to learn distributed systems concepts, practice writing asynchronous and 
+concurrent applications, and gain experience with the pitfalls of writing these distributed applications. 
+I've found that trying to implement pretty abstract distributed systems ideas into an actual program really helps
+solidify details that I would've missed from just reading about it - such as the Raft algorithm. 
+
+Overall, the project still has a significant amount of work to do, but over the past year of on-and-off work, I've
+learned a lot.
 
 
 ---
@@ -15,10 +24,14 @@ and is mainly being built for educational purposes**
 
 ### Dependency Installation
 
-First, the project build requires that you have some prerequisites installed on your system.
+First, the project build requires that you have some stuff installed on your system:
 
-The project itself will require both a Scala and protobuf compiler. The build commands will also
-include infrastructure setup, with Docker and Kubernetes providing the 
+Compiling the project itself will require both a Scala and protobuf compiler, so you'll have to install those 
+if you don't have it already. In addition, running the project itself will also require some infrastructure 
+setup, which includes Docker and Kubernetes. 
+
+Finally, ensure that you are running Java 8. This is the only version of Java I've been able to get the program to run
+on without absurd amounts of effort messing with the build system.
 
 Here are some reference links that may be helpful for installing dependencies: 
 
@@ -51,9 +64,6 @@ command to install the client `JAR` and wrapper script into to your `$PATH` spac
 Now, you should be able to just run the `chordial` command from anywhere. Test your installation by 
 running `chordial --help`, which should print out this lovely menu:
 ```
-This Chordial client program is a CLI tool to interact with the database node instances
-For more information, check out: https://github.com/Qwe1rty/Chordial
-
 Usage: chordial [get|post|delete|ready] [options]
 
   -k, --key <value>      key for an entry in the database

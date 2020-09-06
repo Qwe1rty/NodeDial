@@ -21,7 +21,7 @@ class SimpleReplicatedLog(
 
   dataFile.createFileIfNotExists(createParents = true)
 
-  private val dataReader: RandomAccessFile = dataFile.newRandomAccess(File.RandomAccessMode.readWriteMetadataSynchronous)
+  private val dataReader: RandomAccessFile = dataFile.newRandomAccess(File.RandomAccessMode.read)
   private val dataAppender: FileOutputStream = dataFile.newFileOutputStream(append = true)
 
   private val metadata: LogMetadata = {
@@ -41,22 +41,27 @@ class SimpleReplicatedLog(
 
 
   override def apply(index: Int): Array[Byte] = {
-    val  entry = new Array[Byte](lengthOf(index))
-    dataReader.read(entry, offsetOf(index), lengthOf(index))
+    val entry = new Array[Byte](lengthOf(index))
+    log.debug(s"Retrieving log entry #$index at offset ${offsetOf(index)} and byte length ${lengthOf(index)} from WAL")
 
-    log.debug(s"Retrieved log entry #$index at offset ${offsetOf(index)} and byte length ${lengthOf(index)} to WAL: ${entry.map("%02X" format _).mkString}") // DEBUG ONLY, REMOVE LATER
+    dataReader.seek(offsetOf(index))
+    dataReader.readFully(entry)
+
+    log.debug(s"Retrieved log entry: ${entry.map("%02X" format _).mkString}")
     entry
   }
 
   // Note: important that metadata is updated AFTER the data itself, to prevent invalid state
   override def append(term: Long, entry: Array[Byte]): Unit = {
     val logIndex = LogIndex(dataFile.size.toInt, entry.length, term)
-    log.debug(s"Appending log entry #${metadata.size} at offset ${logIndex.offset} and byte length ${logIndex.length} to WAL: ${entry.map("%02X" format _).mkString}") // DEBUG ONLY, REMOVE LATER
+    log.debug(s"Appending log entry #${metadata.size} at offset ${logIndex.offset} and byte length ${logIndex.length} to WAL")
 
     dataAppender.write(entry)
     dataAppender.flush()
     metadata.append(term, logIndex)
     saveMetadata(metadata)
+
+    log.debug(s"Appended log entry: ${entry.map("%02X" format _).mkString}")
   }
 
   override def slice(from: Int, until: Int): Array[Byte] = {

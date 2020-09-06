@@ -44,14 +44,14 @@ class ReplicationComponent(
 
       case OperationType.Read(ReadOp(key, uuid)) =>
         val keyString = byteStringToString(key)
-        val uuidString = byteStringToString(uuid)
+        val uuidString = byteStringToUUID(uuid)
 
         log.info(s"Get entry with key $keyString and UUID $uuidString has been received as Raft commit")
         persistenceActor ! GetTask(commitPromise, keyString.sha256)
 
       case OperationType.Write(WriteOp(key, compressedValue, uuid)) =>
         val keyString = byteStringToString(key)
-        val uuidString = byteStringToString(uuid)
+        val uuidString = byteStringToUUID(uuid)
 
         log.info(s"Write entry with key $keyString and UUID $uuidString will now attempt to be committed")
         decompressBytes(compressedValue) match {
@@ -61,7 +61,7 @@ class ReplicationComponent(
 
       case OperationType.Delete(DeleteOp(key, uuid)) =>
         val keyString = byteStringToString(key)
-        val uuidString = byteStringToString(uuid)
+        val uuidString = byteStringToUUID(uuid)
 
         log.info(s"Delete entry with key $keyString and UUID $uuidString will now attempt to be committed")
         persistenceActor ! DeleteTask(commitPromise, keyString.sha256)
