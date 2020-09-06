@@ -111,6 +111,11 @@ class KeyStateManager private(
         context.log.debug(s"$tag Write complete signal received")
         complete(result.map(_ => None))
         poll()
+
+      case DeleteCompleteSignal(result) =>
+        context.log.debug(s"$tag Delete complete signal received")
+        complete(result.map(_ => None))
+        poll()
       }
       this
   }

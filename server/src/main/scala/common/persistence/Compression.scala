@@ -11,28 +11,27 @@ trait Compression {
   /**
    * Compress bytes via gzip
    *
-   * @param bytes bytes to compress to gzip
+   * @param value bytes to compress to gzip
    * @return compressed bytes
    */
-  def compressBytes(bytes: Array[Byte]): Try[Array[Byte]] = Try {
+  def compressBytes(value: Array[Byte]): Try[Array[Byte]] = Try {
     val bytesOutputStream = new ByteArrayOutputStream()
-    val gzip = new GZIPOutputStream(bytesOutputStream)
-    gzip.write(bytes)
-    gzip.close()
+    val gzipOutputStream = new GZIPOutputStream(bytesOutputStream)
+    gzipOutputStream.write(value)
+    gzipOutputStream.close()
     bytesOutputStream.toByteArray
   }
 
   /**
    * Decompresses bytes via gzip
    *
-   * @param bytes gzipped bytes to decompress
+   * @param gzip gzipped bytes to decompress
    * @return decompressed bytes
    */
-  def decompressBytes(bytes: Array[Byte]): Try[Array[Byte]] = Try {
-    val bytesInputStream: InputStream = new GZIPInputStream(new ByteArrayInputStream(bytes))
-    val raw = new Array[Byte](bytesInputStream.available())
-    bytesInputStream.read(raw)
-    bytesInputStream.close()
-    raw
+  def decompressBytes(gzip: Array[Byte]): Try[Array[Byte]] = Try {
+    val gzipInputStream: InputStream = new GZIPInputStream(new ByteArrayInputStream(gzip))
+    val value = LazyList.continually(gzipInputStream.read).takeWhile(_ != -1).map(_.toByte).toArray
+    gzipInputStream.close()
+    value
   }
 }

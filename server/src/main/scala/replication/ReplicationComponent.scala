@@ -37,10 +37,10 @@ class ReplicationComponent(
   override val messageCompanion: GeneratedMessageCompanion[ReplicatedOp] = ReplicatedOp
 
   // TODO use a Raft-provided logger when in Raft context
-  private val raft: Raft[ReplicatedOp] = new Raft[ReplicatedOp](addressRetriever, { case (commit, log)  =>
+  private val raft: Raft[ReplicatedOp] = new Raft[ReplicatedOp](addressRetriever, { case (replicatedOp, log)  =>
 
     val commitPromise = Promise[PersistenceData]()
-    commit.operationType match {
+    replicatedOp.operationType match {
 
       case OperationType.Read(ReadOp(key, uuid)) =>
         val keyString = byteStringToString(key)
