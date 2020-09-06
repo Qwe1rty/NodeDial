@@ -21,7 +21,7 @@ import scala.util.{Failure, Success}
 
 class ReplicationComponent(
     override protected val context: ActorContext[ClientOperation],
-    membershipActor: ActorRef[AdministrationMessage],
+    administration: ActorRef[AdministrationMessage],
     persistenceActor: ActorRef[PersistenceTask],
     addressRetriever: AddressRetriever,
   )
@@ -75,7 +75,7 @@ class ReplicationComponent(
     override val messageCompanion: GeneratedMessageCompanion[ReplicatedOp] = self.messageCompanion
   }
 
-  membershipActor ! DeclareReadiness
+  administration ! DeclareReadiness
   context.log.info("Replication component initialized")
 
 
@@ -119,11 +119,11 @@ class ReplicationComponent(
 object ReplicationComponent {
 
   def apply(
-    membershipComponent: ActorRef[AdministrationMessage],
+    administration: ActorRef[AdministrationMessage],
     persistenceComponent: ActorRef[PersistenceTask],
     addressRetriever: AddressRetriever
   ): Behavior[ClientOperation] =
-    Behaviors.setup(new ReplicationComponent(_, membershipComponent, persistenceComponent, addressRetriever))
+    Behaviors.setup(new ReplicationComponent(_, administration, persistenceComponent, addressRetriever))
 
 
   /** Actor protocol */

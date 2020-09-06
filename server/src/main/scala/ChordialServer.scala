@@ -36,7 +36,7 @@ private object ChordialServer extends App {
        */
       log.info("Initializing membership module components")
       val addressRetriever = KubernetesAddresser
-      val membershipComponent = context.spawn(
+      val administrationComponent = context.spawn(
         Administration(addressRetriever, REQUIRED_TRIGGERS),
         "administration"
       )
@@ -47,7 +47,7 @@ private object ChordialServer extends App {
        */
       log.info("Initializing top-level persistence layer components")
       val persistenceComponent = context.spawn(
-        PersistenceComponent(membershipComponent),
+        PersistenceComponent(administrationComponent),
         "persistence"
       )
       log.info("Persistence layer components created")
@@ -57,7 +57,7 @@ private object ChordialServer extends App {
        */
       log.info("Initializing raft and replication layer components")
       val replicationComponent = context.spawn(
-        ReplicationComponent(membershipComponent, persistenceComponent, addressRetriever),
+        ReplicationComponent(administrationComponent, persistenceComponent, addressRetriever),
         "replication"
       )
       log.info("Replication layer components created")
@@ -66,11 +66,11 @@ private object ChordialServer extends App {
        * Service layer components
        */
       log.info("Initializing external facing gRPC service")
-      ClientGRPCService(replicationComponent, membershipComponent)(context.system)
+      ClientGRPCService(replicationComponent, administrationComponent)(context.system)
       log.info("Service layer components created")
 
 
-      scala.sys.addShutdownHook(membershipComponent ! DeclareEvent(
+      scala.sys.addShutdownHook(administrationComponent ! DeclareEvent(
         NodeState.DEAD,
         Membership(Administration.nodeID, addressRetriever.selfIP)
       ))

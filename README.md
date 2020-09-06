@@ -13,10 +13,12 @@ and cloud deployments in mind. For more details about setting the project up on 
 The project was started as a way to learn distributed systems concepts, practice writing asynchronous and 
 concurrent applications, and gain experience with the pitfalls of writing these distributed applications. 
 I've found that trying to implement pretty abstract distributed systems ideas into an actual program really helps
-solidify details that I would've missed from just reading about it - such as the Raft algorithm. 
+solidify details that I would've missed from just reading about it - such as non-obvious corner cases in the Raft 
+algorithm. 
 
 Overall, the project still has a significant amount of work to do, but over the past year of on-and-off work, I've
-learned a lot.
+learned a lot. I don't know how long I'll continue working on it past the replication/Raft layer, but I'm sure that
+this project's teachings will last for all future projects that I work on.
 
 
 ---

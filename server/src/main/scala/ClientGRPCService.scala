@@ -97,8 +97,8 @@ object ClientGRPCService {
 
   def apply(
       replicationComponent: ActorRef[ClientOperation],
-      membershipActor: ActorRef[AdministrationAPI]
+      administration: ActorRef[AdministrationAPI]
     )
     (implicit actorSystem: ActorSystem[_]): RequestService =
-    new ClientGRPCService(replicationComponent, membershipActor)
+    new ClientGRPCService(replicationComponent, administration)
 }

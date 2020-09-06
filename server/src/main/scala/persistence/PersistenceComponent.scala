@@ -61,8 +61,8 @@ object PersistenceComponent {
 
   val PERSISTENCE_DIRECTORY: File = ServerConstants.BASE_DIRECTORY/"data"
 
-  def apply(membershipActor: ActorRef[AdministrationMessage]): Behavior[PersistenceTask] =
-    Behaviors.setup(new PersistenceComponent(_, membershipActor))
+  def apply(administration: ActorRef[AdministrationMessage]): Behavior[PersistenceTask] =
+    Behaviors.setup(new PersistenceComponent(_, administration))
 
 
   /** Actor protocol: defines the set of tasks the persistence layer will accept */
