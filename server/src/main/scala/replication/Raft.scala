@@ -17,7 +17,7 @@ import common.persistence.{ProtobufSerializer, Serializer}
 import common.time.TimeRange
 import io.jvm.uuid._
 import org.slf4j.LoggerFactory
-import replication.ClusterEntry.RaftNode
+import replication.ConfigEntry.RaftNode
 import replication.LogEntry.EntryType.Data
 import replication.Raft.CommitFunction
 import replication.eventlog.SimpleReplicatedLog
@@ -59,7 +59,8 @@ class Raft[Command <: Serializable](addresser: AddressRetriever, commitCallback:
         new SimpleReplicatedLog(RAFT_LOG_INDEX, RAFT_LOG_DATA)
       ),
       commitCallback,
-      this
+      addresser,
+      this,
     )),
     s"raftActor-${UUID.random}"
   )
@@ -81,7 +82,7 @@ class Raft[Command <: Serializable](addresser: AddressRetriever, commitCallback:
   }
 
   def join(joinInfo: RaftNode): Unit =
-    raft ! ClusterReconfigEvent(Seq(joinInfo), Seq.empty)
+    raft ! AddNodeEvent(joinInfo)
 }
 
 object Raft {

@@ -124,15 +124,14 @@ private object SimpleReplicatedLog {
   private object LogMetadata extends JavaSerializer[LogMetadata] {
 
     def apply(elems: LogIndex*): LogMetadata =
-      new LogMetadata(0, mutable.ListBuffer[LogIndex](elems: _*))
+      new LogMetadata(lastIncludedTerm = 0, mutable.ListBuffer[LogIndex](elems: _*))
   }
 
   @SerialVersionUID(100L)
   private class LogMetadata(
     var lastIncludedTerm: Long,
     val offsetIndex: mutable.Buffer[LogIndex]
-  )
-    extends Serializable {
+  ) extends Serializable {
 
     def append(term: Long, logIndex: LogIndex): Unit = {
       if (term > lastIncludedTerm) lastIncludedTerm = term

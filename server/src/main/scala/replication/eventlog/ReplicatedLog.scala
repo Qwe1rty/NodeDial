@@ -17,6 +17,8 @@ trait ReplicatedLog {
   def append(term: Long, entry: Array[Byte]): Unit
   final def +=(term: Long, entry: Array[Byte]): Unit = append(term, entry)
 
+  def appendRaw(bytes: Array[Byte]): Unit
+
   def slice(from: Int, until: Int): Array[Byte]
   def size(): Offset
 

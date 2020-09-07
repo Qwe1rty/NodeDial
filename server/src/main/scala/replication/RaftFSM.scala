@@ -2,6 +2,7 @@ package replication
 
 import java.util.concurrent.TimeUnit
 
+import administration.addresser.AddressRetriever
 import administration.{Administration, Membership}
 import akka.actor.{ActorSystem, FSM}
 import common.persistence.Serializer
@@ -33,6 +34,7 @@ import scala.util.{Failure, Success, Try}
 private[replication] final class RaftFSM[Command <: Serializable](
     private val state: RaftState,
     private val commitCallback: CommitFunction[Command],
+    private val addresser: AddressRetriever,
     private val commandSerializer: Serializer[Command]
   )(
     implicit
@@ -119,14 +121,19 @@ private[replication] final class RaftFSM[Command <: Serializable](
           Seq.empty,
           nextStateData.commitIndex
         )))
+
+        nextStateData.currentLeader = Some(nextStateData.selfInfo)
+        nextStateData.resetQuorum()
       })
   }
 
   initialize()
   log.debug("Raft role FSM has been initialized")
 
-  processTimerTask(ResetTimer(RaftGlobalTimeoutKey))
-  log.info("Randomized Raft election timeout started")
+  if (!addresser.seedIP.contains(addresser.selfIP)) {
+    processTimerTask(ResetTimer(RaftGlobalTimeoutKey))
+    log.info("Randomized Raft election timeout started at initialization as no external seed node was detected")
+  }
 
 
   private def onReceive[CurrentRole <: RaftRole](currentRole: CurrentRole): StateFunction = {

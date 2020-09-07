@@ -7,7 +7,7 @@ import administration.gossip.Gossip.{GossipSignal, PublishRequest}
 import administration.gossip.{Gossip, GossipKey, GossipPayload}
 import akka.actor
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
-import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
+import akka.actor.typed.{ActorRef, Behavior}
 import akka.grpc.GrpcClientSettings
 import common.ServerConstants
 import common.administration.Event.EventType.Empty
@@ -17,7 +17,6 @@ import common.administration.types.NodeState.{ALIVE, DEAD, SUSPECT}
 import common.administration.types.{NodeInfo, NodeState}
 import org.slf4j.LoggerFactory
 import partitioning.PartitionHashes
-import replication.ReplicationComponent.JoinReplicaGroupRequest
 import schema.ImplicitDataConversions._
 import schema.PortConfiguration.MEMBERSHIP_PORT
 

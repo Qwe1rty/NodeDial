@@ -1,10 +1,13 @@
 package replication.roles
 
-import administration.Administration
+import administration.{Administration, Membership}
+import com.risksense.ipaddr.IpAddress
 import common.rpc.{RPCTask, ReplyTask, RequestTask}
 import common.time.{ContinueTimer, ResetTimer}
 import org.slf4j.{Logger, LoggerFactory}
-import replication.LogEntry.EntryType.Data
+import replication.ConfigEntry.{ClusterChangeType, RaftNode}
+import replication.LogEntry.EntryType
+import replication.LogEntry.EntryType.{Cluster, Data}
 import replication._
 import replication.roles.RaftRole.MessageResult
 import replication.state.RaftLeaderState.LogIndexState
@@ -56,6 +59,38 @@ private[replication] case object Leader extends RaftRole {
   }
 
   /**
+   * Handles a node adding event from the client
+   *
+   * @param addNodeEvent info about new node
+   * @param state current raft state
+   * @return the reconfiguration result
+   */
+  override def processAddNodeEvent(addNodeEvent: AddNodeEvent)(state: RaftState)(implicit log: Logger): MessageResult = {
+
+    if (state.pendingMember.isDefined) {
+      log.info("Rejecting new server add: another server is currently pending addition")
+      return MessageResult(Set(ReplyTask(AddNodeAck(status = false, state.currentLeader.map(_.nodeID)))), ContinueTimer, None)
+    }
+
+    if (state.isMember(addNodeEvent.node.nodeId)) {
+      log.info("Rejecting new server add: node is already a member")
+      return MessageResult(Set(ReplyTask(AddNodeAck(status = false, state.currentLeader.map(_.nodeID)))), ContinueTimer, None)
+    }
+
+    // TODO: eventually, the leader should implement a non-voting period for the new node as described in
+    //   Section 4.2.1 in Ongaro's PhD thesis "Consensus: Bridging Theory and Practice"
+
+    state.pendingMember = Some(raftNodeToMembership(addNodeEvent.node))
+    state.pendingConfigIndex = Some(state.log.lastLogIndex() + 1)
+
+    // As leader, this will broadcast an append entry request to all nodes in the cluster to add the new server
+    this.processAppendEntryEvent(AppendEntryEvent(
+      LogEntry(Cluster(ConfigEntry(ClusterChangeType.ADD, addNodeEvent.node))),
+      None
+    ))(state)
+  }
+
+  /**
    * Handle a direct append entry request received by this server. Only in the leader role is this
    * actually processed - otherwise it should be redirected to the current leader
    *
@@ -82,11 +117,6 @@ private[replication] case object Leader extends RaftRole {
         ))
         if (state.clusterSize() == 1) state.commitIndex += 1
 
-//        appendEvent.logEntry.entryType match {
-//          case Data(DataEntry(key, value)) =>
-//
-//        }
-
         val appendEntryRequest = AppendEntriesRequest(
           currentTerm,
           Administration.nodeID,
@@ -107,10 +137,20 @@ private[replication] case object Leader extends RaftRole {
         MessageResult(matchingFollowers + ReplyTask(AppendEntryAck(success = true)), ContinueTimer, None)
 
       case Failure(exception) =>
-        log.error(
-          s"Serialization error on append entry ${appendEvent.logEntry.key} and UUID ${appendEvent.uuid}, on term $currentTerm: " +
-            exception.getLocalizedMessage
-        )
+
+        appendEvent.logEntry.entryType match {
+          case EntryType.Empty => log.error(s"Attempted to serialize unknown or empty log entry type")
+          case Cluster(_)      => log.error(s"Serialization error on new cluster configuration on term $currentTerm")
+          case Data(value)     =>
+            log.error(
+              s"Serialization error on append entry ${value.key} and UUID ${appendEvent.uuid}, on term $currentTerm: " +
+                exception.getLocalizedMessage
+            )
+        }
+
+        state.pendingMember = None
+        state.pendingConfigIndex = None
+
         MessageResult(Set(ReplyTask(AppendEntryAck(success = false))), ContinueTimer, None)
     }
 
@@ -221,5 +261,12 @@ private[replication] case object Leader extends RaftRole {
         throw exception
     }
   }
+
+  // TODO move somewhere else
+  def raftNodeToMembership: Function[RaftNode, Membership] =
+    raftNode => Membership(raftNode.nodeId, IpAddress(raftNode.ipAddress))
+
+  def membershipToRaftNode: Function[Membership, RaftNode] =
+    membership => RaftNode(membership.nodeID, membership.ipAddress.numerical)
 
 }

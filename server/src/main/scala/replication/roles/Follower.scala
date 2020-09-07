@@ -1,7 +1,7 @@
 package replication.roles
 
 import administration.Administration
-import common.rpc.{RPCTask, ReplyFutureTask}
+import common.rpc.{RPCTask, ReplyFutureTask, ReplyTask}
 import common.time.ContinueTimer
 import org.slf4j.{Logger, LoggerFactory}
 import replication._
@@ -39,6 +39,19 @@ private[replication] case object Follower extends RaftRole {
 
     // For followers, nothing needs to happen, and occur as holdovers from previous roles
     MessageResult(Set(), ContinueTimer, None)
+  }
+
+  /**
+   * Handles a node adding event from the client
+   *
+   * @param addNodeEvent info about new node
+   * @param state current raft state
+   * @return the reconfiguration result
+   */
+  override def processAddNodeEvent(addNodeEvent: AddNodeEvent)(state: RaftState)(implicit log: Logger): MessageResult = {
+
+    // Simply reject the add node event, since only the leader can actually execute the request
+    MessageResult(Set(ReplyTask(AddNodeAck(status = false, state.currentLeader.map(_.nodeID)))), ContinueTimer, None)
   }
 
   /**

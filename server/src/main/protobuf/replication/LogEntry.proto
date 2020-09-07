@@ -12,7 +12,7 @@ message LogEntry {
 
     oneof entry_type {
         DataEntry data = 1;
-        ClusterEntry cluster = 2;
+        ConfigEntry cluster = 2;
     }
 }
 
@@ -28,13 +28,19 @@ message DataEntry {
 }
 
 // A log entry used to implement the two-phase membership changes
-message ClusterEntry {
+message ConfigEntry {
 
-    repeated RaftNode old_config = 1;
-    repeated RaftNode new_config = 2;
+    enum ClusterChangeType {
+        ADD = 0;
+        REMOVE = 1;
+    }
+
+    message RaftNode {
+        required string node_id = 1;
+        required fixed64 ip_address = 2; // 64 bit for better interop with IP address lib
+    }
+
+    required ClusterChangeType changeType = 1;
+    required RaftNode node = 2;
 }
 
-message RaftNode {
-    required string node_id = 1;
-    required fixed64 ip_address = 2; // 64 bit for better interop with IP address lib
-}
