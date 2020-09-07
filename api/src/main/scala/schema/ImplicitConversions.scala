@@ -4,6 +4,7 @@ import java.nio.charset.StandardCharsets
 
 import com.google.protobuf.ByteString
 import com.risksense.ipaddr.IpAddress
+import io.jvm.uuid._
 
 import scala.language.implicitConversions
 
@@ -30,6 +31,13 @@ object ImplicitGrpcConversions {
 
   implicit def byteStringToByteArray(value: ByteString): Array[Byte] =
     value.toByteArray
+
+  // UUID & ByteString
+  implicit def UUIDToByteString(value: UUID): ByteString =
+    ByteString.copyFrom(value.byteArray)
+
+  implicit def byteStringToUUID(value: ByteString): UUID =
+    UUID(value.toByteArray)
 }
 
 

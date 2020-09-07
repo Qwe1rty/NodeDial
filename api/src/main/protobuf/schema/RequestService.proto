@@ -1,0 +1,40 @@
+syntax = "proto2";
+
+option java_multiple_files = true;
+option java_package = "schema.service";
+option java_outer_classname = "ChordialRequestService";
+
+import "google/api/annotations.proto";
+import "schema/RequestMessages.proto";
+
+package chordial.server;
+
+
+service RequestService {
+
+    rpc Get(Request.GetRequest) returns (Response.GetResponse) {
+        option (google.api.http) = {
+            get: "/v1/api/keys/{key}"
+        };
+    }
+
+    rpc Post(Request.PostRequest) returns (Response.PostResponse) {
+        option (google.api.http) = {
+            post: "/v1/api/keys/{key}"
+            body: "value"
+        };
+    }
+
+    rpc Delete(Request.DeleteRequest) returns (Response.DeleteResponse) {
+        option (google.api.http) = {
+            delete: "/v1/api/keys/{key}"
+        };
+    }
+
+
+    rpc Readiness(ReadinessCheck) returns (ReadinessConfirmation) {
+        option (google.api.http) = {
+            get: "/v1/api/readiness"
+        };
+    }
+}

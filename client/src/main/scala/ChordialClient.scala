@@ -2,7 +2,7 @@ import ch.qos.logback.classic.Level
 import schema.ImplicitGrpcConversions._
 import schema.LoggingConfiguration
 import schema.service.ReadinessCheck
-import schema.service.Request.{GetRequest, PostRequest}
+import schema.service.Request.{DeleteRequest, GetRequest, PostRequest}
 import scopt.OptionParser
 
 import scala.concurrent.Await
@@ -20,11 +20,10 @@ private object ChordialClient extends App {
 
   import ClientHandler._
 
-  lazy val separator = sys.props("line.separator")
-
   // Needed as the the netty I/O logs on DEBUG mode are excessive
-  LoggingConfiguration.setPackageLevel(Level.INFO, "io.grpc.netty")
+  LoggingConfiguration.setPackageLevel(Level.ERROR, "io.grpc.netty")
 
+  lazy val separator = sys.props("line.separator")
 
   val parser: OptionParser[ClientHandler] = new OptionParser[ClientHandler]("chordial") {
 
@@ -110,8 +109,10 @@ private object ChordialClient extends App {
         match {
           case Success(future) => future.value.get match {
             case Success(getResponse) =>
-              val stringValue: String = getResponse.value // Convert ByteString to String
-              println(s"GET request successful: ${stringValue}")
+              getResponse.value.map(byteStringToString) match {
+                case Some(stringValue) => println(s"GET request successful: ${stringValue}")
+                case None => println(s"GET request successful, but the key contained no associated value")
+              }
               sys.exit(STATUS_OK)
             case Failure(requestError) =>
               println(s"GET request failed: ${requestError}")
@@ -124,10 +125,7 @@ private object ChordialClient extends App {
 
       case POST =>
         Try(Await.ready(
-          handler.post(PostRequest(
-            handler.key.get,
-            handler.value.get
-          )),
+          handler.post(PostRequest(handler.key.get, handler.value.get)),
           handler.timeout * 2
         ))
         match {
@@ -145,6 +143,23 @@ private object ChordialClient extends App {
         }
 
       case DELETE =>
+        Try(Await.ready(
+          handler.delete(DeleteRequest(handler.key.get)),
+          handler.timeout * 2
+        ))
+        match {
+          case Success(future) => future.value.get match {
+            case Success(deleteResponse) =>
+              println(s"DELETE request successful: ${deleteResponse}")
+              sys.exit(STATUS_OK)
+            case Success(requestError) =>
+              println(s"DELETE request failed: ${requestError}")
+              sys.exit(GRPC_RESPONSE_ERROR)
+          }
+          case Failure(timeout) =>
+            println(s"Internal client error during DELETE: ${timeout}")
+            sys.exit(CLIENT_INTERNAL_ERROR)
+        }
         println("Deletes are currently not implemented")
         sys.exit(UNIMPLEMENTED_ERROR)
 

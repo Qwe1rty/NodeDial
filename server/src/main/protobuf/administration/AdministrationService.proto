@@ -1,0 +1,21 @@
+syntax = "proto2";
+
+option java_multiple_files = true;
+option java_package = "common.administration";
+option java_outer_classname = "ChordialAdministrationService";
+
+import "administration/NodeEvent.proto";
+import "administration/NodeSynchronization.proto";
+
+package chordial.administration;
+
+
+service AdministrationService {
+
+    // Push-based synchronization RPC
+    rpc Publish (Event) returns (EventReply) {}
+
+    // Pull-based synchronization RPCs
+    rpc FullSync (FullSyncRequest) returns (SyncResponse) {}
+    rpc UpdateSync (UpdateRequest) returns (SyncResponse) {}
+}

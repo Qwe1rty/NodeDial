@@ -1,15 +1,27 @@
 
 # Chordial
 
-A distributed, scalable key-value database system! Modeled around existing NoSQL databases such 
-as Redis, Cassandra, and Dynamo, it is built with horizontal scalability and cloud deployments in
-mind - check out the [build walkthrough](#project-setup-and-walkthrough) and deployment guide to get
-started!
+A distributed, scalable key-value database system! Note that this database is not production ready,
+and is mainly being built for educational purposes (so please never use it on a production system)
 
-**Project development is currently ongoing! Note that this database is not production ready,
-and is currently being built for educational purposes**
+Modeled around existing NoSQL databases such as Redis, Cassandra, and Dynamo, it is built with horizontal scalability
+and cloud deployments in mind. For more details about setting the project up on your environment, check out the
+[build walkthrough](#project-setup-and-walkthrough) and deployment guide!
 
-**Check out the [project plan](#project-development-plan) for a development overview**
+The main server code is located in the directory `server/src/main/scala/`, and the program currently supports the 
+three basic operations: `GET`, `POST`, and `DELETE`
+
+### About the Project
+
+The project started as a way to learn distributed systems concepts, practice writing asynchronous/concurrent 
+applications, and gain experience with the pitfalls of writing these distributed applications.
+Overall, while the project still has a significant amount of work to do, over the past year of on-and-off work I've
+learned a lot and gotten much better at these things. I've found that trying to implement various abstract distributed
+systems ideas into an actual program really helps solidify details that I would've missed from just reading about it
+(such as the many non-obvious corner cases in the Raft consensus algorithm).
+
+While I'm not sure how long I'll continue working on it past the replication/Raft layer, I'm sure that
+everything I've learned will come in handy for all future projects
 
 
 ---
@@ -17,10 +29,15 @@ and is currently being built for educational purposes**
 
 ### Dependency Installation
 
-First, the project build requires that you have some prerequisites installed on your system.
+First, the project build requires that you have some stuff installed on your system:
 
-The project itself will require both a Scala and protobuf compiler. The build commands will also
-include infrastructure setup, with Docker and Kubernetes providing the 
+Compiling the project itself will require both a Scala and protobuf compiler, so you'll have to install those 
+if you don't have it already. In addition, running the project itself will also require some infrastructure 
+setup, which includes Docker and Kubernetes. 
+
+Finally, ensure that you are running Java 8. This is the only version of Java I've been able to consistently get the
+program to run on without absurd amounts of effort messing with the build system, due to netty IO's inclusion in
+Java 9+ and resulting library incompatibilities.
 
 Here are some reference links that may be helpful for installing dependencies: 
 
@@ -53,9 +70,6 @@ command to install the client `JAR` and wrapper script into to your `$PATH` spac
 Now, you should be able to just run the `chordial` command from anywhere. Test your installation by 
 running `chordial --help`, which should print out this lovely menu:
 ```
-This Chordial client program is a CLI tool to interact with the database node instances
-For more information, check out: https://github.com/Qwe1rty/Chordial
-
 Usage: chordial [get|post|delete|ready] [options]
 
   -k, --key <value>      key for an entry in the database
@@ -103,9 +117,6 @@ cluster (if you'd like to)
 ---
 ## Kubernetes Cluster Setup
 
-**Disclaimer: This has currently only been tested using version 1.14.x of the Kubernetes server. Please 
-be on the lookout for potential issues when using other versions of Kubernetes**
-
 If everything seems to work okay, you can now set up a Kubernetes cluster! Note that this section may
 skip over details about setting up non-Chordial related Kubernetes components (such as the DNS 
 service), so some familiarity with Kubernetes would be really helpful
@@ -150,22 +161,18 @@ You can also check out the logs and see how it's interacting with the cluster. T
 get this sort of log output:
 ```
 > kubectl logs cdb-0 -n chordial-ns -f
-22:27:10.247 [main] INFO ChordialServer$ - Server config loaded
-22:27:10.250 [main] INFO ChordialServer$ - Initializing actor system
-22:27:10.719 [ChordialServer-akka.actor.default-dispatcher-5] INFO akka.event.slf4j.Slf4jLogger - Slf4jLogger started
-22:27:10.727 [ChordialServer-akka.actor.default-dispatcher-5] DEBUG akka.event.EventStream - logger log1-Slf4jLogger started
+[main] INFO ChordialServer$ - Server config loaded
+[main] INFO ChordialServer$ - Initializing actor system
+[ChordialServer-akka.actor.default-dispatcher-5] INFO akka.event.slf4j.Slf4jLogger - Slf4jLogger started
 ...
-22:27:10.789 [main] INFO ChordialServer$ - Initializing membership module components
-22:27:10.823 [main] INFO membership.MembershipActor$ - Node ID not found - generating new ID
-22:27:10.832 [main] INFO membership.MembershipActor$ - Membership has determined node ID: 2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27, with rejoin flag: false
+[ChordialServer-akka.actor.default-dispatcher-8] INFO ChordialServer$ - Initializing administration components
+[ChordialServer-akka.actor.default-dispatcher-8] INFO administration.Administration$ - Administration has determined node ID: e74020db48ba67212baa73a0cc28798a5f3b407821d0ddab9383cc47d06795be, with rejoin flag: false
+[ChordialServer-akka.actor.default-dispatcher-8] INFO ChordialServer$ -  components initialized
 ``` 
 
 If it looks something like that, you're all set to start adding new nodes to the cluster
 
 ### Cluster Scaling
-
-**Note that log snippets for the rest of the article will replace the dispatcher source (such as
-`[ChordialServer-akka.actor.default-dispatcher-13]`) with `[...]` for brevity**
 
 To scale the number of replicas in the `StatefulSet`, you will need to run the command:
 `kubectl scale statefulset cdb -n chordial-ns --replicas=${REPLICA_COUNT}`. This will add new pods one-by-one 
@@ -177,12 +184,10 @@ with it.
 
 To better illustrate the joining process, a sample log output of the new node would look like this:
 ```
-22:27:11.636 [...] INFO membership.MembershipActor$ - Retrieved seed node environment variable with value: 'cdb-0.chs.chordial-ns.svc.cluster.local'
-22:27:11.646 [...] DEBUG membership.MembershipActor - Starting initialization sequence to establish readiness
-22:27:11.648 [...] INFO membership.MembershipActor$ - Seed node IP address resolved to: 10.1.0.91
-22:27:11.649 [...] INFO membership.MembershipActor - Contacting seed node for membership listing
-...
-22:27:12.270 [...] INFO membership.MembershipActor - Successful full sync response received from seed node
+[...] INFO administration.Administration$ - Retrieved seed node environment variable with value: 'cdb-0.chs.chordial-ns.svc.cluster.local'
+[...] INFO administration.Administration$ - Seed node IP address resolved to: 10.1.0.171
+[...] INFO administration.Administration - Contacting seed node for membership listing
+[...] INFO administration.Administration - Successful full sync response received from seed node
 ```
 
 What's occurring here is that the new node will try to first resolve the seed node's hostname, and then
@@ -191,10 +196,10 @@ contact it to request a complete synchronization of the membership table
 Once complete, the node has full status knowledge of the all other nodes in the cluster and is ready to
 start broadcasting its new alive status to the rest of the cluster:
 ```
-22:27:12.270 [...] INFO membership.MembershipActor - Successful full sync response received from seed node
-22:27:12.277 [...] INFO membership.MembershipActor - Broadcasting join event to other nodes
-22:27:12.279 [...] DEBUG common.gossip.GossipActor - Gossip request received with key GossipKey(Event(2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27,Join(Join(167837788,PartitionHashes(List())))))
-22:27:12.282 [...] DEBUG common.gossip.GossipActor - Cluster size detected as 2, setting gossip round buffer to 5
+[...] INFO administration.Administration - Successful full sync response received from seed node
+[...] INFO administration.Administration - Broadcasting join event to other nodes
+[...] DEBUG administration.gossip.Gossip - Gossip request received with key GossipKey(Event(022fd1be6f6b4fc3a857266cbac07f01cf295d0f688fabcaa83b42443f81fafd,Join(Join(167837872,PartitionHashes(List())))))
+[...] DEBUG common.gossip.GossipActor - Cluster size detected as 2, setting gossip round buffer to 5
 ``` 
 
 The join event is send to the `GossipActor` instance, which is the component responsible for broadcasting the 
@@ -204,28 +209,26 @@ spread by this particular node before it goes into cooldown
 On the seed node side, it'll first receive the full sync request, and then receive the join gossip
 message shortly after:
 ```
-22:27:12.187 [...] INFO membership.MembershipServiceImpl$ - Full sync requested from node 2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27 with IP 10.1.0.92
-22:27:13.314 [...] DEBUG membership.MembershipServiceImpl$ - Event received from 2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27, forwarding to membership actor
-22:27:13.315 [...] DEBUG membership.MembershipActor - Join event - 2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27 - Join(167837788,PartitionHashes(Vector()))
-22:27:13.315 [...] INFO membership.MembershipActor - New node 2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27 added to membership table with IP address 167837788
-22:27:13.317 [...] DEBUG common.gossip.GossipActor - Gossip request received with key GossipKey(Event(2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27,Join(Join(167837788,PartitionHashes(Vector())))))
-22:27:13.319 [...] DEBUG common.gossip.GossipActor - Cluster size detected as 2, setting gossip round buffer to 5
+[...] INFO administration.AdministrationGRPCService$ - Full sync requested from node 2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27 with IP 10.1.0.92
+[...] DEBUG administration.AdministrationGRPCService$ - Event received from 2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27, forwarding to membership actor
+[...] DEBUG administration.Administration - Join event - 2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27 - Join(167837788,PartitionHashes(Vector()))
+[...] INFO administration.Administration - New node 2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27 added to membership table with IP address 167837788
+[...] DEBUG administration.gossip.Gossip - Gossip request received with key GossipKey(Event(022fd1be6f6b4fc3a857266cbac07f01cf295d0f688fabcaa83b42443f81fafd,Join(Join(167837872,PartitionHashes(Vector())))))
+[...] DEBUG administration.gossip.Gossip - Cluster size detected as 2, setting gossip round buffer to 5
 ```
 
 Note that from the perspective of the seed node, the new node won't be officially added by the full
-sync request, and instead waits until the join event gossip arrives. While seemingly inefficient
-in this example, a scenario with a large number of nodes would benefit from a decoupled sync/join
-process as it allows the new node to assume full responsibility for broadcasting the join notification - 
-not the seed node
+sync request, and instead waits until the join event gossip arrives. This will mean that the joining node 
+assumes full responsibility for broadcasting the join notification instead of the seed node.
 
 Afterwards, both nodes will stabilize and start to periodically perform failure checks on each other, and 
 reply liveness confirmations to incoming checks:
 ```
-22:27:18.556 [...] DEBUG membership.failureDetection.FailureDetectorActor - Target [2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27, 10.1.0.92] successfully passed initial direct failure check
-22:27:20.082 [...] DEBUG membership.failureDetection.FailureDetectorActor - Target [2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27, 10.1.0.92] successfully passed initial direct failure check
-22:27:20.762 [...] INFO service.RequestServiceImpl$ - Health check request has been received, sending confirmation
-22:27:22.265 [...] INFO service.RequestServiceImpl$ - Health check request has been received, sending confirmation
-22:27:23.108 [...] DEBUG membership.failureDetection.FailureDetectorActor - Target [2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27, 10.1.0.92] successfully passed initial direct failure check
+[...] DEBUG administration.failureDetection.FailureDetector - Target [2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27, 10.1.0.92] successfully passed initial direct failure check
+[...] DEBUG administration.failureDetection.FailureDetector - Target [2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27, 10.1.0.92] successfully passed initial direct failure check
+[...] INFO administration.failureDetection.FailureDetectorGRPCService$ - Health check request has been received, sending confirmation
+[...] INFO administration.failureDetection.FailureDetectorGRPCService$ - Health check request has been received, sending confirmation
+[...] DEBUG administration.failureDetection.FailureDetector - Target [2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27, 10.1.0.92] successfully passed initial direct failure check
 ```
 
 Now you can scale your cluster to any size you want!
@@ -237,72 +240,44 @@ cluster seed node (the hostname `cdb-0.chs.chordial-ns.svc.cluster.local`)
 Without a DNS server, it is still possible to have future nodes scaled automatically, but it will require
 you to manually specify the seed node IP address into the Kubernetes `StatefulSet` configuration. The
 program will attempt to read this IP address from the environment variable `SEED_IP` if it fails to
-read the variable `SEED_NODE`.
-_**TODO elaborate on this more**_ 
+read the variable `SEED_NODE`. 
+
+
+---
+## Replicas and Raft
+
+When starting up a single node, you'll notice that it immediately begins the election process. Since there is 
+nobody else to provide votes, it will win and become leader for Term 1. This is the log output from winning the election:
+```
+[...] INFO replication.RaftFSM - Starting leader election for new term: 1
+[...] INFO replication.RaftFSM - Election won, becoming leader of term 1
+```
+
+Once it has become leader, it can start processing `POST` and `DELETE` client requests (note that `GET` 
+requests do not go through Raft and read directly from disk). Upon a `POST` request, the leader will write the
+entry into its write-ahead log (WAL) and return an acknowledgement once it finishes.
+
+At the same time, Raft will notice that a new entry has been appended to the WAL - combined with the fact
+that it's the only node in the cluster, it will determine that it is safe to hand the `POST` request off to
+the persistence layer to apply on disk. Only when the persistence layer writes the entry to disk will the entry
+be visible through a client `GET`.
+
+Here is an example of what a `post -k "hello" -v "world"` request looks like going through Raft; notice the two
+distinct phases of writing to the WAL before officially committing the change: 
+```
+[...] DEBUG replication.ReplicationComponent - Post request received with UUID d66f67e0-9692-4ca5-9105-13a914781888 and hex value: 776F726C64
+[...] DEBUG replication.eventlog.SimpleReplicatedLog$ - Appending log entry #1 at offset 0 and byte length 63 to WAL
+[...] DEBUG replication.eventlog.SimpleReplicatedLog$ - Appended log entry: 0A0568656C6C6F123612340A0568656C6C6F12191F8B08000000000000002BCF2FCA4901004311773A050000001A10D66F67E096924CA5910513A914781888
+...
+[...] DEBUG replication.eventlog.SimpleReplicatedLog$ - Retrieving log entry #1 at offset 0 and byte length 63 from WAL
+[...] DEBUG replication.eventlog.SimpleReplicatedLog$ - Retrieved log entry: 0A0568656C6C6F123612340A0568656C6C6F12191F8B08000000000000002BCF2FCA4901004311773A050000001A10D66F67E096924CA5910513A914781888
+[...] INFO replication.RaftFSM - Write entry with key 'hello' and UUID d66f67e0-9692-4ca5-9105-13a914781888 will now attempt to be committed
+```
 
 _**Section under construction! Please come back another time**_
 
 
 ---
-## Project Development Plan
-
-This is a loose outline of all the core features that should be included, and the general order
-of implementation. _Italics indicate that this component is in progress!_
-
-There also may be some elements that are left unticked, which means that the functionality is not 
-strictly essential and is skipped for now to allow the establishment the high-level architecture first
-
-- [x] **Milestone 0: Repo and Build Setup**
-  
-- [x] **Milestone 1: Persistence Layer**
-  - [x] External service setup via gRPC
-  - [x] Establish persistence layer
-    - [x] Key isolation
-      - [x] Serial execution for single keys 
-      - [x] Thread partitioning
-    - [ ] Key durability via write-ahead strategy
-    - [x] ~~Non-blocking async disk I/O~~ Thread-pool backed I/O
-  - [x] Logging that should work in Akka actor contexts and non-actor contexts
-  - [x] Multi-subproject setup for common components
-  - [x] Basic testing of core functionality
-  
-- [x] **Milestone 2: Cluster Membership**
-  - [x] Membership table of other nodes' IPs and liveness states
-  - [x] Node state tracking and broadcasting, following the SWIM protocol
-    - [x] Cluster joins/leaves
-    - [x] Suspicion/death refutation
-    - [ ] _Cluster rejoins and recovery, including dynamic IP recognition_
-  - [x] Gossip component
-    - [x] Push mechanism for join/leave broadcasting
-    - [ ] Pull mechanism for anti-entropy
-  - [x] Failure detection through direct + indirect check mechanism
-  - [x] Local kubernetes cluster setup and integration
-    - [x] Service containerization  
-    
-- [ ] **Milestone 3: Replication Layer**
-  - [ ] *Raft implementation*
-    - [ ] *Leader election*
-      - [ ] *Follower/candidate/leader state persistence handling*
-      - [ ] *Voting and election mechanics: RPCs and logic*
-    - [ ] *Log replication*
-      - [ ] *Majority commit: includes `AppendEntry` handling and disk persistence* 
-      - [ ] Log recovery and replica log backtracking
-    - [ ] Raft membership/configuration changes
-    - [ ] Log compaction (if there's time) 
-  - [ ] Consistency/node failure testing
-  - [ ] Code debt cleanup
-    
-- [ ] **Milestone 4: Partitioning Layer**
-  - [ ] Partitioning via virtual nodes
-    - [ ] _Partition ring data structure_
-    - [ ] Dynamic repartition dividing/merges on node join/failure
-    - [ ] Data shuffling on node membership changes
-  - [ ] Better testing, should be able to do some failure case handling
-  
-- [ ] **Milestone 5: Transaction Layer**
-  - [ ] Distributed transactions (2PC?)
-  - [ ] _TODO_
-
 ## Additional Build Setup Notes
 
 For further information about various aspects of how the project build system works, here are some various

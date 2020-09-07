@@ -1,0 +1,100 @@
+syntax = "proto2";
+
+option java_multiple_files = true;
+option java_package = "replication";
+option java_outer_classname = "ChordialRaftMessages";
+
+import "replication/LogEntry.proto";
+import "scalapb/scalapb.proto";
+
+package chordial.replication;
+
+
+message AppendEntryEvent {
+
+    option (scalapb.message).extends = "replication.state.RaftRequest";
+
+    // The log entry that is actually being replicated under Raft
+    required LogEntry log_entry = 1;
+
+    // The UUID that identifies this event across the Raft cluster.
+    //
+    // Not actually used by the Raft algorithm itself, but it makes client
+    // side code much easier by making these trackable.
+    optional bytes uuid = 2;
+}
+
+message AppendEntryAck {
+
+    // Object that is returned on receiving an AppendEntryEvent. If the
+    // operation has successfully been acknowledged by the leader and
+    // applied to its WAL, then we return a success.
+
+    required bool success = 1;
+
+    option (scalapb.message).extends = "replication.state.RaftResult";
+}
+
+message AppendEntriesRequest {
+
+    option (scalapb.message).extends = "replication.state.RaftRequest";
+
+    // Leader sends it's term and ID information for administrative purposes:
+    // * the term so follower knows if leadership is valid
+    // * the ID for write request routing
+    required uint64 leader_term = 1;
+    required string leader_id = 2;
+
+    // Used to determine discrepancies from the leader's logs
+    required uint32 prev_log_index = 3;
+    required uint64 prev_log_term = 4;
+
+    // Append entries to replicate. Left empty for heartbeats
+    repeated AppendEntryEvent entries = 5;
+
+    // The index that specifies the entries that have been successfully
+    // committed by a majority
+    required uint32 leader_commit_index = 6;
+}
+
+message AppendEntriesResult {
+
+    option (scalapb.message).extends = "replication.state.RaftResult";
+
+    // Returns the follower's current term
+    required uint64 current_term = 1;
+    required string follower_id = 2;
+
+    // Indicates whether entries have been accepted for commits by this
+    // follower
+    required bool success = 3;
+}
+
+message RequestVoteRequest {
+
+    option (scalapb.message).extends = "replication.state.RaftRequest";
+
+    // Candidate sends it's term and ID information for administrative purposes:
+    // * the term so other nodes can figure whether candidate deserves vote
+    // * the ID so candidate can be disambiguated
+    required uint64 candidate_term = 1;
+    required string candidate_id = 2;
+
+    // Candidate's last log index + term is used as a unique compound identifier
+    // for determining the candidate's up-to-dateness
+    required uint64 last_log_index = 3;
+    required uint64 last_log_term = 4;
+}
+
+message RequestVoteResult {
+
+    option (scalapb.message).extends = "replication.state.RaftResult";
+
+    // Returns the follower's current term
+    required uint64 current_term = 1;
+    required string follower_id = 2;
+
+    // Indicates whether the candidate has received the follower's vote
+    required bool vote_given = 3;
+}
+

@@ -1,55 +1,37 @@
 package persistence.io
 
-import akka.actor.ActorRef
+import akka.actor.typed.ActorRef
 import better.files.File
+import persistence.io.KeyStateManager.{DeleteCompleteSignal, KeyStateAction, ReadCompleteSignal, WriteCompleteSignal}
 
 import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success, Try}
 
 
-sealed trait IOTask {
+private[persistence] sealed trait IOTask {
 
   def execute()(implicit executionContext: ExecutionContext): Unit
 }
 
-
-case class ReadTask(valueFile: File)(implicit stateActor: ActorRef) extends IOTask {
+private[persistence] case class ReadIOTask(valueFile: File)(implicit stateActor: ActorRef[KeyStateAction]) extends IOTask {
 
   override def execute()(implicit executionContext: ExecutionContext): Unit = {
-
-    stateActor ! ReadCompleteSignal(Try(valueFile.loadBytes))
+    stateActor ! Right(ReadCompleteSignal(
+      if (valueFile.exists) Try(Some(valueFile.loadBytes)) else Success(None)
+    ))
   }
 }
 
-case class WriteAheadTask(writeAheadFile: File, value: Array[Byte])(implicit stateActor: ActorRef) extends IOTask {
+private[persistence] case class WriteIOTask(valueFile: File, value: Array[Byte])(implicit stateActor: ActorRef[KeyStateAction]) extends IOTask {
 
   override def execute()(implicit executionContext: ExecutionContext): Unit = {
-
-    val result = Try(writeAheadFile.writeByteArray(value))
-    stateActor ! (
-      result match {
-        case Success(_) => WriteAheadCommitSignal()
-        case Failure(e) => WriteAheadFailureSignal(e)
-      }
-    )
+    stateActor ! Right(WriteCompleteSignal(Try(valueFile.writeByteArray(value)): Try[Unit]))
   }
 }
 
-case class WriteTransferTask(writeAheadFile: File, valueFile: File)(implicit stateActor: ActorRef) extends IOTask {
+private[persistence] case class DeleteIOTask(valueFile: File)(implicit stateActor: ActorRef[KeyStateAction]) extends IOTask {
 
   override def execute()(implicit executionContext: ExecutionContext): Unit = {
-
-    stateActor ! WriteCompleteSignal(Try(writeAheadFile.copyTo(valueFile, overwrite = true)) match {
-      case Success(_) => Success[Unit]()
-      case Failure(e) => Failure(e)
-    })
-  }
-}
-
-case class TombstoneTask(valueFile: File)(implicit stateActor: ActorRef) extends IOTask {
-
-  override def execute()(implicit executionContext: ExecutionContext): Unit = {
-
-    ??? // TODO figure best way to tombstone
+    stateActor ! Right(DeleteCompleteSignal(Try(valueFile.delete()): Try[Unit]))
   }
 }

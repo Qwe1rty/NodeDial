@@ -1,0 +1,29 @@
+syntax = "proto2";
+
+option java_multiple_files = true;
+option java_package = "replication";
+option java_outer_classname = "ChordialRaftService";
+
+import "replication/RaftMessages.proto";
+
+package chordial.replication;
+
+
+service RaftService {
+
+    // AppendEntries is called by the leader to replicate log entries,
+    // and as a heartbeat to prevent elections from happening
+    rpc AppendEntries (AppendEntriesRequest) returns (AppendEntriesResult) {}
+
+    // RequestVote is called by candidates to try and get a majority vote,
+    // to become leader
+    rpc RequestVote (RequestVoteRequest) returns (RequestVoteResult) {}
+
+
+    // Handles a new write request from client - starts an AppendEntries
+    // broadcast if leader for replication, or redirects it to the leader (if
+    // existing).
+    rpc NewLogWrite (AppendEntryEvent) returns (AppendEntryAck) {}
+}
+
+

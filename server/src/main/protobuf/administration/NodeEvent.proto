@@ -1,0 +1,63 @@
+syntax = "proto2";
+
+option java_multiple_files = true;
+option java_package = "common.administration";
+option java_outer_classname = "ChordialAdministrationMessages";
+
+import "administration/NodeInfo.proto";
+import "partitioning/PartitioningMessages.proto";
+import "scalapb/scalapb.proto";
+
+package chordial.administration;
+
+
+/*
+ * The "Event" message types are used as push signals to notify other nodes
+ * when any cluster event happens, such as a node trying to join the
+ * cluster, or the failure detector reporting a failure, etc.
+ */
+message Event {
+
+    // This is needed to add this event type to the administration component's actor protocol
+    option (scalapb.message).extends = "administration.Administration.AdministrationMessage";
+
+    required string node_id = 1;
+
+    oneof event_type {
+        Join join = 2;
+        Suspect suspect = 3;
+        Failure failure = 4;
+        Refute refute = 5;
+        Leave leave = 6;
+    }
+
+    // The multiple types are events are defined below as subtypes of Event.
+    // Allows for easier pattern matching in Scala
+
+    message Join {
+        required fixed32 ip_address = 1;
+        required partitioning.PartitionHashes partition_hashes = 2;
+
+        // NOTE: version is implicitly set to 0 for join events
+    }
+
+    message Suspect {
+        required uint32 version = 1;
+    }
+
+    message Failure {
+        required uint32 version = 1;
+    }
+
+    message Refute {
+        required uint32 version = 1;
+    }
+
+    message Leave {}
+}
+
+message EventReply {
+    optional NodeInfo node_info = 1;
+}
+
+

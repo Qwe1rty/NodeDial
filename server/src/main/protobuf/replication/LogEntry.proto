@@ -1,0 +1,18 @@
+syntax = "proto2";
+
+option java_multiple_files = true;
+option java_package = "replication";
+option java_outer_classname = "ChordialRaftLogEntry";
+
+package chordial.replication;
+
+
+message LogEntry {
+
+    // The key value
+    required bytes key = 1;
+
+    // Write value for the request. Highly recommended to send value
+    // in compressed form
+    required bytes value = 2;
+}
