@@ -26,6 +26,11 @@ class RaftCluster(self: Membership) {
   private var currentClusterState: ClusterState = ClusterState.STABLE
   private var transitionalMembership: HashMap[String, Long] = HashMap.empty
 
+  /**
+   * A global quorum, subject to membership transitions. The use cases are:
+   *  - Determining whether a Candidate has won an election
+   *  - Determining whether a Leader has successfully gotten majority approval for a new membership config
+   */
   private var attemptedQuorum: Set[String] = HashSet.empty
 
   private def tupleToMembership: Function[(String, Long), Membership] = {
