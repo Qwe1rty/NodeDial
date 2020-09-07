@@ -120,7 +120,7 @@ class FailureDetector private(
             pendingFollowupChecks -= target
 
             administration ! DeclareEvent(NodeState.SUSPECT, target)
-            context.log.info(s"Target ${target} seen as suspect, verifying with membership service")
+            context.log.info(s"Target ${target} seen as suspect, verifying with administration service")
             context.system.scheduler.scheduleOnce(DEATH_DEADLINE, new Runnable {
               override def run(): Unit = context.self ! DeclareDeath(target)
             })
@@ -129,7 +129,7 @@ class FailureDetector private(
 
       case DeclareDeath(target) =>
         administration ! DeclareEvent(NodeState.DEAD, target)
-        context.log.info(s"Death timer run out for ${target}, verifying with membership service for possible declaration")
+        context.log.info(s"Death timer run out for ${target}, verifying with administration service for possible declaration")
     }; this
   }
 
@@ -156,8 +156,8 @@ object FailureDetector {
   private final case class FollowupResponse(target: Membership, followupResult: Try[Confirmation]) extends FailureDetectorSignal
 
   /**
-   * Trigger the failure detector to notify the membership actor that the node is dead.
-   * If the membership actor has already received an event stating that the node refuted
+   * Trigger the failure detector to notify the administration component that the node is dead.
+   * If the administration component has already received an event stating that the node refuted
    * the suspicion, then this message is discarded
    *
    * @param target the target node

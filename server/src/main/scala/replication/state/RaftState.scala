@@ -1,11 +1,9 @@
 package replication.state
 
 import administration.Membership
-import better.files.File
-import common.ServerConstants
 import common.persistence.{PersistentLong, PersistentString}
-import replication.{AppendEntryEvent, Raft}
 import replication.eventlog.ReplicatedLog
+import replication.{AppendEntryEvent, Raft}
 
 import scala.collection.immutable.Queue
 

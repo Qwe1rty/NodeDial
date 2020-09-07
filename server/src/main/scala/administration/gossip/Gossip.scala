@@ -42,6 +42,8 @@ class Gossip[KeyType: ClassTag] private(
   // Periodically broadcast all registered messages with provided delay
   timer.startTimerAtFixedRate(GossipTrigger, delay)
 
+  context.log.info("Gossip background timer started")
+
 
   override def onMessage(msg: GossipSignal[KeyType]): Behavior[GossipSignal[KeyType]] = {
     msg match {
@@ -65,13 +67,13 @@ class Gossip[KeyType: ClassTag] private(
       }
 
       case PublishRequest(key: GossipKey[KeyType], payload) =>
-        context.log.debug(s"Gossip request received with key ${key}")
+        context.log.debug(s"Gossip request received with key $key")
         context.ask(administration, GetClusterSize(_: ActorRef[Int])) {
           ClusterSizeReceived(key, payload, _)
         }
 
       case ClusterSizeReceived(key: GossipKey[KeyType], payload, clusterSizeRequest) => clusterSizeRequest match {
-        case Failure(e) => context.log.error(s"Cluster size request could not be completed: ${e}")
+        case Failure(e) => context.log.error(s"Cluster size request could not be completed: $e")
         case Success(clusterSize) => if (!keyTable.contains(key)) {
           val bufferCapacity = ServerDefaults.bufferCapacity(clusterSize)
           context.log.debug(s"Cluster size detected as ${clusterSize}, setting gossip round buffer to ${bufferCapacity}")
@@ -79,6 +81,7 @@ class Gossip[KeyType: ClassTag] private(
         }
       }
 
+      case x => context.log.error(s"Unknown message type received: $x")
     }; this
   }
 
@@ -109,7 +112,10 @@ object Gossip extends GRPCSettingsFactory {
    * @param key key associated with publish task
    * @param payload the gRPC payload function to be called on
    */
-  final case class PublishRequest[+KeyType](key: GossipKey[KeyType], payload: GossipPayload) extends GossipSignal[KeyType]
+  final case class PublishRequest[+KeyType](
+    key: GossipKey[KeyType],
+    payload: GossipPayload
+  ) extends GossipSignal[KeyType]
 
   private final case class ClusterSizeReceived[KeyType](key: GossipKey[KeyType],
     payload: GossipPayload,

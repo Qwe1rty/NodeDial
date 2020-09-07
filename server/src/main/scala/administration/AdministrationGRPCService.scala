@@ -27,14 +27,14 @@ class AdministrationGRPCService(administration: ActorRef[AdministrationMessage])
 
   Http()(actorSystem.classicSystem)
     .bindAndHandleAsync(service, interface = "0.0.0.0", port = MEMBERSHIP_PORT, HttpConnectionContext())
-    .foreach(binding => log.info(s"Membership service bound to ${binding.localAddress}"))
+    .foreach(binding => log.info(s"Administration service bound to ${binding.localAddress}"))
 
 
   /**
    * Push-based synchronization RPC
    */
   override def publish(event: Event): Future[EventReply] = {
-    log.debug(s"Event received from ${event.nodeId}, forwarding to membership actor")
+    log.debug(s"Event received from ${event.nodeId}, forwarding to administration component")
 
     administration ! event
     Future.successful(EventReply())

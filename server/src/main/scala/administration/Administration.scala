@@ -3,7 +3,7 @@ package administration
 import administration.Administration.AdministrationMessage
 import administration.addresser.AddressRetriever
 import administration.failureDetection.FailureDetector
-import administration.gossip.Gossip.PublishRequest
+import administration.gossip.Gossip.{GossipSignal, PublishRequest}
 import administration.gossip.{Gossip, GossipKey, GossipPayload}
 import akka.actor
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
@@ -37,7 +37,8 @@ class Administration private(
   implicit private val classicSystem: actor.ActorSystem = context.system.classicSystem
   implicit private val executionContext: ExecutionContext = context.system.executionContext
 
-  private val gossip = context.spawn(Gossip[Event](context.self, 200.millisecond), "administration-gossip")
+  private val gossip: ActorRef[GossipSignal[Event]] =
+    context.spawn(Gossip[Event](context.self, 200.millisecond), "administrationGossip")
   context.log.info(s"Gossip component for administration initialized")
 
   protected var readiness: Boolean = false
@@ -243,7 +244,7 @@ object Administration {
   val nodeID: String = NodeIDLoader(MEMBERSHIP_FILE)
 
   LoggerFactory.getLogger(Administration.getClass).info(
-    s"Membership has determined node ID: $nodeID, with rejoin flag: $rejoin"
+    s"Administration has determined node ID: $nodeID, with rejoin flag: $rejoin"
   )
 
   def apply(addressRetriever: AddressRetriever, initializationCount: Int): Behavior[AdministrationMessage] =
@@ -258,14 +259,14 @@ object Administration {
   private[administration] sealed trait DeclarationCall extends AdministrationAPI
 
   /**
-   * Signals the membership actor that a prerequisite service is ready (essentially a
+   * Signals the administration component that a prerequisite service is ready (essentially a
    * "countdown" for the membership to start join procedure)
    * Does not return anything
    */
   final case object DeclareReadiness extends DeclarationCall
 
   /**
-   * Signals the membership actor to broadcast the declaration across to the other nodes and
+   * Signals the administration component to broadcast the declaration across to the other nodes and
    * to internal subscribers.
    * Does not return anything
    *
@@ -285,7 +286,7 @@ object Administration {
   private[administration] sealed trait InformationCall extends AdministrationAPI
 
   /**
-   * Asks the membership actor whether or not the node is ready to receive client requests
+   * Asks the administration component whether or not the node is ready to receive client requests
    * Returns a `Boolean` value
    */
   final case class GetReadiness(replyTo: ActorRef[Boolean]) extends InformationCall
@@ -327,7 +328,7 @@ object Administration {
   private[administration] sealed trait SubscriptionCall extends AdministrationAPI
 
   /**
-   * Registers an actor to receive incoming event updates from the membership module
+   * Registers an actor to receive incoming event updates from the administration module
    *
    * @param actorRef actor reference
    */
@@ -340,7 +341,7 @@ object Administration {
   }
 
   /**
-   * Removes an actor from the membership module's event update list
+   * Removes an actor from the administration module's event update list
    *
    * @param actorRef actor reference
    */

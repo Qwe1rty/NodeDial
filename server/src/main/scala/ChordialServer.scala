@@ -31,16 +31,16 @@ private object ChordialServer extends App {
   implicit val actorSystem: ActorSystem[Nothing] = ActorSystem[Nothing](Behaviors.setup[Nothing] { context =>
 
       /**
-       * Membership module components
+       * Administration components
        *   TODO: eventually allow different address retriever methods
        */
-      log.info("Initializing membership module components")
+      log.info("Initializing administration components")
       val addressRetriever = KubernetesAddresser
       val administrationComponent = context.spawn(
         Administration(addressRetriever, REQUIRED_TRIGGERS),
         "administration"
       )
-      log.info("Membership module components initialized")
+      log.info("Administration components initialized")
 
       /**
        * Persistence layer components

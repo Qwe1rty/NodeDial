@@ -8,19 +8,20 @@ Modeled around existing NoSQL databases such as Redis, Cassandra, and Dynamo, it
 and cloud deployments in mind. For more details about setting the project up on your environment, check out the
 [build walkthrough](#project-setup-and-walkthrough) and deployment guide!
 
-Currently supports the three basic operations: `GET`, `POST`, and `DELETE`
+The main server code is located in the directory `server/src/main/scala/`, and the program currently supports the 
+three basic operations: `GET`, `POST`, and `DELETE`
 
 ### About the Project
 
-The project was started as a way to learn distributed systems concepts, practice writing asynchronous/concurrent 
+The project started as a way to learn distributed systems concepts, practice writing asynchronous/concurrent 
 applications, and gain experience with the pitfalls of writing these distributed applications.
-I've found that trying to implement pretty abstract distributed systems ideas into an actual program really helps
-solidify details that I would've missed from just reading about it - such as non-obvious corner cases in the Raft 
-algorithm. 
+Overall, while the project still has a significant amount of work to do, over the past year of on-and-off work I've
+learned a lot and gotten much better at these things. I've found that trying to implement various abstract distributed
+systems ideas into an actual program really helps solidify details that I would've missed from just reading about it
+(such as the many non-obvious corner cases in the Raft consensus algorithm).
 
-Overall, the project still has a significant amount of work to do, but over the past year of on-and-off work, I've
-learned a lot. I don't know how long I'll continue working on it past the replication/Raft layer, but I'm sure that
-the project's teachings will last for all future projects that I work on.
+While I'm not sure how long I'll continue working on it past the replication/Raft layer, I'm sure that
+everything I've learned will come in handy for all future projects
 
 
 ---
@@ -34,8 +35,9 @@ Compiling the project itself will require both a Scala and protobuf compiler, so
 if you don't have it already. In addition, running the project itself will also require some infrastructure 
 setup, which includes Docker and Kubernetes. 
 
-Finally, ensure that you are running Java 8. This is the only version of Java I've been able to get the program to run
-on without absurd amounts of effort messing with the build system.
+Finally, ensure that you are running Java 8. This is the only version of Java I've been able to consistently get the
+program to run on without absurd amounts of effort messing with the build system, due to netty IO's inclusion in
+Java 9+ and resulting library incompatibilities.
 
 Here are some reference links that may be helpful for installing dependencies: 
 
@@ -162,11 +164,10 @@ get this sort of log output:
 [main] INFO ChordialServer$ - Server config loaded
 [main] INFO ChordialServer$ - Initializing actor system
 [ChordialServer-akka.actor.default-dispatcher-5] INFO akka.event.slf4j.Slf4jLogger - Slf4jLogger started
-[ChordialServer-akka.actor.default-dispatcher-5] DEBUG akka.event.EventStream - logger log1-Slf4jLogger started
 ...
-[main] INFO ChordialServer$ - Initializing membership module components
-[main] INFO membership.MembershipActor$ - Node ID not found - generating new ID
-[main] INFO membership.MembershipActor$ - Membership has determined node ID: 2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27, with rejoin flag: false
+[ChordialServer-akka.actor.default-dispatcher-8] INFO ChordialServer$ - Initializing administration components
+[ChordialServer-akka.actor.default-dispatcher-8] INFO administration.Administration$ - Administration has determined node ID: e74020db48ba67212baa73a0cc28798a5f3b407821d0ddab9383cc47d06795be, with rejoin flag: false
+[ChordialServer-akka.actor.default-dispatcher-8] INFO ChordialServer$ -  components initialized
 ``` 
 
 If it looks something like that, you're all set to start adding new nodes to the cluster
@@ -183,12 +184,10 @@ with it.
 
 To better illustrate the joining process, a sample log output of the new node would look like this:
 ```
-[...] INFO membership.MembershipActor$ - Retrieved seed node environment variable with value: 'cdb-0.chs.chordial-ns.svc.cluster.local'
-[...] DEBUG membership.MembershipActor - Starting initialization sequence to establish readiness
-[...] INFO membership.MembershipActor$ - Seed node IP address resolved to: 10.1.0.91
-[...] INFO membership.MembershipActor - Contacting seed node for membership listing
-...
-[...] INFO membership.MembershipActor - Successful full sync response received from seed node
+[...] INFO administration.Administration$ - Retrieved seed node environment variable with value: 'cdb-0.chs.chordial-ns.svc.cluster.local'
+[...] INFO administration.Administration$ - Seed node IP address resolved to: 10.1.0.171
+[...] INFO administration.Administration - Contacting seed node for membership listing
+[...] INFO administration.Administration - Successful full sync response received from seed node
 ```
 
 What's occurring here is that the new node will try to first resolve the seed node's hostname, and then
@@ -197,9 +196,9 @@ contact it to request a complete synchronization of the membership table
 Once complete, the node has full status knowledge of the all other nodes in the cluster and is ready to
 start broadcasting its new alive status to the rest of the cluster:
 ```
-[...] INFO membership.MembershipActor - Successful full sync response received from seed node
-[...] INFO membership.MembershipActor - Broadcasting join event to other nodes
-[...] DEBUG common.gossip.GossipActor - Gossip request received with key GossipKey(Event(2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27,Join(Join(167837788,PartitionHashes(List())))))
+[...] INFO administration.Administration - Successful full sync response received from seed node
+[...] INFO administration.Administration - Broadcasting join event to other nodes
+[...] DEBUG administration.gossip.Gossip - Gossip request received with key GossipKey(Event(022fd1be6f6b4fc3a857266cbac07f01cf295d0f688fabcaa83b42443f81fafd,Join(Join(167837872,PartitionHashes(List())))))
 [...] DEBUG common.gossip.GossipActor - Cluster size detected as 2, setting gossip round buffer to 5
 ``` 
 
@@ -210,28 +209,26 @@ spread by this particular node before it goes into cooldown
 On the seed node side, it'll first receive the full sync request, and then receive the join gossip
 message shortly after:
 ```
-[...] INFO membership.MembershipServiceImpl$ - Full sync requested from node 2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27 with IP 10.1.0.92
-[...] DEBUG membership.MembershipServiceImpl$ - Event received from 2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27, forwarding to membership actor
-[...] DEBUG membership.MembershipActor - Join event - 2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27 - Join(167837788,PartitionHashes(Vector()))
-[...] INFO membership.MembershipActor - New node 2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27 added to membership table with IP address 167837788
-[...] DEBUG common.gossip.GossipActor - Gossip request received with key GossipKey(Event(2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27,Join(Join(167837788,PartitionHashes(Vector())))))
-[...] DEBUG common.gossip.GossipActor - Cluster size detected as 2, setting gossip round buffer to 5
+[...] INFO administration.AdministrationGRPCService$ - Full sync requested from node 2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27 with IP 10.1.0.92
+[...] DEBUG administration.AdministrationGRPCService$ - Event received from 2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27, forwarding to membership actor
+[...] DEBUG administration.Administration - Join event - 2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27 - Join(167837788,PartitionHashes(Vector()))
+[...] INFO administration.Administration - New node 2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27 added to membership table with IP address 167837788
+[...] DEBUG administration.gossip.Gossip - Gossip request received with key GossipKey(Event(022fd1be6f6b4fc3a857266cbac07f01cf295d0f688fabcaa83b42443f81fafd,Join(Join(167837872,PartitionHashes(Vector())))))
+[...] DEBUG administration.gossip.Gossip - Cluster size detected as 2, setting gossip round buffer to 5
 ```
 
 Note that from the perspective of the seed node, the new node won't be officially added by the full
-sync request, and instead waits until the join event gossip arrives. While seemingly inefficient
-in this example, a scenario with a large number of nodes would benefit from a decoupled sync/join
-process as it allows the new node to assume full responsibility for broadcasting the join notification - 
-not the seed node
+sync request, and instead waits until the join event gossip arrives. This will mean that the joining node 
+assumes full responsibility for broadcasting the join notification instead of the seed node.
 
 Afterwards, both nodes will stabilize and start to periodically perform failure checks on each other, and 
 reply liveness confirmations to incoming checks:
 ```
-[...] DEBUG membership.failureDetection.FailureDetectorActor - Target [2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27, 10.1.0.92] successfully passed initial direct failure check
-[...] DEBUG membership.failureDetection.FailureDetectorActor - Target [2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27, 10.1.0.92] successfully passed initial direct failure check
-[...] INFO service.RequestServiceImpl$ - Health check request has been received, sending confirmation
-[...] INFO service.RequestServiceImpl$ - Health check request has been received, sending confirmation
-[...] DEBUG membership.failureDetection.FailureDetectorActor - Target [2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27, 10.1.0.92] successfully passed initial direct failure check
+[...] DEBUG administration.failureDetection.FailureDetector - Target [2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27, 10.1.0.92] successfully passed initial direct failure check
+[...] DEBUG administration.failureDetection.FailureDetector - Target [2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27, 10.1.0.92] successfully passed initial direct failure check
+[...] INFO administration.failureDetection.FailureDetectorGRPCService$ - Health check request has been received, sending confirmation
+[...] INFO administration.failureDetection.FailureDetectorGRPCService$ - Health check request has been received, sending confirmation
+[...] DEBUG administration.failureDetection.FailureDetector - Target [2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27, 10.1.0.92] successfully passed initial direct failure check
 ```
 
 Now you can scale your cluster to any size you want!
@@ -250,14 +247,31 @@ read the variable `SEED_NODE`.
 ## Replicas and Raft
 
 When starting up a single node, you'll notice that it immediately begins the election process. Since there is 
-nobody else to provide votes, it will win and become leader for Term 1. Once it has become leader, it can process
-client POST requests. Here is an example of what a `post -k "hello" -v "world"` request looks like going through Raft:
-
+nobody else to provide votes, it will win and become leader for Term 1. This is the log output from winning the election:
 ```
-16:39:22.693 [...] INFO replication.RaftFSM - Starting leader election for new term: 1
-16:39:22.894 [...] INFO replication.RaftFSM - Election won, becoming leader of term 1
+[...] INFO replication.RaftFSM - Starting leader election for new term: 1
+[...] INFO replication.RaftFSM - Election won, becoming leader of term 1
+```
 
-TODO: complete this section
+Once it has become leader, it can start processing `POST` and `DELETE` client requests (note that `GET` 
+requests do not go through Raft and read directly from disk). Upon a `POST` request, the leader will write the
+entry into its write-ahead log (WAL) and return an acknowledgement once it finishes.
+
+At the same time, Raft will notice that a new entry has been appended to the WAL - combined with the fact
+that it's the only node in the cluster, it will determine that it is safe to hand the `POST` request off to
+the persistence layer to apply on disk. Only when the persistence layer writes the entry to disk will the entry
+be visible through a client `GET`.
+
+Here is an example of what a `post -k "hello" -v "world"` request looks like going through Raft; notice the two
+distinct phases of writing to the WAL before officially committing the change: 
+```
+[...] DEBUG replication.ReplicationComponent - Post request received with UUID d66f67e0-9692-4ca5-9105-13a914781888 and hex value: 776F726C64
+[...] DEBUG replication.eventlog.SimpleReplicatedLog$ - Appending log entry #1 at offset 0 and byte length 63 to WAL
+[...] DEBUG replication.eventlog.SimpleReplicatedLog$ - Appended log entry: 0A0568656C6C6F123612340A0568656C6C6F12191F8B08000000000000002BCF2FCA4901004311773A050000001A10D66F67E096924CA5910513A914781888
+...
+[...] DEBUG replication.eventlog.SimpleReplicatedLog$ - Retrieving log entry #1 at offset 0 and byte length 63 from WAL
+[...] DEBUG replication.eventlog.SimpleReplicatedLog$ - Retrieved log entry: 0A0568656C6C6F123612340A0568656C6C6F12191F8B08000000000000002BCF2FCA4901004311773A050000001A10D66F67E096924CA5910513A914781888
+[...] INFO replication.RaftFSM - Write entry with key 'hello' and UUID d66f67e0-9692-4ca5-9105-13a914781888 will now attempt to be committed
 ```
 
 _**Section under construction! Please come back another time**_

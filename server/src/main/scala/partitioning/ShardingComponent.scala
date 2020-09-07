@@ -22,7 +22,7 @@ class ShardingComponent private(
 
   private val shardRing = ShardRing()
 
-  // TODO subscribe to membership service
+  // TODO subscribe to administration service
 
   log.info("Partition ring initialized")
 

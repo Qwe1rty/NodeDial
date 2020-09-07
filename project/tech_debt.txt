@@ -3,13 +3,10 @@ TODO LIST:
 GENERAL:
 - Configure the logging backend to be async?
 - Some form of proper environment variable/configuration/dependency injection
-- Document everything both in the code and on Github
-- Convert usages of the "String" type for hashes into "Digest"
-- Add cluster names support
+- Maybe convert usages of the "String" type for hashes into "Digest"
 
 BUILD SETUP:
 - Keep the ports configured in a central place (currently in code, makefile, & docker build)
-- Move over to Minikube from Docker Desktop, to ensure the most recent K8s version (v1.17.0)
 - Move the IpAddress repo to Maven + actually port it to Scala 2.13.1 properly
 
 DOCUMENTATION:
@@ -27,24 +24,16 @@ CLIENT:
 - Add a executable program wrapper around the client JAR to simplify deployment
 
 MEMBERSHIP:
-- Make sure the "random" call doesn't return the local node ID
 - Allow some way for Kubernetes to make a readiness probe
 
 GOSSIP:
-- If the membership actor random call returns None, don't place it on cooldown
-
-SERVICE:
-- Reorganize service layer so its initialization in Chordial.class matches the others
+- If the membership table random select returns None, don't place it on cooldown
 
 PERSISTENCE:
 - Change PersistenceActor map to some form of cache
   - Ensure that the file stream is closed upon eviction
-- Allow for concurrent read access to the same key OR some type of manual caching
-- Replace .get calls for the pendingRequest: Option[ActorRef] in KeyStateActor
+- Implement the full 2PL for the same key
 - Formalize KeyStateActor to an actual state machine
-
-PARTITIONING:
-- Eventually decouple the hash range join from the membership join through separate gossips
 
 REPLICATION:
 - Modify Raft algorithm to buffer new client requests if the leader is dead, and retry later
