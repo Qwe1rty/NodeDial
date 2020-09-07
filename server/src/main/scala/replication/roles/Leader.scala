@@ -1,10 +1,13 @@
 package replication.roles
 
-import administration.Administration
+import administration.{Administration, Membership}
+import com.risksense.ipaddr.IpAddress
 import common.rpc.{RPCTask, ReplyTask, RequestTask}
 import common.time.{ContinueTimer, ResetTimer}
 import org.slf4j.{Logger, LoggerFactory}
-import replication.LogEntry.EntryType.Data
+import replication.ClusterEntry.ClusterState
+import replication.LogEntry.EntryType
+import replication.LogEntry.EntryType.{Cluster, Data}
 import replication._
 import replication.roles.RaftRole.MessageResult
 import replication.state.RaftLeaderState.LogIndexState
@@ -56,6 +59,31 @@ private[replication] case object Leader extends RaftRole {
   }
 
   /**
+   * Handles a cluster reconfiguration event from the client, removing and/or adding nodes as required
+   *
+   * @param clusterEvent the information about what nodes are leaving or joining the cluster
+   * @param state current raft state
+   * @return the reconfiguration result
+   */
+  override def processClusterReconfigEvent(clusterEvent: ClusterReconfigEvent)(state: RaftState)(implicit log: Logger): MessageResult = {
+    // TODO rewrite this eventually so that there aren't an excessive amount of iterations and data conversions
+
+    val transitionalMembership: Set[RaftNode] = state.cluster().toSet
+      .map(membershipToRaftNode)
+      .removedAll(clusterEvent.removedNodes)
+      .concat(clusterEvent.addedNodes)
+
+    this.processAppendEntryEvent(AppendEntryEvent(
+      LogEntry(Cluster(ClusterEntry(
+        state.getCurrentMembership.map(membershipToRaftNode).toSeq,
+        transitionalMembership.toSeq,
+        ClusterState.TRANSITIONING
+      ))),
+      None
+    ))(state)
+  }
+
+  /**
    * Handle a direct append entry request received by this server. Only in the leader role is this
    * actually processed - otherwise it should be redirected to the current leader
    *
@@ -80,12 +108,13 @@ private[replication] case object Leader extends RaftRole {
           state.log.lastLogIndex() + 1,
           state.log.lastLogIndex(),
         ))
-        if (state.clusterSize() == 1) state.commitIndex += 1
+        if (state.currentClusterSize() == 1) state.commitIndex += 1
 
-//        appendEvent.logEntry.entryType match {
-//          case Data(DataEntry(key, value)) =>
-//
-//        }
+        // If it's a cluster config change, apply immediately after WAL writing as opposed to waiting for a commit for correctness
+        appendEvent.logEntry.entryType.cluster.foreach(configurationChange => configurationChange.clusterState match {
+          case ClusterState.STABLE        => log.error("Client is not supposed to directly commit a cluster configuration change")
+          case ClusterState.TRANSITIONING => state.transitionMembership(configurationChange.newConfig.map(raftNodeToMembership))
+        })
 
         val appendEntryRequest = AppendEntriesRequest(
           currentTerm,
@@ -107,10 +136,17 @@ private[replication] case object Leader extends RaftRole {
         MessageResult(matchingFollowers + ReplyTask(AppendEntryAck(success = true)), ContinueTimer, None)
 
       case Failure(exception) =>
-        log.error(
-          s"Serialization error on append entry ${appendEvent.logEntry.key} and UUID ${appendEvent.uuid}, on term $currentTerm: " +
-            exception.getLocalizedMessage
-        )
+
+        appendEvent.logEntry.entryType match {
+          case EntryType.Empty => log.error(s"Attempted to serialize unknown or empty log entry type")
+          case Cluster(_)      => log.error(s"Serialization error on new cluster configuration on term $currentTerm")
+          case Data(value)     =>
+            log.error(
+              s"Serialization error on append entry ${value.key} and UUID ${appendEvent.uuid}, on term $currentTerm: " +
+                exception.getLocalizedMessage
+            )
+        }
+
         MessageResult(Set(ReplyTask(AppendEntryAck(success = false))), ContinueTimer, None)
     }
 
@@ -221,5 +257,12 @@ private[replication] case object Leader extends RaftRole {
         throw exception
     }
   }
+
+  // TODO move somewhere else
+  def raftNodeToMembership: Function[RaftNode, Membership] =
+    raftNode => Membership(raftNode.nodeId, IpAddress(raftNode.ipAddress))
+
+  def membershipToRaftNode: Function[Membership, RaftNode] =
+    membership => RaftNode(membership.nodeID, membership.ipAddress.numerical)
 
 }

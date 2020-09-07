@@ -82,11 +82,11 @@ private[replication] trait RaftRole {
   /**
    * Handles a cluster reconfiguration event from the client, removing and/or adding nodes as required
    *
-   * @param event the information about what nodes are leaving or joining the cluster
+   * @param clusterEvent the information about what nodes are leaving or joining the cluster
    * @param state current raft state
    * @return the reconfiguration result
    */
-  def processClusterReconfigEvent(event: ClusterReconfigEvent)(state: RaftState)(implicit log: Logger): MessageResult
+  def processClusterReconfigEvent(clusterEvent: ClusterReconfigEvent)(state: RaftState)(implicit log: Logger): MessageResult
 
   /**
    * Handle a direct append entry request received by this server. Only in the leader role is this

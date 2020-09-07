@@ -49,6 +49,17 @@ override def processRaftGlobalTimeout(state: RaftState): Option[RaftRole] = Some
   }
 
   /**
+   * Handles a cluster reconfiguration event from the client, removing and/or adding nodes as required
+   *
+   * @param clusterEvent the information about what nodes are leaving or joining the cluster
+   * @param state current raft state
+   * @return the reconfiguration result
+   */
+  def processClusterReconfigEvent(clusterEvent: ClusterReconfigEvent)(state: RaftState)(implicit log: Logger): MessageResult = {
+    ???
+  }
+
+  /**
    * Handle a direct append entry request received by this server. Only in the leader role is this
    * actually processed - otherwise it should be redirected to the current leader
    *

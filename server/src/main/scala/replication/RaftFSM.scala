@@ -7,8 +7,11 @@ import akka.actor.{ActorSystem, FSM}
 import common.persistence.Serializer
 import common.rpc._
 import common.time._
+import replication.ClusterEntry.ClusterState
+import replication.LogEntry.EntryType
 import replication.Raft.{CommitConfirmation, CommitFunction}
 import replication.RaftGRPCService.createGRPCSettings
+import replication.roles.Leader.raftNodeToMembership
 import replication.roles.RaftRole.MessageResult
 import replication.roles._
 import replication.state._
@@ -156,13 +159,24 @@ private[replication] final class RaftFSM[Command <: Serializable](
       if (!state.commitInProgress && state.lastApplied < state.commitIndex) {
         state.commitInProgress = true
 
-        val commandTry: Try[Command] = for (
-          logEntry <- Raft.LogEntrySerializer.deserialize(state.log(state.lastApplied + 1));
-          command  <- commandSerializer.deserialize(logEntry.value)
-        ) yield command
+        Raft.LogEntrySerializer.deserialize(state.log(state.lastApplied + 1)) match {
+          case Success(logEntry: LogEntry) => logEntry.entryType match {
 
-        commandTry match {
-          case Success(command)   => commitCallback(command, log).onComplete(self ! RaftCommitTick(_))
+            case EntryType.Data(commandBytes) => commandSerializer.deserialize(commandBytes.value) match {
+              case Success(command)   => commitCallback(command, log).onComplete(self ! RaftCommitTick(_))
+              case Failure(exception) =>
+                log.error(s"Deserialization error for client command: ${exception.getLocalizedMessage}")
+                self ! RaftCommitTick(Failure(exception))
+            }
+
+            case EntryType.Cluster(configurationChange) => configurationChange.clusterState match {
+              case ClusterState.STABLE        => self ! RaftCommitTick(Try(state.updateMembership()))
+              case ClusterState.TRANSITIONING =>
+                state.transitionMembership(configurationChange.newConfig.map(raftNodeToMembership))
+                self ! RaftCommitTick(Success())
+            }
+          }
+
           case Failure(exception) =>
             log.error(s"Deserialization error for log entry #${state.lastApplied + 1} commit: ${exception.getLocalizedMessage}")
             self ! RaftCommitTick(Failure(exception))

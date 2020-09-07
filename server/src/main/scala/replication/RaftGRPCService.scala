@@ -10,6 +10,7 @@ import com.risksense.ipaddr.IpAddress
 import common.ServerDefaults.ACTOR_REQUEST_TIMEOUT
 import common.rpc.GRPCSettingsFactory
 import org.slf4j.LoggerFactory
+import replication.LogEntry.EntryType
 import schema.ImplicitDataConversions._
 import schema.PortConfiguration.REPLICATION_PORT
 
@@ -76,7 +77,12 @@ class RaftGRPCService(raftActor: ActorRef)(implicit actorSystem: ActorSystem) ex
    * existing).
    */
   override def newLogWrite(in: AppendEntryEvent): Future[AppendEntryAck] = {
-    log.debug(s"New log write event with key ${in.logEntry.key}")
+    in.logEntry.entryType match {
+      case EntryType.Data(dataEntry) => log.debug(s"New log write event with key ${dataEntry.key}")
+      case EntryType.Cluster(_)      => log.debug("New Raft cluster reconfiguration event received")
+      case EntryType.Empty =>
+        log.error("New log write event received an invalid message")
+    }
 
     (raftActor ? in)
       .mapTo[Future[AppendEntryAck]]

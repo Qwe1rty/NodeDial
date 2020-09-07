@@ -17,7 +17,6 @@ import common.persistence.{ProtobufSerializer, Serializer}
 import common.time.TimeRange
 import io.jvm.uuid._
 import org.slf4j.LoggerFactory
-import replication.ClusterEntry.RaftNode
 import replication.LogEntry.EntryType.Data
 import replication.Raft.CommitFunction
 import replication.eventlog.SimpleReplicatedLog

@@ -30,8 +30,14 @@ message DataEntry {
 // A log entry used to implement the two-phase membership changes
 message ClusterEntry {
 
+    enum ClusterState {
+        STABLE = 1;
+        TRANSITIONING = 2;
+    }
+
     repeated RaftNode old_config = 1;
     repeated RaftNode new_config = 2;
+    required ClusterState cluster_state = 3;
 }
 
 message RaftNode {
