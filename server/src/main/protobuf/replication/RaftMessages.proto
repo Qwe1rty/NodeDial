@@ -35,6 +35,14 @@ message AppendEntryAck {
     option (scalapb.message).extends = "replication.state.RaftResult";
 }
 
+message ClusterReconfigEvent {
+
+    option (scalapb.message).extends = "replication.state.RaftRequest";
+
+    repeated RaftNode added_nodes = 1;
+    repeated RaftNode removed_nodes = 2;
+}
+
 message AppendEntriesRequest {
 
     option (scalapb.message).extends = "replication.state.RaftRequest";

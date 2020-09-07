@@ -145,7 +145,7 @@ private object SimpleReplicatedLog {
 
   private object LogIndex extends JavaSerializer[LogIndex]
 
-  private case class LogIndex(
+  private final case class LogIndex(
     offset: Offset,
     length: Int,
     term: Long,

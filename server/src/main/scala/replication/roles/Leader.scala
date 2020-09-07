@@ -4,6 +4,7 @@ import administration.Administration
 import common.rpc.{RPCTask, ReplyTask, RequestTask}
 import common.time.{ContinueTimer, ResetTimer}
 import org.slf4j.{Logger, LoggerFactory}
+import replication.LogEntry.EntryType.Data
 import replication._
 import replication.roles.RaftRole.MessageResult
 import replication.state.RaftLeaderState.LogIndexState
@@ -80,6 +81,11 @@ private[replication] case object Leader extends RaftRole {
           state.log.lastLogIndex(),
         ))
         if (state.clusterSize() == 1) state.commitIndex += 1
+
+//        appendEvent.logEntry.entryType match {
+//          case Data(DataEntry(key, value)) =>
+//
+//        }
 
         val appendEntryRequest = AppendEntriesRequest(
           currentTerm,

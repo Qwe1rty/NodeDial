@@ -1,10 +1,12 @@
 package replication
 
-import administration.Administration.{AdministrationMessage, DeclareReadiness}
+import administration.Administration.{AdministrationMessage, DeclareReadiness, Subscribe}
+import administration.Membership
 import administration.addresser.AddressRetriever
 import akka.actor.ActorSystem
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior}
+import com.risksense.ipaddr.IpAddress
 import com.roundeights.hasher.Implicits._
 import common.persistence.{Compression, ProtobufSerializer}
 import io.jvm.uuid._
@@ -75,6 +77,14 @@ class ReplicationComponent(
     override val messageCompanion: GeneratedMessageCompanion[ReplicatedOp] = self.messageCompanion
   }
 
+  administration ! Subscribe(context.messageAdapter(clusterEvent =>
+    clusterEvent.eventType.join match {
+      case Some(join) => JoinReplicaGroup(Membership(clusterEvent.nodeId, IpAddress(join.ipAddress)), UUID.randomUUID())
+      case None => NoOperation
+    }
+  ))
+  context.log.info("Replication component subscribed to incoming join events from administration module")
+
   administration ! DeclareReadiness
   context.log.info("Replication component initialized")
 
@@ -112,6 +122,11 @@ class ReplicationComponent(
       val futureConfirmation = raft.submit(key, ReplicatedOp(Delete(DeleteOp(key, uuid))), Some(uuid))
       deletePromise.completeWith(futureConfirmation.map { _ => () })
       this
+
+    case JoinReplicaGroup(membership, uuid) =>
+      context.log.debug(s"Join replica group request received with UUID ${uuid.string}")
+      raft.join(RaftNode(membership.nodeID, membership.ipAddress.numerical))
+      this
   }
 
 }
@@ -127,28 +142,33 @@ object ReplicationComponent {
 
 
   /** Actor protocol */
-  sealed trait ClientOperation {
-    val uuid: UUID
-  }
+  sealed trait ClientOperation
+
+  final case class JoinReplicaGroup(
+    membership: Membership,
+    uuid: UUID
+  ) extends ClientOperation
 
   type ReplicatedConfirmation = Unit
 
-  case class ReadOperation(
+  final case class ReadOperation(
     readPromise: Promise[PersistenceData],
     key: String,
     uuid: UUID,
   ) extends ClientOperation
 
-  case class WriteOperation(
+  final case class WriteOperation(
     writePromise: Promise[ReplicatedConfirmation],
     key: String,
     value: Array[Byte],
     uuid: UUID,
   ) extends ClientOperation
 
-  case class DeleteOperation(
+  final case class DeleteOperation(
     deletePromise: Promise[ReplicatedConfirmation],
     key: String,
     uuid: UUID,
   ) extends ClientOperation
+
+  private final case object NoOperation extends ClientOperation
 }

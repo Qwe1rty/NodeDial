@@ -17,6 +17,7 @@ import common.administration.types.NodeState.{ALIVE, DEAD, SUSPECT}
 import common.administration.types.{NodeInfo, NodeState}
 import org.slf4j.LoggerFactory
 import partitioning.PartitionHashes
+import replication.ReplicationComponent.JoinReplicaGroupRequest
 import schema.ImplicitDataConversions._
 import schema.PortConfiguration.MEMBERSHIP_PORT
 
@@ -42,7 +43,7 @@ class Administration private(
   context.log.info(s"Gossip component for administration initialized")
 
   protected var readiness: Boolean = false
-  protected var subscribers: Set[ActorRef[AdministrationMessage]] = Set[ActorRef[AdministrationMessage]]()
+  protected var subscribers: Set[ActorRef[Event]] = Set[ActorRef[Event]]()
   protected var membershipTable: MembershipTable =
     MembershipTable(NodeInfo(nodeID, addressRetriever.selfIP, 0, NodeState.ALIVE))
 
@@ -120,17 +121,16 @@ class Administration private(
         case EventType.Refute(refuteInfo) =>
           context.log.debug(s"Refute event - ${event.nodeId} - ${refuteInfo}")
 
-          membershipTable.get(event.nodeId).foreach(
-            currentEntry =>
-              if (refuteInfo.version > currentEntry.version) {
-                membershipTable += NodeInfo(
-                  event.nodeId,
-                  membershipTable.addressOf(event.nodeId),
-                  refuteInfo.version,
-                  NodeState.ALIVE
-                )
-                publishExternally(event)
-              })
+          membershipTable.get(event.nodeId).foreach(currentEntry =>
+            if (refuteInfo.version > currentEntry.version) {
+              membershipTable += NodeInfo(
+                event.nodeId,
+                membershipTable.addressOf(event.nodeId),
+                refuteInfo.version,
+                NodeState.ALIVE
+              )
+              publishExternally(event)
+            })
 
         case EventType.Leave(_) =>
           context.log.debug(s"Leave event - ${event.nodeId}")
@@ -185,17 +185,15 @@ class Administration private(
             case NodeState.DEAD => Some(Event(targetID).withFailure(Failure(version)))
             case _ => None
           }
-          eventCandidate.foreach(
-            event => {
-              publishExternally(event)
-              publishInternally(event)
-            })
+          eventCandidate.foreach(event => {
+            publishExternally(event)
+            publishInternally(event)
+          })
 
         case SeedResponse(syncResponse) => syncResponse match {
 
           case Success(response) =>
             membershipTable ++= response.syncInfo.map(_.nodeInfo)
-
             readiness = true
             context.log.info("Successful full sync response received from seed node")
 
@@ -330,36 +328,14 @@ object Administration {
   /**
    * Registers an actor to receive incoming event updates from the administration module
    *
-   * @param actorRef actor reference
+   * @param subscriber actor reference
    */
-  final case class Subscribe(actorRef: ActorRef[AdministrationMessage]) extends SubscriptionCall
-
-  object Subscribe {
-
-    def apply()(implicit actorRef: ActorRef[AdministrationMessage], d: Disambiguate.type): Subscribe =
-      Subscribe(actorRef)
-  }
+  final case class Subscribe(subscriber: ActorRef[Event]) extends SubscriptionCall
 
   /**
    * Removes an actor from the administration module's event update list
    *
-   * @param actorRef actor reference
+   * @param subscriber actor reference
    */
-  final case class Unsubscribe(actorRef: ActorRef[AdministrationMessage]) extends SubscriptionCall
-
-  object Unsubscribe {
-
-    def apply()(implicit actorRef: ActorRef[AdministrationMessage], d: Disambiguate.type): Unsubscribe =
-      Unsubscribe(actorRef)
-  }
-
-  /**
-   * An object that allows for the creation of the Subscribe and Unsubscribe objects through
-   * implicit passing of the "self" field in an actor
-   *
-   * Since the companion object's "apply" function appears the same as the class constructors
-   * after type erasure, this ensures that they are actually different as there's effectively
-   * a new parameter
-   */
-  implicit final object Disambiguate
+  final case class Unsubscribe(subscriber: ActorRef[Event]) extends SubscriptionCall
 }

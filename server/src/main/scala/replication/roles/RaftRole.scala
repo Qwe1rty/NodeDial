@@ -39,6 +39,7 @@ private[replication] trait RaftRole {
   /** Ingest a Raft message event and return the event result */
   final def processRaftEvent(message: RaftMessage, state: RaftState): MessageResult = {
     (message match {
+      case reconfigEvent: ClusterReconfigEvent => processClusterReconfigEvent(reconfigEvent) _
       case appendEvent:   AppendEntryEvent     => processAppendEntryEvent(appendEvent) _
       case appendRequest: AppendEntriesRequest => processAppendEntryRequest(appendRequest) _
       case appendReply:   AppendEntriesResult  => processAppendEntryResult(appendReply) _
@@ -77,6 +78,15 @@ private[replication] trait RaftRole {
    * @return the timeout result
    */
   def processRaftIndividualTimeout(nodeID: String)(state: RaftState)(implicit log: Logger): MessageResult
+
+  /**
+   * Handles a cluster reconfiguration event from the client, removing and/or adding nodes as required
+   *
+   * @param event the information about what nodes are leaving or joining the cluster
+   * @param state current raft state
+   * @return the reconfiguration result
+   */
+  def processClusterReconfigEvent(event: ClusterReconfigEvent)(state: RaftState)(implicit log: Logger): MessageResult
 
   /**
    * Handle a direct append entry request received by this server. Only in the leader role is this
