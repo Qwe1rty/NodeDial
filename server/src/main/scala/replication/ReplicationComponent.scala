@@ -11,6 +11,7 @@ import com.roundeights.hasher.Implicits._
 import common.persistence.{Compression, ProtobufSerializer}
 import io.jvm.uuid._
 import persistence.PersistenceComponent._
+import replication.ConfigEntry.RaftNode
 import replication.ReplicatedOp.OperationType
 import replication.ReplicatedOp.OperationType.{Delete, Write}
 import replication.ReplicationComponent.ClientOperation
