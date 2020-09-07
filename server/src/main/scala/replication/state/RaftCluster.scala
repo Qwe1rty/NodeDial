@@ -38,16 +38,24 @@ class RaftCluster(self: Membership) {
 
   // Methods for accessing cluster info
   def member(nodeID: String): Membership =
-    Membership(nodeID, IpAddress(currentMembership.read().get.apply(nodeID)))
+    Membership(nodeID, IpAddress(getClusterState match {
+      case ClusterState.STABLE        => currentMembership.read().get.apply(nodeID)
+      case ClusterState.TRANSITIONING => currentMembership.read().get.get(nodeID) match {
+        case Some(currentMember) => currentMember
+        case None                => transitionalMembership(nodeID)
+      }
+      case ClusterState.Unrecognized(value) => throw new IllegalStateException(s"Unknown cluster state: $value")
+    }))
+
+  def cluster(): View[Membership] =
+    if (isStable) getCurrentMembership.view
+    else getCurrentMembership.toSet.union(getTransitionalMembership.toSet).view
 
   def foreach(f: Membership => Unit): Unit =
-    getCurrentMembership.foreach(f)
-
-  def cluster(): View[Membership] = // TODO change to union on transitioning phase
-    getCurrentMembership.view
+    cluster().foreach(f)
 
   def iterator(): Iterator[Membership] =
-    getCurrentMembership.iterator
+    cluster().iterator
 
   def currentClusterSize(): Int =
     currentMembership.read().get.size
@@ -69,16 +77,23 @@ class RaftCluster(self: Membership) {
 
     currentClusterState = ClusterState.STABLE
     currentMembership.write(transitionalMembership)
+    transitionalMembership = HashMap.empty
   }
-
-  def getClusterState: ClusterState =
-    currentClusterState
 
   def getCurrentMembership: Iterable[Membership] =
     currentMembership.read().get.map(tupleToMembership)
 
   def getTransitionalMembership: Iterable[Membership] =
     transitionalMembership.map(tupleToMembership)
+
+  def getClusterState: ClusterState =
+    currentClusterState
+
+  def isStable: Boolean =
+    getClusterState.isStable
+
+  def isTransitioning: Boolean =
+    getClusterState.isTransitioning
 
 
   // Quorum-related methods
