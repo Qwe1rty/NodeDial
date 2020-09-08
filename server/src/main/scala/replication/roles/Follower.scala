@@ -95,7 +95,7 @@ private[replication] case object Follower extends RaftRole {
       state.log.lastLogIndex() < appendRequest.prevLogIndex ||
       state.log.termOf(appendRequest.prevLogIndex) != appendRequest.prevLogTerm) {
 
-      log.debug(s"Append entry request rejected due to inconsistent logs")
+      log.info(s"Append entry request rejected due to inconsistent logs")
       rejectEntry(currentTerm, nextRole)
     }
 
@@ -108,7 +108,7 @@ private[replication] case object Follower extends RaftRole {
       // Append entries and send success message, implying follower & leader logs are now fully in sync
       for (entry <- appendRequest.entries) {
         state.log.append(appendRequest.leaderTerm, entry.logEntry.toByteArray)
-        log.debug(s"Append entry request accepted for entry at log index ${state.log.size}")
+        log.debug(s"Append entry request accepted for entry at log index ${state.log.lastLogIndex()}")
 
         // Special case for cluster configuration changes - must be applied at WAL stage, not commit stage
         entry.logEntry.entryType.cluster.foreach(configEntry => configEntry.changeType match {
@@ -126,9 +126,10 @@ private[replication] case object Follower extends RaftRole {
       }
       if (appendRequest.leaderCommitIndex > state.commitIndex) {
         state.commitIndex = Math.min(state.log.lastLogIndex(), appendRequest.leaderCommitIndex)
+        log.debug(s"Commit index updated to ${state.commitIndex}")
       }
 
-      log.debug(s"Append entry request reply with success status, commit index updated to ${state.commitIndex}")
+      log.info(s"Append entry request reply with success status")
       acceptEntry(currentTerm, nextRole)
     }
 
@@ -167,7 +168,7 @@ private[replication] case object Follower extends RaftRole {
     // If this follower's log is more up-to-date, then refuse vote
     else if (
       voteRequest.lastLogTerm < state.log.lastLogTerm() ||
-        voteRequest.lastLogTerm == state.log.lastLogTerm() && voteRequest.lastLogIndex < state.log.lastLogIndex()) {
+      voteRequest.lastLogTerm == state.log.lastLogTerm() && voteRequest.lastLogIndex < state.log.lastLogIndex()) {
 
       refuseVote(currentTerm, nextRole)
     }

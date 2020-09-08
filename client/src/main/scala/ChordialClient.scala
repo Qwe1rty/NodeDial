@@ -131,7 +131,7 @@ private object ChordialClient extends App {
         match {
           case Success(future) => future.value.get match {
             case Success(postResponse) =>
-              println(s"POST request successful: ${postResponse}")
+              println(s"POST request successful")
               sys.exit(STATUS_OK)
             case Failure(requestError) =>
               println(s"POST request failed: ${requestError}")
@@ -150,7 +150,7 @@ private object ChordialClient extends App {
         match {
           case Success(future) => future.value.get match {
             case Success(deleteResponse) =>
-              println(s"DELETE request successful: ${deleteResponse}")
+              println(s"DELETE request successful")
               sys.exit(STATUS_OK)
             case Failure(requestError) =>
               println(s"DELETE request failed: ${requestError}")

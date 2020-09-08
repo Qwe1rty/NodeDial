@@ -194,7 +194,12 @@ private[replication] case object Leader extends RaftRole {
     // If successful, we're guaranteed that the follower log is consistent with the leader log, and we need to update
     // the known up-to-dateness
     if (appendReply.success) {
-      state.leaderState = state.leaderState.patch(appendReply.followerId, currentIndexState => LogIndexState(
+
+      // NOTE: if batch updating is eventually implemented, this incrementing update will not work and would need to be changed
+      if (state.leaderState(appendReply.followerId).nextIndex == state.log.size) {
+        log.debug(s"Follower ${appendReply.followerId} is fully up to date")
+      }
+      else state.leaderState = state.leaderState.patch(appendReply.followerId, currentIndexState => LogIndexState(
         currentIndexState.nextIndex + 1,
         currentIndexState.nextIndex
       ))
