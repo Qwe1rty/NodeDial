@@ -47,5 +47,4 @@ private[replication] case class RaftLeaderState private(
 
   def matches(): Iterable[Int] =
     logIndexState.values.map(_.matchIndex)
-
 }

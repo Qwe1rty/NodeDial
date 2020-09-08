@@ -2,6 +2,7 @@ package replication.state
 
 import administration.Membership
 import common.persistence.{PersistentLong, PersistentString}
+import replication.ConfigEntry.ClusterChangeType
 import replication.eventlog.ReplicatedLog
 import replication.{AppendEntryEvent, Raft}
 
@@ -26,18 +27,22 @@ class RaftState(val selfInfo: Membership, val log: ReplicatedLog) extends RaftCl
   var currentLeader: Option[Membership] = None
   var bufferedAppendEvents: Queue[AppendEntryEvent] = Queue[AppendEntryEvent]() // TODO implement this eventually
 
-  var commitIndex: Int = 0
-  var lastApplied: Int = 0
+  var commitIndex: Int = 0 // up to and including
+  var lastApplied: Int = 0 // up to and including
 
   var commitInProgress: Boolean = false
 
   // Leader-only state variables
-  var leaderState: RaftLeaderState = RaftLeaderState(cluster(), log.size())
+  var leaderState: RaftLeaderState = newLeaderState()
+
+  var pendingOperation: Option[ClusterChangeType] = None
   var pendingMember: Option[Membership] = None
   var pendingConfigIndex: Option[Int] = None
 
 
   if (!currentTerm.exists()) currentTerm.write(0)
+
+  def newLeaderState(): RaftLeaderState = RaftLeaderState(cluster(), log.size())
 }
 
 object RaftState {

@@ -80,7 +80,8 @@ private[replication] case object Leader extends RaftRole {
     // TODO: eventually, the leader should implement a non-voting period for the new node as described in
     //   Section 4.2.1 in Ongaro's PhD thesis "Consensus: Bridging Theory and Practice"
 
-    state.pendingMember = Some(raftNodeToMembership(addNodeEvent.node))
+    state.pendingOperation = Some(ClusterChangeType.ADD)
+    state.pendingMember = Some(state.raftNodeToMembership(addNodeEvent.node))
     state.pendingConfigIndex = Some(state.log.lastLogIndex() + 1)
 
     // As leader, this will broadcast an append entry request to all nodes in the cluster to add the new server
@@ -148,6 +149,7 @@ private[replication] case object Leader extends RaftRole {
             )
         }
 
+        state.pendingOperation = None
         state.pendingMember = None
         state.pendingConfigIndex = None
 
@@ -261,12 +263,5 @@ private[replication] case object Leader extends RaftRole {
         throw exception
     }
   }
-
-  // TODO move somewhere else
-  def raftNodeToMembership: Function[RaftNode, Membership] =
-    raftNode => Membership(raftNode.nodeId, IpAddress(raftNode.ipAddress))
-
-  def membershipToRaftNode: Function[Membership, RaftNode] =
-    membership => RaftNode(membership.nodeID, membership.ipAddress.numerical)
 
 }

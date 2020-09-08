@@ -8,6 +8,7 @@ import akka.actor.{ActorSystem, FSM}
 import common.persistence.Serializer
 import common.rpc._
 import common.time._
+import replication.ConfigEntry.ClusterChangeType
 import replication.LogEntry.EntryType
 import replication.Raft.{CommitConfirmation, CommitFunction}
 import replication.RaftGRPCService.createGRPCSettings
@@ -99,19 +100,11 @@ private[replication] final class RaftFSM[Command <: Serializable](
         log.info(s"Stepping down from Candidate w/ term $currentTerm, after receiving ${nextStateData.numReplies()} votes")
       })
 
-    case Leader -> Follower =>
-      nextStateData.currentTerm.read().foreach(currentTerm => {
-        log.info(s"Stepping down from Leader w/ term $currentTerm")
-
-        processTimerTask(SetRandomTimer(RaftGlobalTimeoutKey, Raft.ELECTION_TIMEOUT_RANGE))
-        processTimerTask(ResetTimer(RaftGlobalTimeoutKey))
-      })
-
     case Candidate -> Leader =>
       nextStateData.currentTerm.read().foreach(currentTerm => {
         log.info(s"Election won, becoming leader of term $currentTerm")
 
-        nextStateData.leaderState = RaftLeaderState(nextStateData.cluster(), nextStateData.log.size())
+        nextStateData.leaderState = nextStateData.newLeaderState()
 
         processTimerTask(CancelTimer(RaftGlobalTimeoutKey))
         processRPCTask(BroadcastTask(AppendEntriesRequest(
@@ -125,6 +118,19 @@ private[replication] final class RaftFSM[Command <: Serializable](
 
         nextStateData.currentLeader = Some(nextStateData.selfInfo)
         nextStateData.resetQuorum()
+      })
+
+    case Leader -> Follower =>
+      nextStateData.currentTerm.read().foreach(currentTerm => {
+        log.info(s"Stepping down from Leader w/ term $currentTerm")
+
+        nextStateData.leaderState = nextStateData.newLeaderState()
+        nextStateData.pendingOperation = None
+        nextStateData.pendingMember = None
+        nextStateData.pendingConfigIndex = None
+
+        processTimerTask(SetRandomTimer(RaftGlobalTimeoutKey, Raft.ELECTION_TIMEOUT_RANGE))
+        processTimerTask(ResetTimer(RaftGlobalTimeoutKey))
       })
   }
 
@@ -141,12 +147,12 @@ private[replication] final class RaftFSM[Command <: Serializable](
     case Event(receive: Any, state: RaftState) =>
 
       // Handle event message, one of 3 types: Raft message event, timeout event, or commit event
-      val MessageResult(rpcTasks, timerTask, newRole) = receive match {
-        case message: RaftMessage     => currentRole.processRaftEvent(message, state)
+      val MessageResult(rpcTasks, timerTask, updatedRole) = receive match {
+        case message: RaftMessage => currentRole.processRaftEvent(message, state)
         case timeout: RaftTimeoutTick => currentRole.processRaftTimeout(timeout, state)
-        case persist: RaftCommitTick  => state.commitInProgress = false
+        case persist: RaftCommitTick => state.commitInProgress = false
           persist.commitResult match {
-            case Success(_)         => state.lastApplied += 1
+            case Success(_) => state.lastApplied += 1
             case Failure(exception) => log.info(s"Commit result failure: ${exception.getLocalizedMessage}")
           }
           MessageResult(Set.empty, ContinueTimer, None)
@@ -165,17 +171,13 @@ private[replication] final class RaftFSM[Command <: Serializable](
         state.commitInProgress = true
 
         Raft.LogEntrySerializer.deserialize(state.log(state.lastApplied + 1)) match {
-          case Success(logEntry: LogEntry) => logEntry.entryType match {
-
-            case EntryType.Data(commandBytes) => commandSerializer.deserialize(commandBytes.value) match {
+          case Success(logEntry: LogEntry) if logEntry.entryType.isData =>
+            commandSerializer.deserialize(logEntry.getData.value) match {
               case Success(command)   => commitCallback(command, log).onComplete(self ! RaftCommitTick(_))
               case Failure(exception) =>
                 log.error(s"Deserialization error for client command: ${exception.getLocalizedMessage}")
                 self ! RaftCommitTick(Failure(exception))
             }
-
-            case EntryType.Cluster(configurationChange) => ???
-          }
 
           case Failure(exception) =>
             log.error(s"Deserialization error for log entry #${state.lastApplied + 1} commit: ${exception.getLocalizedMessage}")
@@ -183,8 +185,31 @@ private[replication] final class RaftFSM[Command <: Serializable](
         }
       }
 
+      // If pending cluster config change is committed to a majority, the leader can proceed.
+      // Note that the leader needs to step down if it removes itself
+      var overrideRole: Option[RaftRole] = None
+      for (pendingIndex <- state.pendingConfigIndex if currentRole == Leader && pendingIndex <= state.commitIndex) {
+
+        state.pendingOperation.foreach {
+          case ClusterChangeType.ADD    => state.add(state.pendingMember.get)
+          case ClusterChangeType.REMOVE =>
+            val nodeID = state.pendingMember.get.nodeID
+            state.remove(nodeID)
+            if (nodeID == Administration.nodeID) {
+              log.info("Stepping down as leader - not included in new cluster configuration")
+              overrideRole = Some(Follower)
+            }
+          case ClusterChangeType.Unrecognized(value) =>
+            throw new IllegalArgumentException(s"Unknown cluster configuration change type: $value")
+        }
+
+        state.pendingOperation = None
+        state.pendingMember = None
+        state.pendingConfigIndex = None
+      }
+
       // Switch roles, triggered as a result of timeouts or significant Raft events
-      newRole match {
+      overrideRole.orElse(updatedRole) match {
         case Some(role) => goto(role)
         case None       => stay
       }

@@ -3,6 +3,7 @@ package replication.state
 import administration.Membership
 import com.risksense.ipaddr.IpAddress
 import common.persistence.{JavaSerializer, PersistentVal}
+import replication.ConfigEntry.RaftNode
 import replication.Raft
 import replication.state.RaftState._
 
@@ -33,18 +34,25 @@ abstract class RaftCluster(self: Membership) {
     case (nodeID, ipAddress) => Membership(nodeID, IpAddress(ipAddress))
   }
 
+  implicit def raftNodeToMembership: Function[RaftNode, Membership] =
+    raftNode => Membership(raftNode.nodeId, IpAddress(raftNode.ipAddress))
 
+  implicit def membershipToRaftNode: Function[Membership, RaftNode] =
+    membership => RaftNode(membership.nodeID, membership.ipAddress.numerical)
+
+
+  // Data access methods
   def foreach(f: Membership => Unit): Unit =
-  get.foreach(f)
+    get.foreach(f)
 
   def cluster(): View[Membership] =
-  get.view
+    get.view
 
   def iterator(): Iterator[Membership] =
-  get.iterator
+    get.iterator
 
   def clusterSize(): Int =
-  raftMembership.read().get.size
+    raftMembership.read().get.size
 
   def member(nodeID: String): Membership =
     Membership(nodeID, IpAddress(raftMembership.read().get.apply(nodeID)))
@@ -53,6 +61,7 @@ abstract class RaftCluster(self: Membership) {
     raftMembership.read().get.contains(nodeID)
 
 
+  // Quorum related methods
   def registerReply(nodeID: String): Unit = if (raftMembership.read().get.contains(nodeID)) {
     electionQuorum += nodeID
   }
@@ -65,4 +74,12 @@ abstract class RaftCluster(self: Membership) {
 
   def numReplies(): Int =
     electionQuorum.size
+
+
+  // Cluster config methods
+  def add(member: Membership): Unit =
+    raftMembership.write(raftMembership.read().get + (member.nodeID -> member.ipAddress.numerical))
+
+  def remove(nodeID: String): Unit =
+    raftMembership.write(raftMembership.read().get - nodeID)
 }

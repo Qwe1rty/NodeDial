@@ -4,6 +4,7 @@ import administration.Administration
 import common.rpc.{RPCTask, ReplyFutureTask, ReplyTask}
 import common.time.ContinueTimer
 import org.slf4j.{Logger, LoggerFactory}
+import replication.ConfigEntry.ClusterChangeType
 import replication._
 import replication.roles.RaftRole.MessageResult
 import replication.state.{RaftMessage, RaftState}
@@ -87,9 +88,7 @@ private[replication] case object Follower extends RaftRole {
     val nextRole = determineStepDown(appendRequest.leaderTerm)(state)
 
     // If leader's term is outdated, or the last log entry doesn't match
-    if (appendRequest.leaderTerm < currentTerm) {
-      rejectEntry(currentTerm, nextRole)
-    }
+    if (appendRequest.leaderTerm < currentTerm) rejectEntry(currentTerm, nextRole)
 
     // If the log entries don't match up, then reject entries, and it indicates logs prior to this entry are inconsistent
     else if (
@@ -103,13 +102,19 @@ private[replication] case object Follower extends RaftRole {
     else {
 
       // If the new entry conflicts with existing follower log entries, then rollback follower log
-      if (state.log.lastLogIndex() > appendRequest.prevLogIndex) {
-        state.log.rollback(appendRequest.prevLogIndex + 1)
-      }
+      if (state.log.lastLogIndex() > appendRequest.prevLogIndex) state.log.rollback(appendRequest.prevLogIndex + 1)
 
       // Append entries and send success message, implying follower & leader logs are now fully in sync
       for (entry <- appendRequest.entries) {
         state.log.append(appendRequest.leaderTerm, entry.logEntry.toByteArray)
+
+        // Special case for cluster configuration changes - must be applied at WAL stage, not commit stage
+        entry.logEntry.entryType.cluster.foreach(configEntry => configEntry.changeType match {
+          case ClusterChangeType.ADD    => state.add(state.raftNodeToMembership(configEntry.node))
+          case ClusterChangeType.REMOVE => state.remove(configEntry.node.nodeId)
+          case ClusterChangeType.Unrecognized(value) =>
+            throw new IllegalArgumentException(s"Unknown cluster configuration change type: $value")
+        })
       }
       if (appendRequest.leaderCommitIndex > state.commitIndex) {
         state.commitIndex = Math.min(state.log.lastLogIndex(), appendRequest.leaderCommitIndex)
