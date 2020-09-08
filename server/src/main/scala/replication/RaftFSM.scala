@@ -187,17 +187,19 @@ private[replication] final class RaftFSM[Command <: Serializable](
             if (currentRole == Leader && state.pendingConfigIndex.contains(currentIndex)) configEntry.changeType match {
 
               case ClusterChangeType.ADD =>
-                log.info(s"Committing node add entry, node ${configEntry.node.nodeId} officially invited to cluster")
                 state.add(state.raftNodeToMembership(configEntry.node))
+                processTimerTask(ResetTimer(RaftIndividualTimeoutKey(configEntry.node.nodeId)))
+                log.info(s"Committing node add entry, node ${configEntry.node.nodeId} officially invited to cluster")
                 self ! RaftCommitTick(Success())
 
               case ClusterChangeType.REMOVE =>
-                log.info(s"Committing node remove entry, node ${configEntry.node.nodeId} officially removed from cluster")
                 state.remove(configEntry.node.nodeId)
                 if (configEntry.node.nodeId == Administration.nodeID) {
                   log.info("Stepping down as leader - not included in new cluster configuration")
                   overrideRole = Some(Follower)
                 }
+                processTimerTask(CancelTimer(RaftIndividualTimeoutKey(configEntry.node.nodeId)))
+                log.info(s"Committing node remove entry, node ${configEntry.node.nodeId} officially removed from cluster")
                 self ! RaftCommitTick(Success())
 
               case ClusterChangeType.Unrecognized(value) =>

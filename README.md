@@ -4,9 +4,9 @@
 A distributed, scalable key-value database system! Note that this database is not production ready,
 and is mainly being built for educational purposes (so please never use it on a production system)
 
-Modeled around existing NoSQL databases such as Redis, Cassandra, and Dynamo, it is built with horizontal scalability
-and cloud deployments in mind. For more details about setting the project up on your environment, check out the
-[build walkthrough](#project-setup-and-walkthrough) and deployment guide!
+Modeled around existing NoSQL databases such as Redis, Cassandra, and Dynamo, it is designed to be horizontally
+scalable and deployable on cloud platforms. For more details about setting the project up on your environment, 
+check out the [build walkthrough](#project-setup-and-walkthrough) and deployment guide!
 
 The main server code is located in the directory `server/src/main/scala/`, and the program currently supports the 
 three basic operations: `GET`, `POST`, and `DELETE`
@@ -244,7 +244,7 @@ read the variable `SEED_NODE`.
 
 
 ---
-## Replicas and Raft
+## Raft on a Single Node
 
 When starting up a single node, you'll notice that it immediately begins the election process. Since there is 
 nobody else to provide votes, it will win and become leader for Term 1. This is the log output from winning the election:
@@ -274,8 +274,30 @@ distinct phases of writing to the WAL before officially committing the change:
 [...] INFO replication.RaftFSM - Write entry with key 'hello' and UUID d66f67e0-9692-4ca5-9105-13a914781888 will now attempt to be committed
 ```
 
-_**Section under construction! Please come back another time**_
+## Raft Cluster Administration
 
+The first thing to note is that the nodes the administration module considers to be a part of the cluster is 
+not necessarily what Raft considers to be a part of the cluster. There are basically two independent membership
+protocols within the program. 
+
+Raft needs to ensure that there is consensus on what the cluster actually is - so while it gets notified about 
+joining nodes by the administration module's gossip, it will apply backpressure to ensure that each joining node
+is applied one at a time.
+
+When the leader is delivered a gossip join message, it will attempt to replicate the join command to the existing
+nodes in the Raft cluster to get majority agreement on the new server. Once a majority agrees, the leader
+officially adds the new server to the cluster and it can start receiving client messages:
+
+```
+[...] INFO replication.RaftFSM - Committing node add entry, node c6518456f35b64e33b4302c14f33af4a41a13ca517e176ab50aeefe2b8fc98ac officially invited to cluster
+```
+
+## Raft Cluster Operations
+
+Overall, the normal workflow for multiple nodes are the same as when there's just one, except that the leader has to
+reach out to the cluster and confirm with a majority of nodes every time it wants to write something. 
+
+**_Section under construction! Please come back another time_**
 
 ---
 ## Additional Build Setup Notes
