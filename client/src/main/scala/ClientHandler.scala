@@ -16,7 +16,7 @@ object ClientHandler {
 
   val config: Config = ConfigFactory.load()
 
-  implicit val actorSystem: ActorSystem = ActorSystem("ChordialClient", config)
+  implicit val actorSystem: ActorSystem = ActorSystem("NodeDialClient", config)
   implicit val materializer: ActorMaterializer = ActorMaterializer()
   implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
 

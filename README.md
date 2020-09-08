@@ -1,5 +1,5 @@
 
-# Chordial
+# NodeDial
 
 A distributed, scalable key-value database system! 
 Note that this is mainly being built for educational purposes, and is not production ready 
@@ -69,10 +69,10 @@ command to install the client `JAR` and wrapper script into to your `$PATH` spac
 **Note that this will require `sudo` privileges, as it is copying them to `/var/lib/` and `/usr/local/bin`
  respectively**  
  
-Now, you should be able to just run the `chordial` command from anywhere. Test your installation by 
-running `chordial --help`, which should print out this menu:
+Now, you should be able to just run the `nodedial` command from anywhere. Test your installation by 
+running `nodedial --help`, which should print out this menu:
 ```
-Usage: chordial [get|post|delete|ready] [options]
+Usage: nodedial [get|post|delete|ready] [options]
 
   -k, --key <value>      key for an entry in the database
   -v, --value <value>    value associated with a key
@@ -95,7 +95,7 @@ Perform a readiness check - readiness indicates the node is ready to receive req
 ```
 
 Before sending read or write requests, you will need to wait until the database has fully
-initialized first. You can check readiness through the `chordial ready` command, and will
+initialized first. You can check readiness through the `nodedial ready` command, and will
 reply with this if the server is ready:
 
 ```
@@ -105,10 +105,10 @@ Readiness response received with status: true
 Once ready, you can start hitting it with read/write requests. Here's an example of a write followed
 by a read:
 ```
-> chordial post -k some_key -v 'Hello World!'
+> nodedial post -k some_key -v 'Hello World!'
 POST request successful: PostResponse()
 
-> chordial get -k some_key
+> nodedial get -k some_key
 GET request successful: Hello World!
 ``` 
 
@@ -120,7 +120,7 @@ cluster (if you'd like to)
 ## Kubernetes Cluster Setup
 
 If everything seems to work okay, you can now set up a Kubernetes cluster! Note that this section may
-skip over details about setting up non-Chordial related Kubernetes components (such as the DNS 
+skip over details about setting up non-NodeDial related Kubernetes components (such as the DNS 
 service), so some familiarity with Kubernetes would be really helpful
 
 The rest of this section assumes you are using the provided configuration files in the `kube` directory,
@@ -128,44 +128,44 @@ and are just running the Kubernetes cluster on your local machine.
 
 ### Single-Node Cluster Setup
 
-Firstly, before you can run the Chordial service, you will need to already have a prerequisite cluster up
+Firstly, before you can run the NodeDial service, you will need to already have a prerequisite cluster up
 and running with some DNS service. (A DNS service is actually not strictly necessary, but you'll otherwise 
 have to manually specify the IP address of the seed node)
 
-When the prerequities are ready, you should first create the chordial namespace using the command:
-`kubectl create namespace chordial-ns`. Everything related to Chordial has been configured to run in that
+When the prerequities are ready, you should first create the nodedial namespace using the command:
+`kubectl create namespace nodedial-ns`. Everything related to NodeDial has been configured to run in that
 namespace
 
-Since Chordial requires persistent storage, the canonical Kubernetes object used will be the `StatefulSet`,
+Since NodeDial requires persistent storage, the canonical Kubernetes object used will be the `StatefulSet`,
 along with its prerequisite `Headless Service` object
 
-To create the headless service, run `kubectl create -f kube/chordial-headless.yaml`, followed by the
-`StatefulSet` itself: `kubectl create -f kube/chordial-statefulset.yaml`
+To create the headless service, run `kubectl create -f kube/nodedial-headless.yaml`, followed by the
+`StatefulSet` itself: `kubectl create -f kube/nodedial-statefulset.yaml`
 
 If all goes well, you'll see three healthy objects running if you check everything in the namespace (it may
 take a while for it to reach a ready state):
 ```
-> kubectl get all -n chordial-ns
+> kubectl get all -n nodedial-ns
 NAME        READY   STATUS    RESTARTS   AGE
-pod/cdb-0   1/1     Running   0          58s
+pod/ndb-0   1/1     Running   0          58s
 
 NAME          TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)                                   AGE
-service/chs   ClusterIP   None         <none>        22200/TCP,22201/TCP,22202/TCP,22203/TCP   63s
+service/nhs   ClusterIP   None         <none>        22200/TCP,22201/TCP,22202/TCP,22203/TCP   63s
 
 NAME                   READY   AGE
-statefulset.apps/cdb   1/1     58s
+statefulset.apps/ndb   1/1     58s
 ```
 
 You can also check out the logs and see how it's interacting with the cluster. Tailing the pod, you'll
 get this sort of log output:
 ```
-> kubectl logs cdb-0 -n chordial-ns -f
-[main] INFO ChordialServer$ - Server config loaded
-[main] INFO ChordialServer$ - Initializing actor system
+> kubectl logs ndb-0 -n nodedial-ns -f
+[main] INFO NodeDialServer$ - Server config loaded
+[main] INFO NodeDialServer$ - Initializing actor system
 ...
-[ChordialServer-akka.actor.default-dispatcher-8] INFO ChordialServer$ - Initializing administration components
-[ChordialServer-akka.actor.default-dispatcher-8] INFO administration.Administration$ - Administration has determined node ID: e74020db48ba67212baa73a0cc28798a5f3b407821d0ddab9383cc47d06795be, with rejoin flag: false
-[ChordialServer-akka.actor.default-dispatcher-8] INFO ChordialServer$ -  components initialized
+[NodeDialServer-akka.actor.default-dispatcher-8] INFO NodeDialServer$ - Initializing administration components
+[NodeDialServer-akka.actor.default-dispatcher-8] INFO administration.Administration$ - Administration has determined node ID: e74020db48ba67212baa73a0cc28798a5f3b407821d0ddab9383cc47d06795be, with rejoin flag: false
+[NodeDialServer-akka.actor.default-dispatcher-8] INFO NodeDialServer$ -  components initialized
 ``` 
 
 If it looks something like that, you're all set to start adding new nodes to the cluster
@@ -173,16 +173,16 @@ If it looks something like that, you're all set to start adding new nodes to the
 ### Cluster Scaling
 
 To scale the number of replicas in the `StatefulSet`, you will need to run the command:
-`kubectl scale statefulset cdb -n chordial-ns --replicas=${REPLICA_COUNT}`. This will add new pods one-by-one 
+`kubectl scale statefulset ndb -n nodedial-ns --replicas=${REPLICA_COUNT}`. This will add new pods one-by-one 
 into the cluster, giving them a chance to synchronize with each other without overwhelming them
 
-Let's try adding one by setting the replica count to 2, which creates a node labelled `cdb-1`. Upon starting
+Let's try adding one by setting the replica count to 2, which creates a node labelled `ndb-1`. Upon starting
 up the second node, it will attempt to contact the first node and synchronize the membership information
 with it. 
 
 To better illustrate the joining process, a sample log output of the new node would look like this:
 ```
-[...] INFO administration.Administration$ - Retrieved seed node environment variable with value: 'cdb-0.chs.chordial-ns.svc.cluster.local'
+[...] INFO administration.Administration$ - Retrieved seed node environment variable with value: 'ndb-0.nhs.nodedial-ns.svc.cluster.local'
 [...] INFO administration.Administration$ - Seed node IP address resolved to: 10.1.0.171
 [...] INFO administration.Administration - Contacting seed node for membership listing
 [...] INFO administration.Administration - Successful full sync response received from seed node
@@ -233,7 +233,7 @@ Now you can scale your cluster to any size you want!
 
 However, this is a good time to point out that this fully automatic scaling process can only be achieved
 if there is a DNS server present, as the nodes will perform a DNS lookup to retrieve the IP address of the
-cluster seed node (the hostname `cdb-0.chs.chordial-ns.svc.cluster.local`)
+cluster seed node (the hostname `ndb-0.nhs.nodedial-ns.svc.cluster.local`)
 
 Without a DNS server, it is still possible to have future nodes scaled automatically, but it will require
 you to manually specify the seed node IP address into the Kubernetes `StatefulSet` configuration. The

@@ -7,12 +7,12 @@ Annotations have been interspersed within the raw log output to summarize what c
 Akka dispatcher info has been replaced with `[...]` 
 
 ```
-> kubectl logs cdb-0 -n chordial-ns -f | grep -i replication
+> kubectl logs ndb-0 -n nodedial-ns -f | grep -i replication
 
 || Server is started, and no other nodes are in the cluster. It elects itself as leader, and can start taking
 || client commands
-19:54:58.350 [...] INFO ChordialServer$ - Initializing raft and replication layer components
-19:54:58.367 [...] INFO ChordialServer$ - Replication layer components created
+19:54:58.350 [...] INFO NodeDialServer$ - Initializing raft and replication layer components
+19:54:58.367 [...] INFO NodeDialServer$ - Replication layer components created
 19:54:58.482 [...] DEBUG replication.RaftFSM - Raft role FSM has been initialized
 19:54:58.498 [...] DEBUG replication.RaftFSM - Resetting election timer
 19:54:58.500 [...] INFO replication.RaftFSM - Randomized Raft election timeout started as no external seed node was detected

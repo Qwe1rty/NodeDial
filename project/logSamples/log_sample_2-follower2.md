@@ -8,13 +8,13 @@ Akka dispatcher info has been replaced with `[...]`
 
 
 ```
-> kubectl logs cdb-2 -n chordial-ns -f | grep -i replication
+> kubectl logs ndb-2 -n nodedial-ns -f | grep -i replication
 
 || Much like follower #1, since it is given a seed node (which is the current leader) on startup, it knows that it's
 || joining an existing cluster. Thus, it doesn't try to start an election, and just waits for the leader to approve
 || of this node's join.
-19:56:18.621 [...] INFO ChordialServer$ - Initializing raft and replication layer components
-19:56:18.640 [...] INFO ChordialServer$ - Replication layer components created
+19:56:18.621 [...] INFO NodeDialServer$ - Initializing raft and replication layer components
+19:56:18.640 [...] INFO NodeDialServer$ - Replication layer components created
 19:56:18.744 [...] DEBUG replication.RaftFSM - Raft role FSM has been initialized
 19:56:19.531 [...] INFO replication.Raft$ - Raft API service has been initialized
 19:56:19.534 [...] INFO replication.ReplicationComponent - Replication component subscribed to incoming join events from administration module

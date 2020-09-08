@@ -2,9 +2,9 @@ syntax = "proto2";
 
 option java_multiple_files = true;
 option java_package = "partitioning";
-option java_outer_classname = "ChordialPartitioningMessages";
+option java_outer_classname = "NodeDialPartitioningMessages";
 
-package chordial.partitioning;
+package nodedial.partitioning;
 
 
 message PartitionHashes {

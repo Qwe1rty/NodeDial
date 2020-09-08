@@ -11,12 +11,12 @@ import scala.util.{Failure, Success, Try}
 
 
 /**
- * This is the CLI client tool for the Chordial database. It provides an interface to conveniently
+ * This is the CLI client tool for the NodeDial database. It provides an interface to conveniently
  * call the external server gRPC methods
  *
  * For the specification of this stub, run the client stub with the --help argument
  */
-private object ChordialClient extends App {
+private object NodeDialClient extends App {
 
   import ClientHandler._
 
@@ -25,11 +25,11 @@ private object ChordialClient extends App {
 
   lazy val separator = sys.props("line.separator")
 
-  val parser: OptionParser[ClientHandler] = new OptionParser[ClientHandler]("chordial") {
+  val parser: OptionParser[ClientHandler] = new OptionParser[ClientHandler]("nodedial") {
 
     head(
-      """This Chordial client program is a CLI tool to interact with the database node instances
-        |For more information, check out: https://github.com/Qwe1rty/Chordial
+      """This NodeDial client program is a CLI tool to interact with the database node instances
+        |For more information, check out: https://github.com/Qwe1rty/NodeDial
         |""".stripMargin)
 
 

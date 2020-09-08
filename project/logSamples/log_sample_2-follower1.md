@@ -7,13 +7,13 @@ Annotations have been interspersed within the raw log output to summarize what c
 Akka dispatcher info has been replaced with `[...]` 
 
 ```
-> kubectl logs cdb-1 -n chordial-ns -f | grep -i replication
+> kubectl logs ndb-1 -n nodedial-ns -f | grep -i replication
 
 || Server is started, but since it is given a seed node (which is the current leader) on startup, it knows that it's
 || joining an existing cluster. Thus, it doesn't try to start an election, and just waits for the leader to approve
 || of this node's join.
-19:55:33.328 [...] INFO ChordialServer$ - Initializing raft and replication layer components
-19:55:33.332 [...] INFO ChordialServer$ - Replication layer components created
+19:55:33.328 [...] INFO NodeDialServer$ - Initializing raft and replication layer components
+19:55:33.332 [...] INFO NodeDialServer$ - Replication layer components created
 19:55:33.466 [...] DEBUG replication.RaftFSM - Raft role FSM has been initialized
 19:55:34.279 [...] INFO replication.Raft$ - Raft API service has been initialized
 19:55:34.284 [...] INFO replication.ReplicationComponent - Replication component subscribed to incoming join events from administration module

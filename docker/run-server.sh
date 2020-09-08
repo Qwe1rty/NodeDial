@@ -1,4 +1,4 @@
 #!/busybox/sh
 
-java -jar /var/lib/chordial-jars/chordial-server.jar
+java -jar /var/lib/nodedial-jars/nodedial-server.jar
 

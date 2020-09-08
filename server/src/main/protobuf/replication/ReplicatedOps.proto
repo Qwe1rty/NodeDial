@@ -2,12 +2,12 @@
 
 option java_multiple_files = true;
 option java_package = "replication";
-option java_outer_classname = "ChordialReplicatedOps";
+option java_outer_classname = "NodeDialReplicatedOps";
 
-package chordial.replication;
+package nodedial.replication;
 
 
-// Note: these ops are specific to the Chordial DB interface, and is not
+// Note: these ops are specific to the NodeDial DB interface, and is not
 // part of the Raft algorithm.
 
 message ReplicatedOp {

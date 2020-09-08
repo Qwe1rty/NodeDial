@@ -2,13 +2,13 @@ syntax = "proto2";
 
 option java_multiple_files = true;
 option java_package = "common.administration";
-option java_outer_classname = "ChordialAdministrationMessages";
+option java_outer_classname = "NodeDialAdministrationMessages";
 
 import "administration/NodeInfo.proto";
 import "partitioning/PartitioningMessages.proto";
 import "scalapb/scalapb.proto";
 
-package chordial.administration;
+package nodedial.administration;
 
 
 /*

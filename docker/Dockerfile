@@ -22,18 +22,18 @@ SHELL ["/busybox/sh", "-c"]
 ##
 ## Client stub setup
 ##
-COPY $CLIENT_JAR_FILE /var/lib/chordial-jars/chordial-client.jar
-COPY docker/run-client.sh /usr/local/bin/chordial
+COPY $CLIENT_JAR_FILE /var/lib/nodedial-jars/nodedial-client.jar
+COPY docker/run-client.sh /usr/local/bin/nodedial
 
-RUN chmod +x /var/lib/chordial-jars/chordial-client.jar
+RUN chmod +x /var/lib/nodedial-jars/nodedial-client.jar
 
 
 ##
 ## Server setup
 ##
-COPY $SERVER_JAR_FILE /var/lib/chordial-jars/chordial-server.jar
-COPY docker/run-server.sh /usr/local/bin/chordial-app
+COPY $SERVER_JAR_FILE /var/lib/nodedial-jars/nodedial-server.jar
+COPY docker/run-server.sh /usr/local/bin/nodedial-app
 
-RUN chmod +x /var/lib/chordial-jars/chordial-server.jar
-ENTRYPOINT chordial-app
+RUN chmod +x /var/lib/nodedial-jars/nodedial-server.jar
+ENTRYPOINT nodedial-app
 

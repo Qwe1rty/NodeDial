@@ -92,7 +92,7 @@ lazy val api = (project in file("api"))
     JavaAgent /*ALPN agent*/
   )
   .settings(
-    name := "ChordialSchema",
+    name := "NodeDialSchema",
     javaAgents += jettyAgent,
     libraryDependencies ++= akkaLibraryGroup ++ grpcLibraryGroup
   )
@@ -108,7 +108,7 @@ lazy val client = (project in file("client"))
     JavaAgent /*ALPN agent*/
   )
   .settings(
-    name := "ChordialClient",
+    name := "NodeDialClient",
     assemblySettings,
     javaAgents += jettyAgent,
     libraryDependencies ++= Seq(
@@ -125,7 +125,7 @@ lazy val server = (project in file("server"))
     JavaAgent /*ALPN agent*/
   )
   .settings(
-    name := "ChordialServer",
+    name := "NodeDialServer",
     assemblySettings,
     javaAgents += jettyAgent,
     libraryDependencies ++= akkaLibraryGroup ++ loggingLibraryGroup ++ Seq(

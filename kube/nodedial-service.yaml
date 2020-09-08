@@ -2,14 +2,14 @@
 apiVersion: apps/v1
 kind: Service
 metadata:
-  name: chordial
-  namespace: chordial-ns
+  name: nodedial
+  namespace: nodedial-ns
   labels:
-    app: chordial
+    app: nodedial
 spec:
   ports:
     - protocol: TCP
       port: 8080
       targetPort: 8080
   selector:
-    app: chordial
+    app: nodedial

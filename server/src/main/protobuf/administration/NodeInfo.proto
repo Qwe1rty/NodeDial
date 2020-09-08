@@ -2,9 +2,9 @@ syntax = "proto2";
 
 option java_multiple_files = true;
 option java_package = "common.administration.types";
-option java_outer_classname = "ChordialAdministrationNode";
+option java_outer_classname = "NodeDialAdministrationNode";
 
-package chordial.administration;
+package nodedial.administration;
 
 
 /*

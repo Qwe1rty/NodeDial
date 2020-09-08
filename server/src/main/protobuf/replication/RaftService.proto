@@ -2,11 +2,11 @@ syntax = "proto2";
 
 option java_multiple_files = true;
 option java_package = "replication";
-option java_outer_classname = "ChordialRaftService";
+option java_outer_classname = "NodeDialRaftService";
 
 import "replication/RaftMessages.proto";
 
-package chordial.replication;
+package nodedial.replication;
 
 
 service RaftService {

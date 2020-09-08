@@ -2,12 +2,12 @@ syntax = "proto2";
 
 option java_multiple_files = true;
 option java_package = "common.administration";
-option java_outer_classname = "ChordialAdministrationService";
+option java_outer_classname = "NodeDialAdministrationService";
 
 import "administration/NodeEvent.proto";
 import "administration/NodeSynchronization.proto";
 
-package chordial.administration;
+package nodedial.administration;
 
 
 service AdministrationService {
