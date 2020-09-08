@@ -294,7 +294,7 @@ Overall, the typical workflow for when there's multiple nodes are the same as wh
 the leader has to reach out to the cluster and confirm with a majority of nodes every time it wants to write something.
 
 The log walkthrough for the log entry replication process is quite long, so I've moved it over to the
-[project/logSamples](log samples) subfolder, where you'll find annotated explanations about cluster operations
+[log samples](project/logSamples) subfolder, where you'll find annotated explanations about cluster operations
 in a 3-node cluster titled `log_sample_2-leader.md`, `log_sample_2-follower1.md`, and `log_sample_2-follower2.md`
 
 This example goes over Raft cluster joining, replicating log entries from both the leader and follower side, and
