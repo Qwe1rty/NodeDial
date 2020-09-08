@@ -104,9 +104,9 @@ object Raft {
   // - Election timer range: 150ms to ~325ms
   // - Individual node timeout: ~50ms
   //
-  // For whatever reason, the network request takes almost 500ms to reach another server on my computer,
-  // so all the raft processes have been slowed down. It also makes the log output more coherent
-  // when debugging things as a side bonus
+  // On my slow computer, establishing the initial TCP connection, along with potential
+  // GC pauses can easily take up to 500ms, so all the Raft processes have been slowed down.
+  // As a side bonus, this makes the log output more coherent when debugging things
 
   val ELECTION_TIMEOUT_LOWER_BOUND: FiniteDuration = FiniteDuration(1500, TimeUnit.MILLISECONDS)
   val ELECTION_TIMEOUT_UPPER_BOUND: FiniteDuration = FiniteDuration(2500, TimeUnit.MILLISECONDS)

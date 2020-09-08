@@ -1,4 +1,5 @@
-This is a sample of a single-node cluster log output for the given sequence of commands as of September 6th 2020:
+This is a sample of a single-node cluster raw log output for the given sequence of commands as of
+September 6th 2020:
 
 ```
 $ chordial post -k hello -v world

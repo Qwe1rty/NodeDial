@@ -2,13 +2,13 @@
 # Chordial
 
 A distributed, scalable key-value database system! 
+Note that this is mainly being built for educational purposes, and is not production ready 
+(so please please never use it on an actual production system)
 
 Modeled around existing leader-follower NoSQL databases such as Redis, it's designed to be similarly horizontally
 scalable and deployable on cloud platforms. For more details about setting the project up on your environment, 
 check out the [build walkthrough](#project-setup-and-walkthrough) and deployment guide
 
-Note that this database is not production ready, and is mainly being built for educational purposes (so please never
-use it on a production system)
 
 The main server code is located in the directory `server/src/main/scala/`, and the program currently supports the 
 three basic operations: `GET`, `POST`, and `DELETE`
@@ -70,7 +70,7 @@ command to install the client `JAR` and wrapper script into to your `$PATH` spac
  respectively**  
  
 Now, you should be able to just run the `chordial` command from anywhere. Test your installation by 
-running `chordial --help`, which should print out this lovely menu:
+running `chordial --help`, which should print out this menu:
 ```
 Usage: chordial [get|post|delete|ready] [options]
 
@@ -272,7 +272,7 @@ distinct phases of writing to the WAL before officially committing the change:
 [...] INFO replication.RaftFSM - Write entry with key 'hello' and UUID d66f67e0-9692-4ca5-9105-13a914781888 will now attempt to be committed
 ```
 
-## Raft Cluster Administration
+## Raft Cluster Operations
 
 The first thing to note is that the nodes the administration module considers to be a part of the cluster is 
 not necessarily what Raft considers to be a part of the cluster. There are basically two independent membership
@@ -290,12 +290,16 @@ officially adds the new server to the cluster and it can start receiving client 
 [...] INFO replication.RaftFSM - Committing node add entry, node c6518456f35b64e33b4302c14f33af4a41a13ca517e176ab50aeefe2b8fc98ac officially invited to cluster
 ```
 
-## Raft Cluster Operations
+Overall, the typical workflow for when there's multiple nodes are the same as when there's just one, except that 
+the leader has to reach out to the cluster and confirm with a majority of nodes every time it wants to write something.
 
-Overall, the normal workflow for multiple nodes are the same as when there's just one, except that the leader has to
-reach out to the cluster and confirm with a majority of nodes every time it wants to write something. 
+The log walkthrough for the log entry replication process is quite long, so I've moved it over to the
+[project/logSamples](log samples) subfolder, where you'll find annotated explanations about cluster operations
+in a 3-node cluster titled `log_sample_2-leader.md`, `log_sample_2-follower1.md`, and `log_sample_2-follower2.md`
 
-**_Section under construction! Please come back another time_**
+This example goes over Raft cluster joining, replicating log entries from both the leader and follower side, and
+the subsequent stable cluster state where all followers receive a steady stream of heartbeat messages and no
+new elections occur.
 
 ---
 ## Additional Build Setup Notes
