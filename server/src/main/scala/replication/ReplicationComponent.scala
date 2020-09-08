@@ -80,7 +80,7 @@ class ReplicationComponent(
 
   administration ! Subscribe(context.messageAdapter(clusterEvent =>
     clusterEvent.eventType.join match {
-      case Some(join) => JoinReplicaGroup(Membership(clusterEvent.nodeId, IpAddress(join.ipAddress)), UUID.randomUUID())
+      case Some(join) => JoinReplicaGroup(Membership(clusterEvent.nodeId, IpAddress(join.ipAddress)))
       case None => NoOperation
     }
   ))
@@ -124,8 +124,9 @@ class ReplicationComponent(
       deletePromise.completeWith(futureConfirmation.map { _ => () })
       this
 
-    case JoinReplicaGroup(membership, uuid) =>
-      context.log.debug(s"Join replica group request received with UUID ${uuid.string}")
+    case JoinReplicaGroup(membership) =>
+
+      context.log.debug(s"Join replica group request received for node ${membership.nodeID}")
       raft.join(RaftNode(membership.nodeID, membership.ipAddress.numerical))
       this
   }
@@ -147,7 +148,6 @@ object ReplicationComponent {
 
   final case class JoinReplicaGroup(
     membership: Membership,
-    uuid: UUID
   ) extends ClientOperation
 
   type ReplicatedConfirmation = Unit
