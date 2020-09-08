@@ -92,7 +92,7 @@ class RaftGRPCService(raftActor: ActorRef)(implicit actorSystem: ActorSystem) ex
   override def appendEntries(in: AppendEntriesRequest): Future[AppendEntriesResult] = {
     log.debug(
       s"Append entries request from leader ${in.leaderId} with latest log entry: " +
-      s"(${in.prevLogTerm}, ${in.prevLogIndex})"
+      s"(prevLogTerm = ${in.prevLogTerm}, prevLogIndex = ${in.prevLogIndex})"
     )
 
     (raftActor ? in)

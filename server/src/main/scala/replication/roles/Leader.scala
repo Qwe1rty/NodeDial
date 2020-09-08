@@ -7,6 +7,7 @@ import org.slf4j.{Logger, LoggerFactory}
 import replication.ConfigEntry.ClusterChangeType
 import replication.LogEntry.EntryType
 import replication.LogEntry.EntryType.{Cluster, Data}
+import replication.Raft.LogEntrySerializer
 import replication._
 import replication.roles.RaftRole.MessageResult
 import replication.state.RaftLeaderState.LogIndexState
@@ -102,7 +103,7 @@ private[replication] case object Leader extends RaftRole {
     val currentTerm: Long = state.currentTerm.read().getOrElse(0)
 
     val appendLogResult = for (
-      logEntryBytes <- Raft.LogEntrySerializer.serialize(appendEvent.logEntry);
+      logEntryBytes <- LogEntrySerializer.serialize(appendEvent.logEntry);
       appendResult  <- Try(state.log.append(currentTerm, logEntryBytes))
     ) yield appendResult
 
@@ -182,6 +183,8 @@ private[replication] case object Leader extends RaftRole {
    */
   override def processAppendEntryResult(appendReply: AppendEntriesResult)(state: RaftState)(implicit log: Logger): MessageResult = {
 
+    log.debug(s"Append entry reply received from node ${appendReply.followerId} with status: ${appendReply.success}")
+
     // Due to things like network partitions, a new leader of higher term may exist. We step down in this case
     val nextRole = determineStepDown(appendReply.currentTerm)(state)
     if (nextRole.contains(Follower)) {
@@ -243,7 +246,7 @@ private[replication] case object Leader extends RaftRole {
     val logEntries: Try[Seq[LogEntry]] =
       if (state.log.lastLogIndex() < state.leaderState(nodeID).nextIndex) Success(Seq.empty)
       else {
-        Raft.LogEntrySerializer.deserialize(state.log(state.leaderState(nodeID).nextIndex)).map(Seq[LogEntry](_))
+        LogEntrySerializer.deserialize(state.log(state.leaderState(nodeID).nextIndex)).map(Seq[LogEntry](_))
       }
 
     // Start building the append request if the log entry could be deserialized

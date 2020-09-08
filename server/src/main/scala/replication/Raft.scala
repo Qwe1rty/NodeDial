@@ -100,11 +100,17 @@ object Raft {
   val RAFT_LOG_INDEX: File = RAFT_DIR/"raft.log.index"
   val RAFT_LOG_DATA: File  = RAFT_DIR/"raft.log.data"
 
-  val ELECTION_TIMEOUT_LOWER_BOUND: FiniteDuration = FiniteDuration(150, TimeUnit.MILLISECONDS)
-  val ELECTION_TIMEOUT_UPPER_BOUND: FiniteDuration = FiniteDuration(325, TimeUnit.MILLISECONDS)
+  // Recommended production values by the Raft paper:
+  // - Election timer range: 150ms to 325ms
+  // - Individual node timeout: 50ms
+  //
+  // Has been increased here due to synchronous DEBUG-level logging makes everything slower
+
+  val ELECTION_TIMEOUT_LOWER_BOUND: FiniteDuration = FiniteDuration(450, TimeUnit.MILLISECONDS)
+  val ELECTION_TIMEOUT_UPPER_BOUND: FiniteDuration = FiniteDuration(975, TimeUnit.MILLISECONDS)
 
   val ELECTION_TIMEOUT_RANGE: TimeRange = TimeRange(ELECTION_TIMEOUT_LOWER_BOUND, ELECTION_TIMEOUT_UPPER_BOUND)
-  val INDIVIDUAL_NODE_TIMEOUT: FiniteDuration = FiniteDuration(50, TimeUnit.MILLISECONDS)
+  val INDIVIDUAL_NODE_TIMEOUT: FiniteDuration = FiniteDuration(175, TimeUnit.MILLISECONDS)
   val NEW_LOG_ENTRY_TIMEOUT: FiniteDuration = FiniteDuration(5, TimeUnit.SECONDS)
 
   private[replication] object LogEntrySerializer extends ProtobufSerializer[LogEntry] {

@@ -79,15 +79,15 @@ class SimpleReplicatedLog(
     entry
   }
 
-  override def size(): Offset =
+  override def size: Offset =
     metadata.offsetIndex.size
 
   override def rollback(newSize: Offset): Unit = {
-    if (newSize < 0 || newSize > size()) {
+    if (newSize < 0 || newSize > size) {
       throw new IllegalArgumentException(s"Illegal new size: $newSize")
     }
 
-    metadata.offsetIndex.trimEnd(size() - newSize)
+    metadata.offsetIndex.trimEnd(size - newSize)
     metadata.lastIncludedTerm = termOf(lastLogIndex())
 
     saveMetadata(metadata)
@@ -98,7 +98,7 @@ class SimpleReplicatedLog(
     metadata.lastIncludedTerm
 
   override def lastLogIndex(): Int =
-    size() - 1
+    size - 1
 
   override def offsetOf(index: Int): Offset =
     metadata.offsetIndex(index).offset
