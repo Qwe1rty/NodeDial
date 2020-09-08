@@ -10,7 +10,7 @@ import common.rpc._
 import common.time._
 import replication.ConfigEntry.ClusterChangeType
 import replication.LogEntry.EntryType
-import replication.Raft.{CommitConfirmation, CommitFunction}
+import replication.Raft.{CommitConfirmation, CommitFunction, RaftCommitTick}
 import replication.RaftGRPCService.createGRPCSettings
 import replication.roles.RaftRole.MessageResult
 import replication.roles._
@@ -46,8 +46,6 @@ private[replication] final class RaftFSM[Command <: Serializable](
   with RPCTaskHandler[RaftMessage]
   with TimerTaskHandler[RaftTimeoutKey]
   with RaftTimeouts {
-
-  private[this] case class RaftCommitTick(commitResult: Try[CommitConfirmation]) // TODO move this elsewhere
 
   // Akka objects init
   implicit val executionContext: ExecutionContext = actorSystem.dispatcher
@@ -125,8 +123,6 @@ private[replication] final class RaftFSM[Command <: Serializable](
         log.info(s"Stepping down from Leader w/ term $currentTerm")
 
         nextStateData.leaderState = nextStateData.newLeaderState()
-        nextStateData.pendingOperation = None
-        nextStateData.pendingMember = None
         nextStateData.pendingConfigIndex = None
 
         processTimerTask(SetRandomTimer(RaftGlobalTimeoutKey, Raft.ELECTION_TIMEOUT_RANGE))
@@ -137,9 +133,9 @@ private[replication] final class RaftFSM[Command <: Serializable](
   initialize()
   log.debug("Raft role FSM has been initialized")
 
-  if (!addresser.seedIP.contains(addresser.selfIP)) {
+  if (addresser.seedIP.isEmpty || addresser.seedIP.contains(addresser.selfIP)) {
     processTimerTask(ResetTimer(RaftGlobalTimeoutKey))
-    log.info("Randomized Raft election timeout started at initialization as no external seed node was detected")
+    log.info("Randomized Raft election timeout started as no external seed node was detected")
   }
 
 
@@ -167,10 +163,14 @@ private[replication] final class RaftFSM[Command <: Serializable](
 
       // If there are still entries to commit, and there isn't one in progress (as we need to ensure
       // they are executed sequentially), then commit the next entry to the state machine
+      var overrideRole: Option[RaftRole] = None
       if (!state.commitInProgress && state.lastApplied < state.commitIndex) {
+
+        val currentIndex = state.lastApplied + 1
         state.commitInProgress = true
 
-        Raft.LogEntrySerializer.deserialize(state.log(state.lastApplied + 1)) match {
+        Raft.LogEntrySerializer.deserialize(state.log(currentIndex)) match {
+
           case Success(logEntry: LogEntry) if logEntry.entryType.isData =>
             commandSerializer.deserialize(logEntry.getData.value) match {
               case Success(command)   => commitCallback(command, log).onComplete(self ! RaftCommitTick(_))
@@ -179,33 +179,37 @@ private[replication] final class RaftFSM[Command <: Serializable](
                 self ! RaftCommitTick(Failure(exception))
             }
 
+          case Success(logEntry: LogEntry) if logEntry.entryType.isCluster =>
+
+            // The cluster config change only should be applied when you're leader and waiting on the quorum, as
+            // followers apply this at the WAL stage so they don't need to do it here
+            val configEntry = logEntry.getCluster
+            if (currentRole == Leader && state.pendingConfigIndex.contains(currentIndex)) configEntry.changeType match {
+
+              case ClusterChangeType.ADD =>
+                log.info(s"Committing node add entry, node ${configEntry.node.nodeId} officially invited to cluster")
+                state.add(state.raftNodeToMembership(configEntry.node))
+                self ! RaftCommitTick(Success())
+
+              case ClusterChangeType.REMOVE =>
+                log.info(s"Committing node remove entry, node ${configEntry.node.nodeId} officially removed from cluster")
+                state.remove(configEntry.node.nodeId)
+                if (configEntry.node.nodeId == Administration.nodeID) {
+                  log.info("Stepping down as leader - not included in new cluster configuration")
+                  overrideRole = Some(Follower)
+                }
+                self ! RaftCommitTick(Success())
+
+              case ClusterChangeType.Unrecognized(value) =>
+                self ! RaftCommitTick(Failure(new IllegalArgumentException(s"Unknown cluster configuration change type: $value")))
+            }
+
+            state.pendingConfigIndex = None
+
           case Failure(exception) =>
-            log.error(s"Deserialization error for log entry #${state.lastApplied + 1} commit: ${exception.getLocalizedMessage}")
+            log.error(s"Deserialization error for log entry #$currentIndex commit: ${exception.getLocalizedMessage}")
             self ! RaftCommitTick(Failure(exception))
         }
-      }
-
-      // If pending cluster config change is committed to a majority, the leader can proceed.
-      // Note that the leader needs to step down if it removes itself
-      var overrideRole: Option[RaftRole] = None
-      for (pendingIndex <- state.pendingConfigIndex if currentRole == Leader && pendingIndex <= state.commitIndex) {
-
-        state.pendingOperation.foreach {
-          case ClusterChangeType.ADD    => state.add(state.pendingMember.get)
-          case ClusterChangeType.REMOVE =>
-            val nodeID = state.pendingMember.get.nodeID
-            state.remove(nodeID)
-            if (nodeID == Administration.nodeID) {
-              log.info("Stepping down as leader - not included in new cluster configuration")
-              overrideRole = Some(Follower)
-            }
-          case ClusterChangeType.Unrecognized(value) =>
-            throw new IllegalArgumentException(s"Unknown cluster configuration change type: $value")
-        }
-
-        state.pendingOperation = None
-        state.pendingMember = None
-        state.pendingConfigIndex = None
       }
 
       // Switch roles, triggered as a result of timeouts or significant Raft events

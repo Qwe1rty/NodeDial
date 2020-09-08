@@ -34,9 +34,6 @@ class RaftState(val selfInfo: Membership, val log: ReplicatedLog) extends RaftCl
 
   // Leader-only state variables
   var leaderState: RaftLeaderState = newLeaderState()
-
-  var pendingOperation: Option[ClusterChangeType] = None
-  var pendingMember: Option[Membership] = None
   var pendingConfigIndex: Option[Int] = None
 
 

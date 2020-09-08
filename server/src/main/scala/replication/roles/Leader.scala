@@ -66,7 +66,7 @@ private[replication] case object Leader extends RaftRole {
    */
   override def processAddNodeEvent(addNodeEvent: AddNodeEvent)(state: RaftState)(implicit log: Logger): MessageResult = {
 
-    if (state.pendingMember.isDefined) {
+    if (state.pendingConfigIndex.isDefined) {
       log.info("Rejecting new server add: another server is currently pending addition")
       return MessageResult(Set(ReplyTask(AddNodeAck(status = false, state.currentLeader.map(_.nodeID)))), ContinueTimer, None)
     }
@@ -79,8 +79,6 @@ private[replication] case object Leader extends RaftRole {
     // TODO: eventually, the leader should implement a non-voting period for the new node as described in
     //   Section 4.2.1 in Ongaro's PhD dissertation "Consensus: Bridging Theory and Practice"
 
-    state.pendingOperation = Some(ClusterChangeType.ADD)
-    state.pendingMember = Some(state.raftNodeToMembership(addNodeEvent.node))
     state.pendingConfigIndex = Some(state.log.lastLogIndex() + 1)
 
     // As leader, this will broadcast an append entry request to all nodes in the cluster to add the new server
@@ -156,8 +154,6 @@ private[replication] case object Leader extends RaftRole {
             )
         }
 
-        state.pendingOperation = None
-        state.pendingMember = None
         state.pendingConfigIndex = None
 
         MessageResult(Set(ReplyTask(AppendEntryAck(success = false))), ContinueTimer, None)

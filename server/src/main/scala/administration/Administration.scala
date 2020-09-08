@@ -88,6 +88,7 @@ class Administration private(
           else context.log.debug(s"Node ${event.nodeId} join event ignored, entry already in table")
 
           publishExternally(event)
+          publishInternally(event)
 
         case EventType.Suspect(suspectInfo) =>
           context.log.debug(s"Suspect event - ${event.nodeId} - ${suspectInfo}")
@@ -138,7 +139,9 @@ class Administration private(
             membershipTable = membershipTable.unregister(event.nodeId)
             context.log.info(s"Node ${event.nodeId} declared intent to leave, removing from membership table")
           }
+
           publishExternally(event)
+          publishInternally(event)
 
         case Empty => context.log.error(s"Received invalid Empty event - ${event.nodeId}")
       }
@@ -222,8 +225,12 @@ class Administration private(
        * Internal API calls that sub/unsub from cluster/admin events
        */
       case call: SubscriptionCall => call match {
-        case Subscribe(actorRef) => subscribers += actorRef
-        case Unsubscribe(actorRef) => subscribers -= actorRef
+        case Subscribe(actorRef)   =>
+          context.log.info("Subscription request for administrative cluster events received")
+          subscribers += actorRef
+        case Unsubscribe(actorRef) =>
+          context.log.info("Unsubscribe request for administrative cluster events received")
+          subscribers -= actorRef
       }
     }; this
   }

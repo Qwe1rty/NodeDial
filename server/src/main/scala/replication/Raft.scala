@@ -27,7 +27,7 @@ import schema.ImplicitGrpcConversions._
 
 import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 
 /**
@@ -91,8 +91,10 @@ object Raft {
    * servers have agreed to append the log entry, and now needs to be applied to the state
    * machine as dictated by user code
    */
-  type CommitConfirmation = Unit
   type CommitFunction[Command] = Function[(Command, LoggingAdapter), Future[CommitConfirmation]]
+  type CommitConfirmation = Unit
+
+  private[replication] final case class RaftCommitTick(commitResult: Try[CommitConfirmation])
 
   val RAFT_DIR: File = ServerConstants.BASE_DIRECTORY/"raft"
   val RAFT_LOG_INDEX: File = RAFT_DIR/"raft.log.index"
