@@ -49,6 +49,7 @@ class Raft[Command <: Serializable](addresser: AddressRetriever, commitCallback:
   this: Serializer[Command] =>
 
   implicit private val classicSystem: actor.ActorSystem = context.system.classicSystem
+  implicit private val timeout: util.Timeout = Timeout(Raft.NEW_LOG_ENTRY_TIMEOUT)
 
   import Raft._
 
@@ -70,8 +71,6 @@ class Raft[Command <: Serializable](addresser: AddressRetriever, commitCallback:
 
 
   def submit(key: String, command: Command, uuid: Option[UUID] = None): Future[AppendEntryAck] = {
-    implicit def timeout: util.Timeout = Timeout(Raft.NEW_LOG_ENTRY_TIMEOUT)
-
     serialize(command) match {
       case Failure(exception) => Future.failed(exception)
       case Success(value) =>
@@ -82,7 +81,7 @@ class Raft[Command <: Serializable](addresser: AddressRetriever, commitCallback:
   }
 
   def join(joinInfo: RaftNode): Unit =
-    raft ! AddNodeEvent(joinInfo)
+    (raft ? AddNodeEvent(joinInfo)).mapTo[AddNodeAck]
 }
 
 object Raft {

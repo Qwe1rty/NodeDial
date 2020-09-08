@@ -1,17 +1,16 @@
 package replication.roles
 
-import administration.{Administration, Membership}
-import com.risksense.ipaddr.IpAddress
-import common.rpc.{RPCTask, ReplyTask, RequestTask}
+import administration.Administration
+import common.rpc.{NoTask, RPCTask, ReplyTask, RequestTask}
 import common.time.{ContinueTimer, ResetTimer}
 import org.slf4j.{Logger, LoggerFactory}
-import replication.ConfigEntry.{ClusterChangeType, RaftNode}
+import replication.ConfigEntry.ClusterChangeType
 import replication.LogEntry.EntryType
 import replication.LogEntry.EntryType.{Cluster, Data}
 import replication._
 import replication.roles.RaftRole.MessageResult
 import replication.state.RaftLeaderState.LogIndexState
-import replication.state.{RaftIndividualTimeoutKey, RaftMessage, RaftState}
+import replication.state.{RaftIndividualTimeoutKey, RaftMessage, RaftResult, RaftState}
 
 import scala.util.{Failure, Success, Try}
 
@@ -78,7 +77,7 @@ private[replication] case object Leader extends RaftRole {
     }
 
     // TODO: eventually, the leader should implement a non-voting period for the new node as described in
-    //   Section 4.2.1 in Ongaro's PhD thesis "Consensus: Bridging Theory and Practice"
+    //   Section 4.2.1 in Ongaro's PhD dissertation "Consensus: Bridging Theory and Practice"
 
     state.pendingOperation = Some(ClusterChangeType.ADD)
     state.pendingMember = Some(state.raftNodeToMembership(addNodeEvent.node))
@@ -135,7 +134,15 @@ private[replication] case object Leader extends RaftRole {
             .map(membership => RequestTask(appendEntryRequest, membership.nodeID))
             .toSet
 
-        MessageResult(matchingFollowers + ReplyTask(AppendEntryAck(success = true)), ContinueTimer, None)
+        val replyTask: RPCTask[RaftResult] = appendEvent.logEntry.entryType match {
+          case Data(_)    => ReplyTask(AppendEntryAck(success = true))
+          case Cluster(_) => ReplyTask(AddNodeAck(status = true, state.currentLeader.map(_.nodeID)))
+          case EntryType.Empty =>
+            log.error("Log entry type contained nothing, will not send a reply back to sender")
+            NoTask
+        }
+
+        MessageResult(matchingFollowers + replyTask, ContinueTimer, None)
 
       case Failure(exception) =>
 

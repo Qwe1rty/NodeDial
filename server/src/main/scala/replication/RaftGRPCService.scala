@@ -47,6 +47,34 @@ class RaftGRPCService(raftActor: ActorRef)(implicit actorSystem: ActorSystem) ex
 
 
   /**
+   * Handles a new write request from client - starts an AppendEntries
+   * broadcast if leader for replication, or redirects it to the leader (if
+   * existing).
+   */
+  override def newLogWrite(in: AppendEntryEvent): Future[AppendEntryAck] = {
+    in.logEntry.entryType match {
+      case EntryType.Data(dataEntry) => log.debug(s"New log write event with key ${dataEntry.key}")
+      case EntryType.Cluster(_)      => log.debug("New Raft cluster reconfiguration event received")
+      case EntryType.Empty =>
+        log.error("New log write event received an invalid message")
+    }
+
+    (raftActor ? in)
+      .mapTo[AppendEntryAck]
+  }
+
+  /**
+   * AddNode is called by the server admin (directly or indirectly)
+   */
+  override def addNode(in: AddNodeEvent): Future[AddNodeAck] = {
+    log.debug(s"Add node request received for ${in.node.nodeId} with address ${IpAddress(in.node.ipAddress).toString}")
+
+    (raftActor ? in)
+      .mapTo[AddNodeAck]
+  }
+
+
+  /**
    * RequestVote is called by candidates to try and get a majority vote,
    * to become leader
    */
@@ -70,23 +98,4 @@ class RaftGRPCService(raftActor: ActorRef)(implicit actorSystem: ActorSystem) ex
     (raftActor ? in)
       .mapTo[AppendEntriesResult]
   }
-
-  /**
-   * Handles a new write request from client - starts an AppendEntries
-   * broadcast if leader for replication, or redirects it to the leader (if
-   * existing).
-   */
-  override def newLogWrite(in: AppendEntryEvent): Future[AppendEntryAck] = {
-    in.logEntry.entryType match {
-      case EntryType.Data(dataEntry) => log.debug(s"New log write event with key ${dataEntry.key}")
-      case EntryType.Cluster(_)      => log.debug("New Raft cluster reconfiguration event received")
-      case EntryType.Empty =>
-        log.error("New log write event received an invalid message")
-    }
-
-    (raftActor ? in)
-      .mapTo[Future[AppendEntryAck]]
-      .flatten
-  }
-
 }
