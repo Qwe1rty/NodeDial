@@ -10,6 +10,8 @@ import "scalapb/scalapb.proto";
 package chordial.replication;
 
 
+//// Client event or administration message types
+
 message AppendEntryEvent {
 
     option (scalapb.message).extends = "replication.state.RaftRequest";
@@ -26,14 +28,32 @@ message AppendEntryEvent {
 
 message AppendEntryAck {
 
+    option (scalapb.message).extends = "replication.state.RaftResult";
+
+    required bool success = 1;
+}
+
+message AddNodeEvent {
+
     // Object that is returned on receiving an AppendEntryEvent. If the
     // operation has successfully been acknowledged by the leader and
     // applied to its WAL, then we return a success.
 
-    required bool success = 1;
+    option (scalapb.message).extends = "replication.state.RaftRequest";
+
+    required ConfigEntry.RaftNode node = 1;
+}
+
+message AddNodeAck {
 
     option (scalapb.message).extends = "replication.state.RaftResult";
+
+    required bool status = 1;
+    optional string leader_hint = 2;
 }
+
+
+//// Raft core algorithm messages
 
 message AppendEntriesRequest {
 

@@ -79,15 +79,15 @@ class SimpleReplicatedLog(
     entry
   }
 
-  override def size(): Offset =
+  override def size: Offset =
     metadata.offsetIndex.size
 
   override def rollback(newSize: Offset): Unit = {
-    if (newSize < 0 || newSize > size()) {
+    if (newSize < 0 || newSize > size) {
       throw new IllegalArgumentException(s"Illegal new size: $newSize")
     }
 
-    metadata.offsetIndex.trimEnd(size() - newSize)
+    metadata.offsetIndex.trimEnd(size - newSize)
     metadata.lastIncludedTerm = termOf(lastLogIndex())
 
     saveMetadata(metadata)
@@ -98,7 +98,7 @@ class SimpleReplicatedLog(
     metadata.lastIncludedTerm
 
   override def lastLogIndex(): Int =
-    size() - 1
+    size - 1
 
   override def offsetOf(index: Int): Offset =
     metadata.offsetIndex(index).offset
@@ -124,15 +124,14 @@ private object SimpleReplicatedLog {
   private object LogMetadata extends JavaSerializer[LogMetadata] {
 
     def apply(elems: LogIndex*): LogMetadata =
-      new LogMetadata(0, mutable.ListBuffer[LogIndex](elems: _*))
+      new LogMetadata(lastIncludedTerm = 0, mutable.ListBuffer[LogIndex](elems: _*))
   }
 
   @SerialVersionUID(100L)
   private class LogMetadata(
     var lastIncludedTerm: Long,
     val offsetIndex: mutable.Buffer[LogIndex]
-  )
-    extends Serializable {
+  ) extends Serializable {
 
     def append(term: Long, logIndex: LogIndex): Unit = {
       if (term > lastIncludedTerm) lastIncludedTerm = term
@@ -145,7 +144,7 @@ private object SimpleReplicatedLog {
 
   private object LogIndex extends JavaSerializer[LogIndex]
 
-  private case class LogIndex(
+  private final case class LogIndex(
     offset: Offset,
     length: Int,
     term: Long,

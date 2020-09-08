@@ -1,9 +1,10 @@
 package replication.roles
 
 import administration.Administration
-import common.rpc.{RPCTask, ReplyFutureTask}
+import common.rpc.{RPCTask, ReplyFutureTask, ReplyTask}
 import common.time.ContinueTimer
 import org.slf4j.{Logger, LoggerFactory}
+import replication.ConfigEntry.ClusterChangeType
 import replication._
 import replication.roles.RaftRole.MessageResult
 import replication.state.{RaftMessage, RaftState}
@@ -42,6 +43,19 @@ private[replication] case object Follower extends RaftRole {
   }
 
   /**
+   * Handles a node adding event from the client
+   *
+   * @param addNodeEvent info about new node
+   * @param state current raft state
+   * @return the reconfiguration result
+   */
+  override def processAddNodeEvent(addNodeEvent: AddNodeEvent)(state: RaftState)(implicit log: Logger): MessageResult = {
+
+    // Simply reject the add node event, since only the leader can actually execute the request
+    MessageResult(Set(ReplyTask(AddNodeAck(status = false, state.currentLeader.map(_.nodeID)))), ContinueTimer, None)
+  }
+
+  /**
    * Handle a direct append entry request received by this server. Only in the leader role is this
    * actually processed - otherwise it should be redirected to the current leader
    *
@@ -73,16 +87,15 @@ private[replication] case object Follower extends RaftRole {
     val currentTerm: Long = state.currentTerm.read().getOrElse(0)
     val nextRole = determineStepDown(appendRequest.leaderTerm)(state)
 
-    // If leader's term is outdated, or the last log entry doesn't match
-    if (appendRequest.leaderTerm < currentTerm) {
-      rejectEntry(currentTerm, nextRole)
-    }
+    // If leader's term is outdated, reject
+    if (appendRequest.leaderTerm < currentTerm) rejectEntry(currentTerm, nextRole)
 
     // If the log entries don't match up, then reject entries, and it indicates logs prior to this entry are inconsistent
     else if (
       state.log.lastLogIndex() < appendRequest.prevLogIndex ||
-        state.log.termOf(appendRequest.prevLogIndex) != appendRequest.prevLogTerm) {
+      state.log.termOf(appendRequest.prevLogIndex) != appendRequest.prevLogTerm) {
 
+      log.info(s"Append entry request rejected due to inconsistent logs")
       rejectEntry(currentTerm, nextRole)
     }
 
@@ -90,18 +103,33 @@ private[replication] case object Follower extends RaftRole {
     else {
 
       // If the new entry conflicts with existing follower log entries, then rollback follower log
-      if (state.log.lastLogIndex() > appendRequest.prevLogIndex) {
-        state.log.rollback(appendRequest.prevLogIndex + 1)
-      }
+      if (state.log.lastLogIndex() > appendRequest.prevLogIndex) state.log.rollback(appendRequest.prevLogIndex + 1)
 
       // Append entries and send success message, implying follower & leader logs are now fully in sync
       for (entry <- appendRequest.entries) {
         state.log.append(appendRequest.leaderTerm, entry.logEntry.toByteArray)
+        log.debug(s"Append entry request accepted for entry at log index ${state.log.lastLogIndex()}")
+
+        // Special case for cluster configuration changes - must be applied at WAL stage, not commit stage
+        entry.logEntry.entryType.cluster.foreach(configEntry => configEntry.changeType match {
+          case ClusterChangeType.ADD =>
+            log.info(s"Cluster node add received from leader for node ${configEntry.node.nodeId}")
+            state.addNode(state.raftNodeToMembership(configEntry.node))
+
+          case ClusterChangeType.REMOVE =>
+            log.info(s"Cluster node remove received from leader for node ${configEntry.node.nodeId}")
+            state.removeNode(configEntry.node.nodeId)
+
+          case ClusterChangeType.Unrecognized(value) =>
+            throw new IllegalArgumentException(s"Unknown cluster configuration change type: $value")
+        })
       }
       if (appendRequest.leaderCommitIndex > state.commitIndex) {
         state.commitIndex = Math.min(state.log.lastLogIndex(), appendRequest.leaderCommitIndex)
+        log.debug(s"Commit index updated to ${state.commitIndex}")
       }
 
+      log.info(s"Append entry request reply with success status")
       acceptEntry(currentTerm, nextRole)
     }
 
@@ -140,7 +168,7 @@ private[replication] case object Follower extends RaftRole {
     // If this follower's log is more up-to-date, then refuse vote
     else if (
       voteRequest.lastLogTerm < state.log.lastLogTerm() ||
-        voteRequest.lastLogTerm == state.log.lastLogTerm() && voteRequest.lastLogIndex < state.log.lastLogIndex()) {
+      voteRequest.lastLogTerm == state.log.lastLogTerm() && voteRequest.lastLogIndex < state.log.lastLogIndex()) {
 
       refuseVote(currentTerm, nextRole)
     }

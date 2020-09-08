@@ -18,7 +18,7 @@ trait ReplicatedLog {
   final def +=(term: Long, entry: Array[Byte]): Unit = append(term, entry)
 
   def slice(from: Int, until: Int): Array[Byte]
-  def size(): Offset
+  def size: Offset
 
   def rollback(newSize: Int): Unit
 

@@ -2,6 +2,7 @@ package replication.state
 
 import administration.Membership
 import common.persistence.{PersistentLong, PersistentString}
+import replication.ConfigEntry.ClusterChangeType
 import replication.eventlog.ReplicatedLog
 import replication.{AppendEntryEvent, Raft}
 
@@ -15,14 +16,6 @@ import scala.collection.immutable.Queue
  * Since some variables need to be persisted to disk, the class is inherently not immutable
  * and therefore the RaftState class is defined as a mutable object
  */
-object RaftState {
-
-  val RAFT_STATE_EXTENSION = ".state"
-
-  def apply(selfInfo: Membership, replicatedLog: ReplicatedLog): RaftState =
-    new RaftState(selfInfo, replicatedLog)
-}
-
 class RaftState(val selfInfo: Membership, val log: ReplicatedLog) extends RaftCluster(selfInfo) {
 
   import RaftState._
@@ -32,16 +25,31 @@ class RaftState(val selfInfo: Membership, val log: ReplicatedLog) extends RaftCl
   val votedFor: PersistentString = PersistentString(Raft.RAFT_DIR/("votedFor" + RAFT_STATE_EXTENSION))
 
   var currentLeader: Option[Membership] = None
-  var bufferedAppendEvents: Queue[AppendEntryEvent] = Queue[AppendEntryEvent]()
+  var bufferedAppendEvents: Queue[AppendEntryEvent] = Queue[AppendEntryEvent]() // TODO implement this eventually
 
-  var commitIndex: Int = 0
-  var lastApplied: Int = 0
+  var commitIndex: Int = 0 // up to and including
+  var lastApplied: Int = 0 // up to and including
 
   var commitInProgress: Boolean = false
 
   // Leader-only state variables
-  var leaderState: RaftLeaderState = RaftLeaderState(cluster(), log.size())
+  var leaderState: RaftLeaderState = newLeaderState()
+  var pendingConfigIndex: Option[Int] = None
 
 
   if (!currentTerm.exists()) currentTerm.write(0)
+
+  def newLeaderState(): RaftLeaderState =
+    RaftLeaderState(cluster(), log.size)
+
+  def resetLeaderState(): Unit =
+    leaderState = RaftLeaderState(cluster(), log.size)
+}
+
+object RaftState {
+
+  val RAFT_STATE_EXTENSION = ".state"
+
+  def apply(selfInfo: Membership, replicatedLog: ReplicatedLog): RaftState =
+    new RaftState(selfInfo, replicatedLog)
 }

@@ -10,6 +10,7 @@ import com.risksense.ipaddr.IpAddress
 import common.ServerDefaults.ACTOR_REQUEST_TIMEOUT
 import common.rpc.GRPCSettingsFactory
 import org.slf4j.LoggerFactory
+import replication.LogEntry.EntryType
 import schema.ImplicitDataConversions._
 import schema.PortConfiguration.REPLICATION_PORT
 
@@ -46,6 +47,34 @@ class RaftGRPCService(raftActor: ActorRef)(implicit actorSystem: ActorSystem) ex
 
 
   /**
+   * Handles a new write request from client - starts an AppendEntries
+   * broadcast if leader for replication, or redirects it to the leader (if
+   * existing).
+   */
+  override def newLogWrite(in: AppendEntryEvent): Future[AppendEntryAck] = {
+    in.logEntry.entryType match {
+      case EntryType.Data(dataEntry) => log.debug(s"New log write event with key ${dataEntry.key}")
+      case EntryType.Cluster(_)      => log.debug("New Raft cluster reconfiguration event received")
+      case EntryType.Empty =>
+        log.error("New log write event received an invalid message")
+    }
+
+    (raftActor ? in)
+      .mapTo[AppendEntryAck]
+  }
+
+  /**
+   * AddNode is called by the server admin (directly or indirectly)
+   */
+  override def addNode(in: AddNodeEvent): Future[AddNodeAck] = {
+    log.debug(s"Add node request received for ${in.node.nodeId} with address ${IpAddress(in.node.ipAddress).toString}")
+
+    (raftActor ? in)
+      .mapTo[AddNodeAck]
+  }
+
+
+  /**
    * RequestVote is called by candidates to try and get a majority vote,
    * to become leader
    */
@@ -63,24 +92,10 @@ class RaftGRPCService(raftActor: ActorRef)(implicit actorSystem: ActorSystem) ex
   override def appendEntries(in: AppendEntriesRequest): Future[AppendEntriesResult] = {
     log.debug(
       s"Append entries request from leader ${in.leaderId} with latest log entry: " +
-      s"(${in.prevLogTerm}, ${in.prevLogIndex})"
+      s"(prevLogTerm = ${in.prevLogTerm}, prevLogIndex = ${in.prevLogIndex})"
     )
 
     (raftActor ? in)
       .mapTo[AppendEntriesResult]
   }
-
-  /**
-   * Handles a new write request from client - starts an AppendEntries
-   * broadcast if leader for replication, or redirects it to the leader (if
-   * existing).
-   */
-  override def newLogWrite(in: AppendEntryEvent): Future[AppendEntryAck] = {
-    log.debug(s"New log write event with key ${in.logEntry.key}")
-
-    (raftActor ? in)
-      .mapTo[Future[AppendEntryAck]]
-      .flatten
-  }
-
 }

@@ -11,6 +11,15 @@ package chordial.replication;
 
 service RaftService {
 
+    // Handles a new write request from client - starts an AppendEntries
+    // broadcast if leader for replication, or redirects it to the leader (if
+    // existing).
+    rpc NewLogWrite (AppendEntryEvent) returns (AppendEntryAck) {}
+
+    // AddNode is called by the server admin (directly or indirectly)
+    rpc AddNode (AddNodeEvent) returns (AddNodeAck) {}
+
+
     // AppendEntries is called by the leader to replicate log entries,
     // and as a heartbeat to prevent elections from happening
     rpc AppendEntries (AppendEntriesRequest) returns (AppendEntriesResult) {}
@@ -18,12 +27,6 @@ service RaftService {
     // RequestVote is called by candidates to try and get a majority vote,
     // to become leader
     rpc RequestVote (RequestVoteRequest) returns (RequestVoteResult) {}
-
-
-    // Handles a new write request from client - starts an AppendEntries
-    // broadcast if leader for replication, or redirects it to the leader (if
-    // existing).
-    rpc NewLogWrite (AppendEntryEvent) returns (AppendEntryAck) {}
 }
 
 

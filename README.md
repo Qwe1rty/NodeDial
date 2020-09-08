@@ -1,12 +1,14 @@
 
 # Chordial
 
-A distributed, scalable key-value database system! Note that this database is not production ready,
-and is mainly being built for educational purposes (so please never use it on a production system)
+A distributed, scalable key-value database system! 
+Note that this is mainly being built for educational purposes, and is not production ready 
+(so please please never use it on an actual production system)
 
-Modeled around existing NoSQL databases such as Redis, Cassandra, and Dynamo, it is built with horizontal scalability
-and cloud deployments in mind. For more details about setting the project up on your environment, check out the
-[build walkthrough](#project-setup-and-walkthrough) and deployment guide!
+Modeled around existing leader-follower NoSQL databases such as Redis, it's designed to be similarly horizontally
+scalable and deployable on cloud platforms. For more details about setting the project up on your environment, 
+check out the [build walkthrough](#project-setup-and-walkthrough) and deployment guide
+
 
 The main server code is located in the directory `server/src/main/scala/`, and the program currently supports the 
 three basic operations: `GET`, `POST`, and `DELETE`
@@ -20,8 +22,8 @@ learned a lot and gotten much better at these things. I've found that trying to 
 systems ideas into an actual program really helps solidify details that I would've missed from just reading about it
 (such as the many non-obvious corner cases in the Raft consensus algorithm).
 
-While I'm not sure how long I'll continue working on it past the replication/Raft layer, I'm sure that
-everything I've learned will come in handy for all future projects
+While I'm not sure how long I'll continue working on it past the replication/Raft layer, the project was really fun
+and I'm sure that everything I've learned will come in handy for all future projects.
 
 
 ---
@@ -37,7 +39,7 @@ setup, which includes Docker and Kubernetes.
 
 Finally, ensure that you are running Java 8. This is the only version of Java I've been able to consistently get the
 program to run on without absurd amounts of effort messing with the build system, due to netty IO's inclusion in
-Java 9+ and resulting library incompatibilities.
+Java 9+ and resulting library/build incompatibilities.
 
 Here are some reference links that may be helpful for installing dependencies: 
 
@@ -68,7 +70,7 @@ command to install the client `JAR` and wrapper script into to your `$PATH` spac
  respectively**  
  
 Now, you should be able to just run the `chordial` command from anywhere. Test your installation by 
-running `chordial --help`, which should print out this lovely menu:
+running `chordial --help`, which should print out this menu:
 ```
 Usage: chordial [get|post|delete|ready] [options]
 
@@ -127,11 +129,8 @@ and are just running the Kubernetes cluster on your local machine.
 ### Single-Node Cluster Setup
 
 Firstly, before you can run the Chordial service, you will need to already have a prerequisite cluster up
-and running with some DNS service
-
-(A DNS service is actually not strictly necessary, but it can help to automate cluster operations. In 
-particular, this is especially helpful when scaling up the cluster, as new nodes will need to resolve the 
-seed node's hostname. This topic will be further discussed in the scaling subchapter)
+and running with some DNS service. (A DNS service is actually not strictly necessary, but you'll otherwise 
+have to manually specify the IP address of the seed node)
 
 When the prerequities are ready, you should first create the chordial namespace using the command:
 `kubectl create namespace chordial-ns`. Everything related to Chordial has been configured to run in that
@@ -163,7 +162,6 @@ get this sort of log output:
 > kubectl logs cdb-0 -n chordial-ns -f
 [main] INFO ChordialServer$ - Server config loaded
 [main] INFO ChordialServer$ - Initializing actor system
-[ChordialServer-akka.actor.default-dispatcher-5] INFO akka.event.slf4j.Slf4jLogger - Slf4jLogger started
 ...
 [ChordialServer-akka.actor.default-dispatcher-8] INFO ChordialServer$ - Initializing administration components
 [ChordialServer-akka.actor.default-dispatcher-8] INFO administration.Administration$ - Administration has determined node ID: e74020db48ba67212baa73a0cc28798a5f3b407821d0ddab9383cc47d06795be, with rejoin flag: false
@@ -244,7 +242,7 @@ read the variable `SEED_NODE`.
 
 
 ---
-## Replicas and Raft
+## Raft on a Single Node
 
 When starting up a single node, you'll notice that it immediately begins the election process. Since there is 
 nobody else to provide votes, it will win and become leader for Term 1. This is the log output from winning the election:
@@ -274,8 +272,34 @@ distinct phases of writing to the WAL before officially committing the change:
 [...] INFO replication.RaftFSM - Write entry with key 'hello' and UUID d66f67e0-9692-4ca5-9105-13a914781888 will now attempt to be committed
 ```
 
-_**Section under construction! Please come back another time**_
+## Raft Cluster Operations
 
+The first thing to note is that the nodes the administration module considers to be a part of the cluster is 
+not necessarily what Raft considers to be a part of the cluster. There are basically two independent membership
+protocols within the program. 
+
+Raft needs to ensure that there is consensus on what the cluster actually is - so while it gets notified about 
+joining nodes by the administration module's gossip, it will apply backpressure to ensure that each joining node
+is applied one at a time.
+
+When the leader is delivered a gossip join message, it will attempt to replicate the join command to the existing
+nodes in the Raft cluster to get majority agreement on the new server. Once a majority agrees, the leader
+officially adds the new server to the cluster and it can start receiving client messages:
+
+```
+[...] INFO replication.RaftFSM - Committing node add entry, node c6518456f35b64e33b4302c14f33af4a41a13ca517e176ab50aeefe2b8fc98ac officially invited to cluster
+```
+
+Overall, the typical workflow for when there's multiple nodes are the same as when there's just one, except that 
+the leader has to reach out to the cluster and confirm with a majority of nodes every time it wants to write something.
+
+The log walkthrough for the log entry replication process is quite long, so I've moved it over to the
+[project/logSamples](log samples) subfolder, where you'll find annotated explanations about cluster operations
+in a 3-node cluster titled `log_sample_2-leader.md`, `log_sample_2-follower1.md`, and `log_sample_2-follower2.md`
+
+This example goes over Raft cluster joining, replicating log entries from both the leader and follower side, and
+the subsequent stable cluster state where all followers receive a steady stream of heartbeat messages and no
+new elections occur.
 
 ---
 ## Additional Build Setup Notes

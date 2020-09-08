@@ -1,8 +1,8 @@
 package replication.roles
 
 import administration.Administration
-import common.rpc.RequestTask
-import common.time.{CancelTimer, ResetTimer}
+import common.rpc.{ReplyTask, RequestTask}
+import common.time.{CancelTimer, ContinueTimer, ResetTimer}
 import org.slf4j.{Logger, LoggerFactory}
 import replication._
 import replication.roles.RaftRole.MessageResult
@@ -47,6 +47,16 @@ override def processRaftGlobalTimeout(state: RaftState): Option[RaftRole] = Some
 
     MessageResult(Set(RequestTask(voteRequest, nodeID)), ResetTimer(RaftIndividualTimeoutKey(nodeID)), None)
   }
+
+  /**
+   * Handles a node adding event from the client
+   *
+   * @param addNodeEvent info about new node
+   * @param state current raft state
+   * @return the reconfiguration result
+   */
+  override def processAddNodeEvent(addNodeEvent: AddNodeEvent)(state: RaftState)(implicit log: Logger): MessageResult =
+    Follower.processAddNodeEvent(addNodeEvent)(state)
 
   /**
    * Handle a direct append entry request received by this server. Only in the leader role is this

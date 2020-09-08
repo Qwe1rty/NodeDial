@@ -39,6 +39,7 @@ private[replication] trait RaftRole {
   /** Ingest a Raft message event and return the event result */
   final def processRaftEvent(message: RaftMessage, state: RaftState): MessageResult = {
     (message match {
+      case addNodeEvent:  AddNodeEvent         => processAddNodeEvent(addNodeEvent) _
       case appendEvent:   AppendEntryEvent     => processAppendEntryEvent(appendEvent) _
       case appendRequest: AppendEntriesRequest => processAppendEntryRequest(appendRequest) _
       case appendReply:   AppendEntriesResult  => processAppendEntryResult(appendReply) _
@@ -56,7 +57,7 @@ private[replication] trait RaftRole {
   }
 
 
-  // Raft event handler methods (without implementations) to override in concrete classes below:
+  // Raft timeout event handler methods
 
   /**
    * Handles a global (or at least global w.r.t. this server's Raft FSM) timeout event. Typically
@@ -78,6 +79,18 @@ private[replication] trait RaftRole {
    */
   def processRaftIndividualTimeout(nodeID: String)(state: RaftState)(implicit log: Logger): MessageResult
 
+
+  // Raft client event handler methods
+
+  /**
+   * Handles a node adding event from the client
+   *
+   * @param addNodeEvent info about new node
+   * @param state current raft state
+   * @return the reconfiguration result
+   */
+  def processAddNodeEvent(addNodeEvent: AddNodeEvent)(state: RaftState)(implicit log: Logger): MessageResult
+
   /**
    * Handle a direct append entry request received by this server. Only in the leader role is this
    * actually processed - otherwise it should be redirected to the current leader if a leader exists
@@ -89,7 +102,7 @@ private[replication] trait RaftRole {
   def processAppendEntryEvent(appendEvent: AppendEntryEvent)(state: RaftState)(implicit log: Logger): MessageResult
 
 
-  // Raft event handler methods (with default implementations)
+  // Raft algorithm message handler methods
 
   /**
    * Handle an append entry request received from the leader

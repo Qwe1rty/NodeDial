@@ -48,4 +48,10 @@ private[replication] case class RaftLeaderState private(
   def matches(): Iterable[Int] =
     logIndexState.values.map(_.matchIndex)
 
+
+  def +(nodeID: String): RaftLeaderState =
+    RaftLeaderState(logIndexState + (nodeID -> LogIndexState(1, 0)))
+
+  def -(nodeID: String): RaftLeaderState =
+    RaftLeaderState(logIndexState - nodeID)
 }

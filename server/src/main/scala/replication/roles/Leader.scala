@@ -1,13 +1,17 @@
 package replication.roles
 
 import administration.Administration
-import common.rpc.{RPCTask, ReplyTask, RequestTask}
+import common.rpc.{NoTask, RPCTask, ReplyTask, RequestTask}
 import common.time.{ContinueTimer, ResetTimer}
 import org.slf4j.{Logger, LoggerFactory}
+import replication.ConfigEntry.ClusterChangeType
+import replication.LogEntry.EntryType
+import replication.LogEntry.EntryType.{Cluster, Data}
+import replication.Raft.LogEntrySerializer
 import replication._
 import replication.roles.RaftRole.MessageResult
 import replication.state.RaftLeaderState.LogIndexState
-import replication.state.{RaftIndividualTimeoutKey, RaftMessage, RaftState}
+import replication.state.{RaftIndividualTimeoutKey, RaftMessage, RaftResult, RaftState}
 
 import scala.util.{Failure, Success, Try}
 
@@ -55,6 +59,38 @@ private[replication] case object Leader extends RaftRole {
   }
 
   /**
+   * Handles a node adding event from the client
+   *
+   * @param addNodeEvent info about new node
+   * @param state current raft state
+   * @return the reconfiguration result
+   */
+  override def processAddNodeEvent(addNodeEvent: AddNodeEvent)(state: RaftState)(implicit log: Logger): MessageResult = {
+
+    if (state.pendingConfigIndex.isDefined) {
+      log.info("Rejecting new server add: another server is currently pending addition")
+      return MessageResult(Set(ReplyTask(AddNodeAck(status = false, state.currentLeader.map(_.nodeID)))), ContinueTimer, None)
+    }
+
+    if (state.isMember(addNodeEvent.node.nodeId)) {
+      log.info("Rejecting new server add: node is already a member")
+      return MessageResult(Set(ReplyTask(AddNodeAck(status = false, state.currentLeader.map(_.nodeID)))), ContinueTimer, None)
+    }
+
+    // TODO: eventually, the leader should implement a non-voting period for the new node as described in
+    //   Section 4.2.1 in Ongaro's PhD dissertation "Consensus: Bridging Theory and Practice"
+
+    log.info(s"Client operation received to add node ${addNodeEvent.node.nodeId} to the cluster")
+    state.pendingConfigIndex = Some(state.log.lastLogIndex() + 1)
+
+    // As leader, this will broadcast an append entry request to all nodes in the cluster to add the new server
+    this.processAppendEntryEvent(AppendEntryEvent(
+      LogEntry(Cluster(ConfigEntry(ClusterChangeType.ADD, addNodeEvent.node))),
+      None
+    ))(state)
+  }
+
+  /**
    * Handle a direct append entry request received by this server. Only in the leader role is this
    * actually processed - otherwise it should be redirected to the current leader
    *
@@ -67,7 +103,7 @@ private[replication] case object Leader extends RaftRole {
     val currentTerm: Long = state.currentTerm.read().getOrElse(0)
 
     val appendLogResult = for (
-      logEntryBytes <- Raft.LogEntrySerializer.serialize(appendEvent.logEntry);
+      logEntryBytes <- LogEntrySerializer.serialize(appendEvent.logEntry);
       appendResult  <- Try(state.log.append(currentTerm, logEntryBytes))
     ) yield appendResult
 
@@ -98,13 +134,30 @@ private[replication] case object Leader extends RaftRole {
             .map(membership => RequestTask(appendEntryRequest, membership.nodeID))
             .toSet
 
-        MessageResult(matchingFollowers + ReplyTask(AppendEntryAck(success = true)), ContinueTimer, None)
+        val replyTask: RPCTask[RaftResult] = appendEvent.logEntry.entryType match {
+          case Data(_)    => ReplyTask(AppendEntryAck(success = true))
+          case Cluster(_) => ReplyTask(AddNodeAck(status = true, state.currentLeader.map(_.nodeID)))
+          case EntryType.Empty =>
+            log.error("Log entry type contained nothing, will not send a reply back to sender")
+            NoTask
+        }
+
+        MessageResult(matchingFollowers + replyTask, ContinueTimer, None)
 
       case Failure(exception) =>
-        log.error(
-          s"Serialization error on append entry ${appendEvent.logEntry.key} and UUID ${appendEvent.uuid}, on term $currentTerm: " +
-            exception.getLocalizedMessage
-        )
+
+        appendEvent.logEntry.entryType match {
+          case EntryType.Empty => log.error(s"Attempted to serialize unknown or empty log entry type")
+          case Cluster(_)      => log.error(s"Serialization error on new cluster configuration on term $currentTerm")
+          case Data(value)     =>
+            log.error(
+              s"Serialization error on append entry ${value.key} and UUID ${appendEvent.uuid}, on term $currentTerm: " +
+                exception.getLocalizedMessage
+            )
+        }
+
+        state.pendingConfigIndex = None
+
         MessageResult(Set(ReplyTask(AppendEntryAck(success = false))), ContinueTimer, None)
     }
 
@@ -130,6 +183,8 @@ private[replication] case object Leader extends RaftRole {
    */
   override def processAppendEntryResult(appendReply: AppendEntriesResult)(state: RaftState)(implicit log: Logger): MessageResult = {
 
+    log.debug(s"Append entry reply received from node ${appendReply.followerId} with status: ${appendReply.success}")
+
     // Due to things like network partitions, a new leader of higher term may exist. We step down in this case
     val nextRole = determineStepDown(appendReply.currentTerm)(state)
     if (nextRole.contains(Follower)) {
@@ -139,7 +194,12 @@ private[replication] case object Leader extends RaftRole {
     // If successful, we're guaranteed that the follower log is consistent with the leader log, and we need to update
     // the known up-to-dateness
     if (appendReply.success) {
-      state.leaderState = state.leaderState.patch(appendReply.followerId, currentIndexState => LogIndexState(
+
+      // NOTE: if batch updating is eventually implemented, this incrementing update will not work and would need to be changed
+      if (state.leaderState(appendReply.followerId).nextIndex == state.log.size) {
+        log.debug(s"Follower ${appendReply.followerId} is fully up to date")
+      }
+      else state.leaderState = state.leaderState.patch(appendReply.followerId, currentIndexState => LogIndexState(
         currentIndexState.nextIndex + 1,
         currentIndexState.nextIndex
       ))
@@ -191,7 +251,7 @@ private[replication] case object Leader extends RaftRole {
     val logEntries: Try[Seq[LogEntry]] =
       if (state.log.lastLogIndex() < state.leaderState(nodeID).nextIndex) Success(Seq.empty)
       else {
-        Raft.LogEntrySerializer.deserialize(state.log(state.leaderState(nodeID).nextIndex)).map(Seq[LogEntry](_))
+        LogEntrySerializer.deserialize(state.log(state.leaderState(nodeID).nextIndex)).map(Seq[LogEntry](_))
       }
 
     // Start building the append request if the log entry could be deserialized

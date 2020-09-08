@@ -7,7 +7,17 @@ option java_outer_classname = "ChordialRaftLogEntry";
 package chordial.replication;
 
 
+// The serializable entity that is persisted to the Raft WAL
 message LogEntry {
+
+    oneof entry_type {
+        DataEntry data = 1;
+        ConfigEntry cluster = 2;
+    }
+}
+
+// A log entry that contains the user client request data
+message DataEntry {
 
     // The key value
     required bytes key = 1;
@@ -16,3 +26,21 @@ message LogEntry {
     // in compressed form
     required bytes value = 2;
 }
+
+// A log entry used to implement the two-phase membership changes
+message ConfigEntry {
+
+    enum ClusterChangeType {
+        ADD = 0;
+        REMOVE = 1;
+    }
+
+    message RaftNode {
+        required string node_id = 1;
+        required fixed64 ip_address = 2; // 64 bit for better interop with IP address lib
+    }
+
+    required ClusterChangeType changeType = 1;
+    required RaftNode node = 2;
+}
+
