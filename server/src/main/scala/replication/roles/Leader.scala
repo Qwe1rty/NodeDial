@@ -79,6 +79,7 @@ private[replication] case object Leader extends RaftRole {
     // TODO: eventually, the leader should implement a non-voting period for the new node as described in
     //   Section 4.2.1 in Ongaro's PhD dissertation "Consensus: Bridging Theory and Practice"
 
+    log.info(s"Client operation received to add node ${addNodeEvent.node.nodeId} to the cluster")
     state.pendingConfigIndex = Some(state.log.lastLogIndex() + 1)
 
     // As leader, this will broadcast an append entry request to all nodes in the cluster to add the new server

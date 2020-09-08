@@ -39,7 +39,11 @@ class RaftState(val selfInfo: Membership, val log: ReplicatedLog) extends RaftCl
 
   if (!currentTerm.exists()) currentTerm.write(0)
 
-  def newLeaderState(): RaftLeaderState = RaftLeaderState(cluster(), log.size())
+  def newLeaderState(): RaftLeaderState =
+    RaftLeaderState(cluster(), log.size())
+
+  def resetLeaderState(): Unit =
+    leaderState = RaftLeaderState(cluster(), log.size())
 }
 
 object RaftState {

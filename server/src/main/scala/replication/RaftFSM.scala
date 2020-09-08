@@ -102,7 +102,7 @@ private[replication] final class RaftFSM[Command <: Serializable](
       nextStateData.currentTerm.read().foreach(currentTerm => {
         log.info(s"Election won, becoming leader of term $currentTerm")
 
-        nextStateData.leaderState = nextStateData.newLeaderState()
+        nextStateData.resetLeaderState()
 
         processTimerTask(CancelTimer(RaftGlobalTimeoutKey))
         processRPCTask(BroadcastTask(AppendEntriesRequest(
@@ -122,7 +122,7 @@ private[replication] final class RaftFSM[Command <: Serializable](
       nextStateData.currentTerm.read().foreach(currentTerm => {
         log.info(s"Stepping down from Leader w/ term $currentTerm")
 
-        nextStateData.leaderState = nextStateData.newLeaderState()
+        nextStateData.resetLeaderState()
         nextStateData.pendingConfigIndex = None
 
         processTimerTask(SetRandomTimer(RaftGlobalTimeoutKey, Raft.ELECTION_TIMEOUT_RANGE))
@@ -187,17 +187,21 @@ private[replication] final class RaftFSM[Command <: Serializable](
             if (currentRole == Leader && state.pendingConfigIndex.contains(currentIndex)) configEntry.changeType match {
 
               case ClusterChangeType.ADD =>
-                state.add(state.raftNodeToMembership(configEntry.node))
+                state.addNode(state.raftNodeToMembership(configEntry.node))
+                state.leaderState += configEntry.node.nodeId
+
                 processTimerTask(ResetTimer(RaftIndividualTimeoutKey(configEntry.node.nodeId)))
                 log.info(s"Committing node add entry, node ${configEntry.node.nodeId} officially invited to cluster")
                 self ! RaftCommitTick(Success())
 
               case ClusterChangeType.REMOVE =>
-                state.remove(configEntry.node.nodeId)
+                state.removeNode(configEntry.node.nodeId)
+                state.leaderState -= configEntry.node.nodeId
                 if (configEntry.node.nodeId == Administration.nodeID) {
                   log.info("Stepping down as leader - not included in new cluster configuration")
                   overrideRole = Some(Follower)
                 }
+
                 processTimerTask(CancelTimer(RaftIndividualTimeoutKey(configEntry.node.nodeId)))
                 log.info(s"Committing node remove entry, node ${configEntry.node.nodeId} officially removed from cluster")
                 self ! RaftCommitTick(Success())
@@ -225,7 +229,7 @@ private[replication] final class RaftFSM[Command <: Serializable](
    * Make the network calls as dictated by the RPC task
    *
    * @param rpcTask the RPC task
-   */
+ */
   override def processRPCTask(rpcTask: RPCTask[RaftMessage]): Unit = rpcTask match {
 
     case BroadcastTask(task) => task match {

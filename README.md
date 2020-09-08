@@ -1,12 +1,14 @@
 
 # Chordial
 
-A distributed, scalable key-value database system! Note that this database is not production ready,
-and is mainly being built for educational purposes (so please never use it on a production system)
+A distributed, scalable key-value database system! 
 
-Modeled around existing NoSQL databases such as Redis, Cassandra, and Dynamo, it is designed to be horizontally
+Modeled around existing leader-follower NoSQL databases such as Redis, it's designed to be similarly horizontally
 scalable and deployable on cloud platforms. For more details about setting the project up on your environment, 
-check out the [build walkthrough](#project-setup-and-walkthrough) and deployment guide!
+check out the [build walkthrough](#project-setup-and-walkthrough) and deployment guide
+
+Note that this database is not production ready, and is mainly being built for educational purposes (so please never
+use it on a production system)
 
 The main server code is located in the directory `server/src/main/scala/`, and the program currently supports the 
 three basic operations: `GET`, `POST`, and `DELETE`
@@ -20,8 +22,8 @@ learned a lot and gotten much better at these things. I've found that trying to 
 systems ideas into an actual program really helps solidify details that I would've missed from just reading about it
 (such as the many non-obvious corner cases in the Raft consensus algorithm).
 
-While I'm not sure how long I'll continue working on it past the replication/Raft layer, I'm sure that
-everything I've learned will come in handy for all future projects
+While I'm not sure how long I'll continue working on it past the replication/Raft layer, the project was really fun
+and I'm sure that everything I've learned will come in handy for all future projects.
 
 
 ---
@@ -37,7 +39,7 @@ setup, which includes Docker and Kubernetes.
 
 Finally, ensure that you are running Java 8. This is the only version of Java I've been able to consistently get the
 program to run on without absurd amounts of effort messing with the build system, due to netty IO's inclusion in
-Java 9+ and resulting library incompatibilities.
+Java 9+ and resulting library/build incompatibilities.
 
 Here are some reference links that may be helpful for installing dependencies: 
 
@@ -127,11 +129,8 @@ and are just running the Kubernetes cluster on your local machine.
 ### Single-Node Cluster Setup
 
 Firstly, before you can run the Chordial service, you will need to already have a prerequisite cluster up
-and running with some DNS service
-
-(A DNS service is actually not strictly necessary, but it can help to automate cluster operations. In 
-particular, this is especially helpful when scaling up the cluster, as new nodes will need to resolve the 
-seed node's hostname. This topic will be further discussed in the scaling subchapter)
+and running with some DNS service. (A DNS service is actually not strictly necessary, but you'll otherwise 
+have to manually specify the IP address of the seed node)
 
 When the prerequities are ready, you should first create the chordial namespace using the command:
 `kubectl create namespace chordial-ns`. Everything related to Chordial has been configured to run in that
@@ -163,7 +162,6 @@ get this sort of log output:
 > kubectl logs cdb-0 -n chordial-ns -f
 [main] INFO ChordialServer$ - Server config loaded
 [main] INFO ChordialServer$ - Initializing actor system
-[ChordialServer-akka.actor.default-dispatcher-5] INFO akka.event.slf4j.Slf4jLogger - Slf4jLogger started
 ...
 [ChordialServer-akka.actor.default-dispatcher-8] INFO ChordialServer$ - Initializing administration components
 [ChordialServer-akka.actor.default-dispatcher-8] INFO administration.Administration$ - Administration has determined node ID: e74020db48ba67212baa73a0cc28798a5f3b407821d0ddab9383cc47d06795be, with rejoin flag: false

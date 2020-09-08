@@ -87,7 +87,7 @@ private[replication] case object Follower extends RaftRole {
     val currentTerm: Long = state.currentTerm.read().getOrElse(0)
     val nextRole = determineStepDown(appendRequest.leaderTerm)(state)
 
-    // If leader's term is outdated, or the last log entry doesn't match
+    // If leader's term is outdated, reject
     if (appendRequest.leaderTerm < currentTerm) rejectEntry(currentTerm, nextRole)
 
     // If the log entries don't match up, then reject entries, and it indicates logs prior to this entry are inconsistent
@@ -110,8 +110,14 @@ private[replication] case object Follower extends RaftRole {
 
         // Special case for cluster configuration changes - must be applied at WAL stage, not commit stage
         entry.logEntry.entryType.cluster.foreach(configEntry => configEntry.changeType match {
-          case ClusterChangeType.ADD    => state.add(state.raftNodeToMembership(configEntry.node))
-          case ClusterChangeType.REMOVE => state.remove(configEntry.node.nodeId)
+          case ClusterChangeType.ADD =>
+            log.info(s"Cluster node add received from leader for node ${configEntry.node.nodeId}")
+            state.addNode(state.raftNodeToMembership(configEntry.node))
+
+          case ClusterChangeType.REMOVE =>
+            log.info(s"Cluster node remove received from leader for node ${configEntry.node.nodeId}")
+            state.removeNode(configEntry.node.nodeId)
+
           case ClusterChangeType.Unrecognized(value) =>
             throw new IllegalArgumentException(s"Unknown cluster configuration change type: $value")
         })

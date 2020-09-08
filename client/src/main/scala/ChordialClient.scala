@@ -152,7 +152,7 @@ private object ChordialClient extends App {
             case Success(deleteResponse) =>
               println(s"DELETE request successful: ${deleteResponse}")
               sys.exit(STATUS_OK)
-            case Success(requestError) =>
+            case Failure(requestError) =>
               println(s"DELETE request failed: ${requestError}")
               sys.exit(GRPC_RESPONSE_ERROR)
           }

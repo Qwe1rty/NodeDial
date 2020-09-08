@@ -77,9 +77,9 @@ abstract class RaftCluster(self: Membership) {
 
 
   // Cluster config methods
-  def add(member: Membership): Unit =
+  def addNode(member: Membership): Unit =
     raftMembership.write(raftMembership.read().get + (member.nodeID -> member.ipAddress.numerical))
 
-  def remove(nodeID: String): Unit =
+  def removeNode(nodeID: String): Unit =
     raftMembership.write(raftMembership.read().get - nodeID)
 }
