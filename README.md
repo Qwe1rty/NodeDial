@@ -1,16 +1,17 @@
 
 ![NodeDial logo](assets/logo_title_smaller.png)
 
-A distributed, scalable key-value database system! 
-Note that this is mainly being built for educational purposes, and is not production ready 
-(so please please never use it on an actual production system)
-
+_A distributed, scalable key-value database system!_ 
 Modeled around existing leader-follower NoSQL databases such as Redis, it's designed to be similarly horizontally
-scalable and deployable on cloud platforms. For more details about setting the project up on your environment, 
-check out the [build walkthrough](#project-setup-and-walkthrough) and deployment guide
+scalable and deployable on cloud platforms. The project has its own implementation of the _SWIM_ and _Raft_ protocols
+for the administration and replication layers respectively, and uses gRPC for all internal communication
 
-The project is also available as a Docker container, which can be viewed at its 
-[Docker hub page](https://hub.docker.com/r/ctchoi/nodedial/tags)
+Note that this is mainly being built for educational purposes (so please please never use it on an actual production
+system - I am not responsible for something breaking if you do) 
+
+For more details about setting the project up on your 
+environment, check out the [build walkthrough](#project-setup-and-walkthrough) and deployment guide. The project is 
+also available as a Docker container, which can be viewed at its [Docker hub page](https://hub.docker.com/r/ctchoi/nodedial/tags)
 
 The main server code is located in the directory `server/src/main/scala/`, and the program currently supports the 
 three basic operations: `GET`, `POST`, and `DELETE`
@@ -22,7 +23,7 @@ applications, and gain experience with the pitfalls of writing these distributed
 Overall, while the project still has a significant amount of work to do, over the past year of on-and-off work I've
 learned a lot and gotten much better at these things. I've found that trying to implement various abstract distributed
 systems ideas into an actual program really helps solidify details that I would've missed from just reading about it
-(such as the many non-obvious corner cases in the Raft consensus algorithm).
+(such as the many non-obvious corner cases from when I was trying to implement the Raft consensus algorithm).
 
 While I'm not sure how long I'll continue working on it past the replication/Raft layer, the project was really fun
 and I'm sure that everything I've learned will come in handy for all future projects.
@@ -176,7 +177,8 @@ If it looks something like that, you're all set to start adding new nodes to the
 
 To scale the number of replicas in the `StatefulSet`, you will need to run the command:
 `kubectl scale statefulset ndb -n nodedial-ns --replicas=${REPLICA_COUNT}`. This will add new pods one-by-one 
-into the cluster, giving them a chance to synchronize with each other without overwhelming them
+into the cluster, giving them a chance to synchronize with each other without overwhelming them. By default,
+there is a 25 second minimum delay between each node addition to avoid overwhelming the existing cluster.
 
 Let's try adding one by setting the replica count to 2, which creates a node labelled `ndb-1`. Upon starting
 up the second node, it will attempt to contact the first node and synchronize the membership information
@@ -277,12 +279,13 @@ distinct phases of writing to the WAL before officially committing the change:
 ## Raft Cluster Operations
 
 The first thing to note is that the nodes the administration module considers to be a part of the cluster is 
-not necessarily what Raft considers to be a part of the cluster. There are basically two independent membership
-protocols within the program. 
+not necessarily what Raft considers to be a part of the cluster. There are basically two somewhat independent 
+membership protocols within the program: SWIM is for failure/health checking and partition tolerant broadcasting,
+while Raft is for data consistency and replication. 
 
 Raft needs to ensure that there is consensus on what the cluster actually is - so while it gets notified about 
 joining nodes by the administration module's gossip, it will apply backpressure to ensure that each joining node
-is applied one at a time.
+is applied one at a time.  
 
 When the leader is delivered a gossip join message, it will attempt to replicate the join command to the existing
 nodes in the Raft cluster to get majority agreement on the new server. Once a majority agrees, the leader
@@ -291,6 +294,9 @@ officially adds the new server to the cluster and it can start receiving client 
 ```
 [...] replication.RaftFSM - Committing node add entry, node c6518456f35b64e33b4302c14f33af4a41a13ca517e176ab50aeefe2b8fc98ac officially invited to cluster
 ```
+
+This is why there is a minimum 25 second delay for each node addition for the Kubernetes setup provided in the repo,
+as it ensures enough time for Raft to replicate the node addition as a log entry to the majority of nodes
 
 Overall, the typical workflow for when there's multiple nodes are the same as when there's just one, except that 
 the leader has to reach out to the cluster and confirm with a majority of nodes every time it wants to write something.
