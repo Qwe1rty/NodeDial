@@ -4,7 +4,7 @@
 _A distributed, scalable key-value database system!_ 
 Modeled around existing leader-follower NoSQL databases such as Redis, it's designed to be similarly horizontally
 scalable and deployable on cloud platforms. The project has its own implementation of the _SWIM_ and _Raft_ protocols
-for the administration and replication layers respectively, and uses gRPC for all internal communication
+for the administration and replication layers respectively, and uses gRPC for all internal communications
 
 Note that this is mainly being built for educational purposes (so please please never use it on an actual production
 system - I am not responsible for something breaking if you do) 
@@ -279,13 +279,13 @@ distinct phases of writing to the WAL before officially committing the change:
 ## Raft Cluster Operations
 
 The first thing to note is that the nodes the administration module considers to be a part of the cluster is 
-not necessarily what Raft considers to be a part of the cluster. There are basically two somewhat independent 
-membership protocols within the program: SWIM is for failure/health checking and partition tolerant broadcasting,
+not necessarily what Raft considers to be a part of the cluster. There are basically two operationally independent 
+membership protocols within the program: SWIM is for failure/health checking and partition resistant broadcasting,
 while Raft is for data consistency and replication. 
 
-Raft needs to ensure that there is consensus on what the cluster actually is - so while it gets notified about 
-joining nodes by the administration module's gossip, it will apply backpressure to ensure that each joining node
-is applied one at a time.  
+Raft needs to ensure that there is consensus on what the cluster actually is - so while it subscribes to the 
+administration module's gossip about joining nodes, it will ensure that each joining node is applied one at a time by 
+rejecting joins if Raft is currently in the middle of adding another node, or the node is already added. 
 
 When the leader is delivered a gossip join message, it will attempt to replicate the join command to the existing
 nodes in the Raft cluster to get majority agreement on the new server. Once a majority agrees, the leader

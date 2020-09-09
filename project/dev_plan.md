@@ -1,10 +1,10 @@
 ## Project Development Plan
 
-This is a loose outline of all the core features that should be included, and the general order
-of implementation. _Italics indicate that this component is in progress!_
+This is a loose outline of all the features that may be included, and the general order
+of implementation. Some non-critical elements might be skipped over and returned to later if
+there isn't enough time to do them at first.
 
-There also may be some elements that are left unticked, which means that the functionality is not 
-strictly essential and is skipped for now to allow the establishment the high-level architecture first
+_Italics indicate that this component is in progress!_
 
 - [x] **Milestone 0: Repo and Build Setup**
   
@@ -28,12 +28,12 @@ strictly essential and is skipped for now to allow the establishment the high-le
   - [x] Gossip component
     - [x] Push mechanism for join/leave broadcasting
     - [ ] Pull mechanism for anti-entropy
-  - [x] Failure detection through direct + indirect check mechanism
   - [x] Local kubernetes cluster setup and integration
     - [x] Service containerization  
+  - [x] Failure detection through direct + indirect check mechanism
     
-- [ ] **Milestone 3: Replication Layer**
-  - [ ] *Raft implementation*
+- [x] **Milestone 3: Replication Layer**
+  - [x] *Raft implementation*
     - [x] Leader election
       - [x] Follower/candidate/leader state persistence handling
       - [x] Voting and election mechanics: RPCs and logic
@@ -42,8 +42,11 @@ strictly essential and is skipped for now to allow the establishment the high-le
       - [x] Log recovery and replica log backtracking
     - [x] Raft membership/configuration changes
     - [ ] Log compaction (if there's time) 
-  - [ ] Consistency/node failure testing
+  - [x] Consistency/node failure testing
   - [x] A good amount of code debt cleanup and library updates (particularly Akka 2.6.x)
+
+I'm not sure I want to continue the project past this point, so there's no guarantee that
+these will ever be completed
     
 - [ ] **Milestone 4: Partitioning Layer**
   - [ ] Partitioning via virtual nodes

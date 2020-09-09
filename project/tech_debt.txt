@@ -2,8 +2,6 @@ TODO LIST:
 
 GENERAL:
 - Configure the logging backend to be async?
-- Some form of proper environment variable/configuration/dependency injection
-- Maybe convert usages of the "String" type for hashes into "Digest"
 
 BUILD SETUP:
 - Keep the ports configured in a central place (currently in code, makefile, & docker build)
@@ -11,8 +9,6 @@ BUILD SETUP:
 
 DOCUMENTATION:
 - Move everything to its own wiki section
-- Expand on the Kubernetes cluster setup section, with more details, examples, and a walkthrough
-  for prerequisite cluster setup
 - Document the high-level architecture and modules of the program
 - Document the directory structure of the program, including the build-related stuff
 - Include links to references (within itself to other sections, the wiki, or external docs)
@@ -22,9 +18,6 @@ DOCUMENTATION:
 
 CLIENT:
 - Add a executable program wrapper around the client JAR to simplify deployment
-
-MEMBERSHIP:
-- Allow some way for Kubernetes to make a readiness probe
 
 GOSSIP:
 - If the membership table random select returns None, don't place it on cooldown
