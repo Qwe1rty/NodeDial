@@ -2,38 +2,38 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: cdb  # cdb = chordial database
-  namespace: chordial-ns
+  name: ndb  # ndb = nodedial database
+  namespace: nodedial-ns
   labels:
-    app: chordial
+    app: nodedial
 spec:
-  serviceName: chs
+  serviceName: nhs
   replicas: 1
   selector:
     matchLabels:
-      app: chordial
+      app: nodedial
   volumeClaimTemplates:
   - metadata:
-      name: chordial-volume-claim
+      name: nodedial-volume-claim
     spec:
       accessModes:
       - ReadWriteOnce
       resources:
         requests:
           storage: 20Mi
-#      storageClassName: chordial-storage
+#      storageClassName: nodedial-storage
   template:
 
     ## Pod definition
     metadata:
-      name: chordial-pod
-      namespace: chordial-ns
+      name: nodedial-pod
+      namespace: nodedial-ns
       labels:
-        app: chordial
+        app: nodedial
     spec:
       containers:
-      - name: chordial-container
-        image: chordial/server:2.0.0
+      - name: nodedial-container
+        image: ctchoi/nodedial:1.0.0
         imagePullPolicy: IfNotPresent
         resources:
           limits:
@@ -42,7 +42,7 @@ spec:
             memory: "300Mi"
         env:
         - name: SEED_HOSTNAME
-          value: "cdb-0.chs.chordial-ns.svc.cluster.local"
+          value: "ndb-0.nhs.nodedial-ns.svc.cluster.local"
         - name: MY_POD_NAME
           valueFrom:
             fieldRef:
@@ -63,14 +63,14 @@ spec:
         - name: replication
           containerPort: 22203
         volumeMounts:
-        - name: chordial-volume-claim
-          mountPath: /var/lib/chordial
+        - name: nodedial-volume-claim
+          mountPath: /var/lib/nodedial
         readinessProbe:
           exec:
             command:
-            - chordial
+            - nodedial
             - ready
-          initialDelaySeconds: 20
+          initialDelaySeconds: 25
           periodSeconds: 12
 
 ---
@@ -79,7 +79,7 @@ spec:
 #kind: StorageClass
 #apiVersion: storage.k8s.io/v1
 #metadata:
-#  name: chordial-storage
+#  name: nodedial-storage
 #provisioner: kubernetes.io/no-provisioner
 #volumeBindingMode: WaitForFirstConsumer
 

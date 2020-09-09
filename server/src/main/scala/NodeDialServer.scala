@@ -13,7 +13,7 @@ import replication.ReplicationComponent
 import schema.LoggingConfiguration
 
 
-private object ChordialServer extends App {
+private object NodeDialServer extends App {
 
   val config = ConfigFactory.load()
 
@@ -24,7 +24,7 @@ private object ChordialServer extends App {
     "akka.actor"
   )
 
-  val log = LoggerFactory.getLogger(ChordialServer.getClass)
+  val log = LoggerFactory.getLogger(NodeDialServer.getClass)
   log.info("Server config loaded")
 
   log.info("Initializing actor system")
@@ -77,7 +77,7 @@ private object ChordialServer extends App {
 
       Behaviors.empty
     },
-    "ChordialServer",
+    "NodeDialServer",
     config
   )
 

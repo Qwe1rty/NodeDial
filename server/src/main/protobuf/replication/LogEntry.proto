@@ -2,9 +2,9 @@ syntax = "proto2";
 
 option java_multiple_files = true;
 option java_package = "replication";
-option java_outer_classname = "ChordialRaftLogEntry";
+option java_outer_classname = "NodeDialRaftLogEntry";
 
-package chordial.replication;
+package nodedial.replication;
 
 
 // The serializable entity that is persisted to the Raft WAL

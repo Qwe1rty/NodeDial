@@ -2,12 +2,12 @@ syntax = "proto2";
 
 option java_multiple_files = true;
 option java_package = "replication";
-option java_outer_classname = "ChordialRaftMessages";
+option java_outer_classname = "NodeDialRaftMessages";
 
 import "replication/LogEntry.proto";
 import "scalapb/scalapb.proto";
 
-package chordial.replication;
+package nodedial.replication;
 
 
 //// Client event or administration message types

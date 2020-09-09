@@ -1,9 +1,8 @@
-CHORDIAL_VERSION = 2.0.0
+NODEDIAL_VERSION = 1.0.0
 
-DOCKER_SERVER = chordial/server
-DOCKER_CLIENT = chordial/client
+DOCKER_TAG = ctchoi/nodedial
 
-ROOT_LOCATION = /var/lib/chordial
+ROOT_LOCATION = /var/lib/nodedial
 JAR_LOCATION  = $(ROOT_LOCATION)-jars
 
 
@@ -29,12 +28,16 @@ build-server:
 .PHONY: docker
 docker:
 	@DOCKER_BUILDKIT=1 docker build \
-		--build-arg SERVER_JAR_FILE=$(shell find . -name "ChordialServer-assembly-*.jar") \
-		--build-arg CLIENT_JAR_FILE=$(shell find . -name "ChordialClient-assembly-*.jar") \
+		--build-arg SERVER_JAR_FILE=$(shell find . -name "NodeDialServer-assembly-*.jar") \
+		--build-arg CLIENT_JAR_FILE=$(shell find . -name "NodeDialClient-assembly-*.jar") \
 		--file docker/Dockerfile \
-		--tag $(DOCKER_SERVER):latest \
-		--tag $(DOCKER_SERVER):$(CHORDIAL_VERSION) \
+		--tag $(DOCKER_TAG):latest \
+		--tag $(DOCKER_TAG):$(NODEDIAL_VERSION) \
 		.
+
+docker-push:
+	docker push $(DOCKER_TAG):$(NODEDIAL_VERSION)
+	docker push $(DOCKER_TAG):latest
 
 all: build docker
 
@@ -42,13 +45,13 @@ all: build docker
 install:
 	@sudo mkdir -p $(JAR_LOCATION)
 
-	@sudo rm -f $(JAR_LOCATION)/chordial-client.jar
-	@sudo cp -f $(shell find . -name "ChordialClient-assembly-*.jar") $(JAR_LOCATION)/chordial-client.jar		
-	@sudo cp -f docker/run-client-local.sh /usr/local/bin/chordial
+	@sudo rm -f $(JAR_LOCATION)/nodedial-client.jar
+	@sudo cp -f $(shell find . -name "NodeDialClient-assembly-*.jar") $(JAR_LOCATION)/nodedial-client.jar
+	@sudo cp -f docker/run-client-local.sh /usr/local/bin/nodedial
 
-	@sudo rm -f $(JAR_LOCATION)/chordial-server.jar
-	@sudo cp -f $(shell find . -name "ChordialServer-assembly-*.jar") $(JAR_LOCATION)/chordial-server.jar
-	@sudo cp -f docker/run-server.sh /usr/local/bin/chordial-app
+	@sudo rm -f $(JAR_LOCATION)/nodedial-server.jar
+	@sudo cp -f $(shell find . -name "NodeDialServer-assembly-*.jar") $(JAR_LOCATION)/nodedial-server.jar
+	@sudo cp -f docker/run-server.sh /usr/local/bin/nodedial-app
 
 
 ##################
@@ -59,17 +62,17 @@ run-server:
 	@docker logs -f $(shell docker run \
 		-d \
 		-e SELF_IP='0.0.0.0' \
-		-p 8080:8080 $(DOCKER_SERVER):latest \
+		-p 8080:8080 $(DOCKER_TAG):latest \
 		)
 
 log-server:
-	@docker logs -f $(shell docker ps -q --filter ancestor="$(DOCKER_SERVER):latest")
+	@docker logs -f $(shell docker ps -q --filter ancestor="$(DOCKER_TAG):latest")
 
 exec-server:
-	@docker exec -it $(shell docker ps -q --filter ancestor="$(DOCKER_SERVER):latest") sh
+	@docker exec -it $(shell docker ps -q --filter ancestor="$(DOCKER_TAG):latest") sh
 
 kill-server:
-	@docker stop $(shell docker ps -q --filter ancestor="$(DOCKER_SERVER):latest")
+	@docker stop $(shell docker ps -q --filter ancestor="$(DOCKER_TAG):latest")
 
 
 ######################
@@ -77,21 +80,21 @@ kill-server:
 ######################
 
 kube-headless:
-	@kubectl create -f kube/chordial-headless.yaml
+	@kubectl create -f kube/nodedial-headless.yaml
 
 kube-statefulset:
-	@kubectl create -f kube/chordial-statefulset.yaml
+	@kubectl create -f kube/nodedial-statefulset.yaml
 
 kube-ns:
-	@kubectl get all -n chordial-ns
+	@kubectl get all -n nodedial-ns
 
 kube-ns-create:
-	@kubectl create namespace chordial-ns
+	@kubectl create namespace nodedial-ns
 
 kube-clear:
-	@kubectl delete statefulset cdb -n chordial-ns
-	@kubectl delete service chs -n chordial-ns
-	@kubectl delete pvc chordial-volume-claim-cdb-0 -n chordial-ns
-	@kubectl delete pvc chordial-volume-claim-cdb-1 -n chordial-ns
-	@kubectl delete pvc chordial-volume-claim-cdb-2 -n chordial-ns
+	@kubectl delete statefulset ndb -n nodedial-ns
+	@kubectl delete service nhs -n nodedial-ns
+	@kubectl delete pvc nodedial-volume-claim-ndb-0 -n nodedial-ns
+	@kubectl delete pvc nodedial-volume-claim-ndb-1 -n nodedial-ns
+	@kubectl delete pvc nodedial-volume-claim-ndb-2 -n nodedial-ns
 
