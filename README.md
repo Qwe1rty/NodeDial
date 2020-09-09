@@ -1,17 +1,17 @@
 
 ![NodeDial logo](assets/logo_title_smaller.png)
 
-_A distributed, scalable key-value database system!_ 
-Modeled around existing leader-follower NoSQL databases such as Redis, it's designed to be similarly horizontally
-scalable and deployable on cloud platforms. The project has its own implementation of the _SWIM_ and _Raft_ protocols
-for the administration and replication layers respectively, and uses gRPC for all internal communications
+_A distributed key-value database system_, that currently supports consensus-based replication, gossip membership, 
+and failure detection! Modeled around leader-follower NoSQL databases like Redis, it's designed to be similarly 
+scalable and deployable on the cloud. The project also contains its own implementation of the _SWIM_ and _Raft_ 
+protocols for the administration and replication layers respectively, and uses gRPC for all internal communications
 
-Note that this is mainly being built for educational purposes (so please please never use it on an actual production
-system - I am not responsible for something breaking if you do) 
+Note that this is mainly being built for educational purposes (so please please please never use it on an actual production
+system - I am not responsible for something breaking if you do!) 
 
-For more details about setting the project up on your 
-environment, check out the [build walkthrough](#project-setup-and-walkthrough) and deployment guide. The project is 
-also available as a Docker container, which can be viewed at its [Docker hub page](https://hub.docker.com/r/ctchoi/nodedial/tags)
+For more details about setting the project up on your environment, check out
+the [build walkthrough](#project-setup-and-walkthrough) and deployment guide. The project is also available as a Docker
+container, which can be viewed at its [Docker hub page](https://hub.docker.com/r/ctchoi/nodedial/tags)
 
 The main server code is located in the directory `server/src/main/scala/`, and the program currently supports the 
 three basic operations: `GET`, `POST`, and `DELETE`
@@ -19,11 +19,15 @@ three basic operations: `GET`, `POST`, and `DELETE`
 ### About the Project
 
 The project started as a way to learn distributed systems concepts, practice writing asynchronous/concurrent 
-applications, and gain experience with the pitfalls of writing these distributed applications.
+applications, and gain experience with the pitfalls of writing these distributed systems.
 Overall, while the project still has a significant amount of work to do, over the past year of on-and-off work I've
-learned a lot and gotten much better at these things. I've found that trying to implement various abstract distributed
-systems ideas into an actual program really helps solidify details that I would've missed from just reading about it
-(such as the many non-obvious corner cases from when I was trying to implement the Raft consensus algorithm).
+learned a lot and gotten much better at these things.
+
+I've found that trying to implement various abstract distributed systems ideas into an actual program really helps 
+solidify details that I would've missed from just reading about it - such as the many non-obvious corner cases from when
+I was trying to implement the Raft consensus algorithm. It also introduces me to concepts that don't usually get much
+attention, like cluster membership - which turns out to be a really difficult and important topic that isn't talked
+about as much as a lot of other distributed computing topics.
 
 While I'm not sure how long I'll continue working on it past the replication/Raft layer, the project was really fun
 and I'm sure that everything I've learned will come in handy for all future projects.
@@ -298,8 +302,9 @@ officially adds the new server to the cluster and it can start receiving client 
 This is why there is a minimum 25 second delay for each node addition for the Kubernetes setup provided in the repo,
 as it ensures enough time for Raft to replicate the node addition as a log entry to the majority of nodes
 
-Overall, the typical workflow for when there's multiple nodes are the same as when there's just one, except that 
-the leader has to reach out to the cluster and confirm with a majority of nodes every time it wants to write something.
+Overall, the typical workflow for multiple nodes are the same as when there's just one, except that 
+the leader has to reach out to the cluster and confirm with a majority of nodes every time it wants to write something
+(and that elections aren't just won instantaneously).
 
 The log walkthrough for the log entry replication process is quite long, so I've moved it over to the
 [log samples](project/logSamples) subfolder, where you'll find annotated explanations about cluster operations
@@ -315,6 +320,7 @@ new elections occur.
 For further information about various aspects of how the project build system works, here are some various
 resources that help elaborate on certain build topics used in this project:
 
+* Java downgrading: <https://askubuntu.com/questions/1133216/downgrading-java-11-to-java-8>
 * gRPC and ScalaPB
   * Importing Google common protobuf files: <https://github.com/googleapis/common-protos-java>
   * Additional fix regarding above link for SBT build: <https://discuss.lightbend.com/t/use-googles-annotations-proto/3302>
@@ -323,7 +329,6 @@ resources that help elaborate on certain build topics used in this project:
   * SBT assembly + Docker: <https://hackernoon.com/akka-io-sbt-assembly-and-docker-a88b649f63cf>
 * Dockerizing Scala apps
   * Walkthrough: https://blog.elegantmonkeys.com/dockerizing-your-scala-application-6590385fd501
-* Java downgrading: <https://askubuntu.com/questions/1133216/downgrading-java-11-to-java-8>
 * Kubernetes Cluster Setup:
   * Example StatefulSet deployment (ZooKeeper): <https://kubernetes.io/docs/tasks/run-application/scale-stateful-set/>
   * Example StatefulSet deployment (Cassandra): <https://kubernetes.io/docs/tutorials/stateful-application/cassandra/>
