@@ -1,5 +1,5 @@
 
-# NodeDial
+![NodeDial logo](assets/logo_title_smaller.png)
 
 A distributed, scalable key-value database system! 
 Note that this is mainly being built for educational purposes, and is not production ready 
@@ -9,6 +9,8 @@ Modeled around existing leader-follower NoSQL databases such as Redis, it's desi
 scalable and deployable on cloud platforms. For more details about setting the project up on your environment, 
 check out the [build walkthrough](#project-setup-and-walkthrough) and deployment guide
 
+The project is also available as a Docker container, which can be viewed at its 
+[Docker hub page](https://hub.docker.com/r/ctchoi/nodedial/tags)
 
 The main server code is located in the directory `server/src/main/scala/`, and the program currently supports the 
 three basic operations: `GET`, `POST`, and `DELETE`

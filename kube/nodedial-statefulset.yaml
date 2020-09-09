@@ -33,7 +33,7 @@ spec:
     spec:
       containers:
       - name: nodedial-container
-        image: nodedial:1.0.0
+        image: ctchoi/nodedial:1.0.0
         imagePullPolicy: IfNotPresent
         resources:
           limits:

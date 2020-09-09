@@ -1,6 +1,6 @@
-CHORDIAL_VERSION = 1.0.0
+NODEDIAL_VERSION = 1.0.0
 
-DOCKER_TAG = nodedial
+DOCKER_TAG = ctchoi/nodedial
 
 ROOT_LOCATION = /var/lib/nodedial
 JAR_LOCATION  = $(ROOT_LOCATION)-jars
@@ -32,8 +32,12 @@ docker:
 		--build-arg CLIENT_JAR_FILE=$(shell find . -name "NodeDialClient-assembly-*.jar") \
 		--file docker/Dockerfile \
 		--tag $(DOCKER_TAG):latest \
-		--tag $(DOCKER_TAG):$(CHORDIAL_VERSION) \
+		--tag $(DOCKER_TAG):$(NODEDIAL_VERSION) \
 		.
+
+docker-push:
+	docker push $(DOCKER_TAG):$(NODEDIAL_VERSION)
+	docker push $(DOCKER_TAG):latest
 
 all: build docker
 
