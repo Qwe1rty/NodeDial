@@ -70,7 +70,7 @@ spec:
             command:
             - nodedial
             - ready
-          initialDelaySeconds: 20
+          initialDelaySeconds: 25
           periodSeconds: 12
 
 ---

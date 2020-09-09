@@ -184,10 +184,10 @@ with it.
 
 To better illustrate the joining process, a sample log output of the new node would look like this:
 ```
-[...] INFO administration.Administration$ - Retrieved seed node environment variable with value: 'ndb-0.nhs.nodedial-ns.svc.cluster.local'
-[...] INFO administration.Administration$ - Seed node IP address resolved to: 10.1.0.171
-[...] INFO administration.Administration - Contacting seed node for membership listing
-[...] INFO administration.Administration - Successful full sync response received from seed node
+[...] administration.Administration$ - Retrieved seed node environment variable with value: 'ndb-0.nhs.nodedial-ns.svc.cluster.local'
+[...] administration.Administration$ - Seed node IP address resolved to: 10.1.0.171
+[...] administration.Administration - Contacting seed node for membership listing
+[...] administration.Administration - Successful full sync response received from seed node
 ```
 
 What's occurring here is that the new node will try to first resolve the seed node's hostname, and then
@@ -196,10 +196,10 @@ contact it to request a complete synchronization of the membership table
 Once complete, the node has full status knowledge of the all other nodes in the cluster and is ready to
 start broadcasting its new alive status to the rest of the cluster:
 ```
-[...] INFO administration.Administration - Successful full sync response received from seed node
-[...] INFO administration.Administration - Broadcasting join event to other nodes
-[...] DEBUG administration.gossip.Gossip - Gossip request received with key GossipKey(Event(022fd1be6f6b4fc3a857266cbac07f01cf295d0f688fabcaa83b42443f81fafd,Join(Join(167837872,PartitionHashes(List())))))
-[...] DEBUG common.gossip.GossipActor - Cluster size detected as 2, setting gossip round buffer to 5
+[...] administration.Administration - Successful full sync response received from seed node
+[...] administration.Administration - Broadcasting join event to other nodes
+[...] administration.gossip.Gossip - Gossip request received with key GossipKey(Event(022fd1be6f6b4fc3a857266cbac07f01cf295d0f688fabcaa83b42443f81fafd,Join(Join(167837872,PartitionHashes(List())))))
+[...] common.gossip.GossipActor - Cluster size detected as 2, setting gossip round buffer to 5
 ``` 
 
 The join event is send to the `GossipActor` instance, which is the component responsible for broadcasting the 
@@ -209,12 +209,12 @@ spread by this particular node before it goes into cooldown
 On the seed node side, it'll first receive the full sync request, and then receive the join gossip
 message shortly after:
 ```
-[...] INFO administration.AdministrationGRPCService$ - Full sync requested from node 2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27 with IP 10.1.0.92
-[...] DEBUG administration.AdministrationGRPCService$ - Event received from 2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27, forwarding to membership actor
-[...] DEBUG administration.Administration - Join event - 2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27 - Join(167837788,PartitionHashes(Vector()))
-[...] INFO administration.Administration - New node 2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27 added to membership table with IP address 167837788
-[...] DEBUG administration.gossip.Gossip - Gossip request received with key GossipKey(Event(022fd1be6f6b4fc3a857266cbac07f01cf295d0f688fabcaa83b42443f81fafd,Join(Join(167837872,PartitionHashes(Vector())))))
-[...] DEBUG administration.gossip.Gossip - Cluster size detected as 2, setting gossip round buffer to 5
+[...] administration.AdministrationGRPCService$ - Full sync requested from node 2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27 with IP 10.1.0.92
+[...] administration.AdministrationGRPCService$ - Event received from 2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27, forwarding to membership actor
+[...] administration.Administration - Join event - 2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27 - Join(167837788,PartitionHashes(Vector()))
+[...] administration.Administration - New node 2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27 added to membership table with IP address 167837788
+[...] administration.gossip.Gossip - Gossip request received with key GossipKey(Event(022fd1be6f6b4fc3a857266cbac07f01cf295d0f688fabcaa83b42443f81fafd,Join(Join(167837872,PartitionHashes(Vector())))))
+[...] administration.gossip.Gossip - Cluster size detected as 2, setting gossip round buffer to 5
 ```
 
 Note that from the perspective of the seed node, the new node won't be officially added by the full
@@ -224,11 +224,11 @@ assumes full responsibility for broadcasting the join notification instead of th
 Afterwards, both nodes will stabilize and start to periodically perform failure checks on each other, and 
 reply liveness confirmations to incoming checks:
 ```
-[...] DEBUG administration.failureDetection.FailureDetector - Target [2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27, 10.1.0.92] successfully passed initial direct failure check
-[...] DEBUG administration.failureDetection.FailureDetector - Target [2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27, 10.1.0.92] successfully passed initial direct failure check
-[...] INFO administration.failureDetection.FailureDetectorGRPCService$ - Health check request has been received, sending confirmation
-[...] INFO administration.failureDetection.FailureDetectorGRPCService$ - Health check request has been received, sending confirmation
-[...] DEBUG administration.failureDetection.FailureDetector - Target [2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27, 10.1.0.92] successfully passed initial direct failure check
+[...] administration.failureDetection.FailureDetector - Target [2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27, 10.1.0.92] successfully passed initial direct failure check
+[...] administration.failureDetection.FailureDetector - Target [2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27, 10.1.0.92] successfully passed initial direct failure check
+[...] administration.failureDetection.FailureDetectorGRPCService$ - Health check request has been received, sending confirmation
+[...] administration.failureDetection.FailureDetectorGRPCService$ - Health check request has been received, sending confirmation
+[...] administration.failureDetection.FailureDetector - Target [2551c17d92b95acfaa5a1528c45eee54829572df33dfbd01b383d722e48e0e27, 10.1.0.92] successfully passed initial direct failure check
 ```
 
 Now you can scale your cluster to any size you want!
@@ -249,8 +249,8 @@ read the variable `SEED_NODE`.
 When starting up a single node, you'll notice that it immediately begins the election process. Since there is 
 nobody else to provide votes, it will win and become leader for Term 1. This is the log output from winning the election:
 ```
-[...] INFO replication.RaftFSM - Starting leader election for new term: 1
-[...] INFO replication.RaftFSM - Election won, becoming leader of term 1
+[...] replication.RaftFSM - Starting leader election for new term: 1
+[...] replication.RaftFSM - Election won, becoming leader of term 1
 ```
 
 Once it has become leader, it can start processing `POST` and `DELETE` client requests (note that `GET` 
@@ -265,13 +265,13 @@ be visible through a client `GET`.
 Here is an example of what a `post -k "hello" -v "world"` request looks like going through Raft; notice the two
 distinct phases of writing to the WAL before officially committing the change: 
 ```
-[...] DEBUG replication.ReplicationComponent - Post request received with UUID d66f67e0-9692-4ca5-9105-13a914781888 and hex value: 776F726C64
-[...] DEBUG replication.eventlog.SimpleReplicatedLog$ - Appending log entry #1 at offset 0 and byte length 63 to WAL
-[...] DEBUG replication.eventlog.SimpleReplicatedLog$ - Appended log entry: 0A0568656C6C6F123612340A0568656C6C6F12191F8B08000000000000002BCF2FCA4901004311773A050000001A10D66F67E096924CA5910513A914781888
+[...] replication.ReplicationComponent - Post request received with UUID d66f67e0-9692-4ca5-9105-13a914781888 and hex value: 776F726C64
+[...] replication.eventlog.SimpleReplicatedLog$ - Appending log entry #1 at offset 0 and byte length 63 to WAL
+[...] replication.eventlog.SimpleReplicatedLog$ - Appended log entry: 0A0568656C6C6F123612340A0568656C6C6F12191F8B08000000000000002BCF2FCA4901004311773A050000001A10D66F67E096924CA5910513A914781888
 ...
-[...] DEBUG replication.eventlog.SimpleReplicatedLog$ - Retrieving log entry #1 at offset 0 and byte length 63 from WAL
-[...] DEBUG replication.eventlog.SimpleReplicatedLog$ - Retrieved log entry: 0A0568656C6C6F123612340A0568656C6C6F12191F8B08000000000000002BCF2FCA4901004311773A050000001A10D66F67E096924CA5910513A914781888
-[...] INFO replication.RaftFSM - Write entry with key 'hello' and UUID d66f67e0-9692-4ca5-9105-13a914781888 will now attempt to be committed
+[...] replication.eventlog.SimpleReplicatedLog$ - Retrieving log entry #1 at offset 0 and byte length 63 from WAL
+[...] replication.eventlog.SimpleReplicatedLog$ - Retrieved log entry: 0A0568656C6C6F123612340A0568656C6C6F12191F8B08000000000000002BCF2FCA4901004311773A050000001A10D66F67E096924CA5910513A914781888
+[...] replication.RaftFSM - Write entry with key 'hello' and UUID d66f67e0-9692-4ca5-9105-13a914781888 will now attempt to be committed
 ```
 
 ## Raft Cluster Operations
@@ -289,7 +289,7 @@ nodes in the Raft cluster to get majority agreement on the new server. Once a ma
 officially adds the new server to the cluster and it can start receiving client messages:
 
 ```
-[...] INFO replication.RaftFSM - Committing node add entry, node c6518456f35b64e33b4302c14f33af4a41a13ca517e176ab50aeefe2b8fc98ac officially invited to cluster
+[...] replication.RaftFSM - Committing node add entry, node c6518456f35b64e33b4302c14f33af4a41a13ca517e176ab50aeefe2b8fc98ac officially invited to cluster
 ```
 
 Overall, the typical workflow for when there's multiple nodes are the same as when there's just one, except that 
